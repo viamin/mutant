@@ -14,7 +14,7 @@ require 'morpher'
 require 'open3'
 require 'optparse'
 require 'parser'
-require 'parser/ruby31'
+require 'parser/ruby33'
 require 'pathname'
 require 'procto'
 require 'regexp_parser'
@@ -46,7 +46,7 @@ module Mutant
   EMPTY_ARRAY    = [].freeze
   EMPTY_HASH     = {}.freeze
   SCOPE_OPERATOR = '::'
-  PARSER_CLASS   = Parser::Ruby31
+  PARSER_CLASS   = Parser::Ruby33
 
   # Test if CI is detected via environment
   #

@@ -99,11 +99,24 @@ module Mutant
         def node(input)
           case input
           when String
-            Unparser.parse(input)
+            normalize(Unparser.parse(input))
           when ::Parser::AST::Node
             input
           else
             fail "Cannot coerce to node: #{input.inspect}"
+          end
+        end
+
+        def normalize(node)
+          if node.is_a?(::Parser::AST::Node)
+            children = node.children.map { |child| normalize(child) }
+            if node.type == :begin && children.one?
+              children.first
+            else
+              node.updated(nil, children)
+            end
+          else
+            node
           end
         end
 
