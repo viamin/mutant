@@ -1,10 +1,15 @@
 # frozen_string_literal: true
 
-require 'devtools'
+require 'bundler/gem_tasks'
+require 'rspec/core/rake_task'
+require 'rubocop/rake_task'
 
-Devtools.init_rake_tasks
+RSpec::Core::RakeTask.new(:spec)
+RuboCop::RakeTask.new(:rubocop)
 
 Rake.application.load_imports
+
+task default: :spec
 
 task('metrics:mutant').clear
 namespace :metrics do

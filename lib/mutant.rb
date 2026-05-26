@@ -14,12 +14,25 @@ require 'morpher'
 require 'open3'
 require 'optparse'
 require 'parser'
-require 'parser/current'
+require 'parser/ruby31'
 require 'pathname'
+require 'procto'
 require 'regexp_parser'
 require 'set'
 require 'stringio'
+
+original_stderr = $stderr
+$stderr = StringIO.new
+
 require 'unparser'
+
+captured_stderr = $stderr.string.lines.reject do |line|
+  line.start_with?('warning: parser/current is loading') ||
+    line.start_with?('Please see https://github.com/whitequark/parser#compatibility-with-ruby-mri.')
+end
+
+$stderr = original_stderr
+$stderr.print(captured_stderr.join)
 
 # This setting is done to make errors within the parallel
 # reporter / execution visible in the main thread.
@@ -33,6 +46,7 @@ module Mutant
   EMPTY_ARRAY    = [].freeze
   EMPTY_HASH     = {}.freeze
   SCOPE_OPERATOR = '::'
+  PARSER_CLASS   = Parser::Ruby31
 
   # Test if CI is detected via environment
   #
@@ -45,6 +59,7 @@ end # Mutant
 require 'mutant/version'
 require 'mutant/env'
 require 'mutant/env/bootstrap'
+require 'mutant/morpher_compat'
 require 'mutant/util'
 require 'mutant/registry'
 require 'mutant/ast'

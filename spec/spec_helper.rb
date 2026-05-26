@@ -24,14 +24,21 @@ require 'tempfile'
 require 'concord'
 require 'anima'
 require 'adamantium'
-require 'devtools/spec_helper'
+require 'rspec/its'
 require 'unparser/cli'
 require 'mutant'
 require 'mutant/meta'
+require_relative 'support/test_app'
 
 $LOAD_PATH << File.join(TestApp.root, 'lib')
 
 require 'test_app'
+
+Dir[File.expand_path('{support,shared}/**/*.rb', __dir__)].sort.each do |file|
+  next if file.end_with?('/support/test_app.rb')
+
+  require file
+end
 
 module Fixtures
   TEST_CONFIG = Mutant::Config::DEFAULT.with(reporter: Mutant::Reporter::Null.new)
@@ -44,7 +51,7 @@ module ParserHelper
   end
 
   def parse(string)
-    Unparser::Preprocessor.run(Unparser.parse(string))
+    Unparser.parse(string)
   end
 
   def parse_expression(string)
@@ -64,6 +71,7 @@ module XSpecHelper
 end # XSpecHelper
 
 RSpec.configure do |config|
+  config.threadsafe = true
   config.extend(SharedContext)
   config.include(ParserHelper)
   config.include(Mutant::AST::Sexp)

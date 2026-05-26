@@ -99,7 +99,7 @@ module Mutant
         def node(input)
           case input
           when String
-            Unparser::Preprocessor.run(Unparser.parse(input))
+            Unparser.parse(input)
           when ::Parser::AST::Node
             input
           else
