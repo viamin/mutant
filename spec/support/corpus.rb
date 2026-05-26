@@ -55,7 +55,7 @@ module MutantSpec
       def verify_mutation_coverage
         checkout
         Dir.chdir(repo_path) do
-          Bundler.with_clean_env do
+          with_nested_bundle_environment do
             install_mutant
             system(
               %W[
@@ -200,6 +200,31 @@ module MutantSpec
         lockfile = repo_path.join('Gemfile.lock')
         lockfile.delete if lockfile.exist?
         system(%w[bundle])
+      end
+
+      # Run nested bundler commands without leaking the parent Gemfile while
+      # preserving the bundle path selected by the outer process.
+      #
+      # @return [Object]
+      def with_nested_bundle_environment
+        preserved = bundler_environment_overrides
+
+        Bundler.with_unbundled_env do
+          preserved.each { |key, value| ENV[key] = value }
+          yield
+        ensure
+          preserved.each_key { |key| ENV.delete(key) }
+        end
+      end
+
+      # Bundler environment variables needed by nested bundle commands.
+      #
+      # @return [Hash<String, String>]
+      def bundler_environment_overrides
+        %w[BUNDLE_PATH BUNDLE_CACHE_PATH].each_with_object({}) do |key, object|
+          value = ENV[key]
+          object[key] = value if value
+        end
       end
 
       # The effective ruby file paths
