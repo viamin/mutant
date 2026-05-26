@@ -19,20 +19,15 @@ require 'pathname'
 require 'procto'
 require 'regexp_parser'
 require 'set'
-require 'stringio'
 
-original_stderr = $stderr
-$stderr = StringIO.new
-
-require 'unparser'
-
-captured_stderr = $stderr.string.lines.reject do |line|
-  line.start_with?('warning: parser/current is loading') ||
-    line.start_with?('Please see https://github.com/whitequark/parser#compatibility-with-ruby-mri.')
+module Warning
+  def self.warn(message)
+    return if message.include?('parser/current is loading')
+    super
+  end
 end
 
-$stderr = original_stderr
-$stderr.print(captured_stderr.join)
+require 'unparser'
 
 # This setting is done to make errors within the parallel
 # reporter / execution visible in the main thread.
