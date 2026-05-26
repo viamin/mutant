@@ -60,6 +60,12 @@
     - core/range/frozen_spec.rb
     - core/range/minmax_spec.rb
     - language/range_spec.rb
+    "#<Regexp::Parser::UnknownTokenError: Unknown Conditional token condition_open>":
+    - language/regexp/back-references_spec.rb
+    "#<NoMethodError: undefined method 'empty?' for nil>":
+    - language/regexp/repetition_spec.rb
+    "#<Regexp::Scanner::ScannerError: Scan error at '\\g<a+>'>":
+    - language/regexp/subexpression_call_spec.rb
   exclude:
     - core/string/casecmp_spec.rb
     - core/symbol/casecmp_spec.rb

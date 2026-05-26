@@ -130,6 +130,8 @@ module Mutant
         regexp_match_start_anchor
         regexp_meta_sequence_escape
         regexp_name_call_backref
+        regexp_name_ref_backref
+        regexp_name_recursion_ref_backref
         regexp_named_group
         regexp_newline_escape
         regexp_nlookahead_assertion
@@ -140,6 +142,10 @@ module Mutant
         regexp_nonword_boundary_anchor
         regexp_nonword_type
         regexp_number_backref
+        regexp_number_call_backref
+        regexp_number_recursion_ref_backref
+        regexp_number_rel_call_backref
+        regexp_number_rel_ref_backref
         regexp_octal_escape
         regexp_one_or_more_escape
         regexp_open_conditional
@@ -160,6 +166,7 @@ module Mutant
         regexp_reluctant_interval
         regexp_reluctant_one_or_more
         regexp_reluctant_zero_or_more
+        regexp_reluctant_zero_or_one
         regexp_root_expression
         regexp_sequence_expression
         regexp_set_close_escape

@@ -222,7 +222,8 @@ module MutantSpec
       # @return [Hash<String, String>]
       def bundler_environment_overrides
         %w[BUNDLE_PATH BUNDLE_CACHE_PATH].each_with_object({}) do |key, object|
-          value = ENV[key]
+          path = Bundler.settings[:path]
+          value = ENV[key] || path && File.expand_path(path, ROOT)
           object[key] = value if value
         end
       end

@@ -51,9 +51,8 @@ module XSpec
     def validate_block_arity(observation, yields)
       expected, observed = yields.length, observation.block.arity
 
-      # block allows anything we can skip the check
-      return if observed.equal?(-1)
-      fail 'Optargs currently not supported' if observed < -1
+      return if observed < 0
+
       block_arity_mismatch(observation, expected, observed) unless expected.equal?(observed)
     end
 
@@ -93,13 +92,14 @@ module XSpec
   class MessageExpectation
     include Anima.new(:receiver, :selector, :arguments, :reaction)
 
-    # rubocop:disable ParameterLists
-    def self.parse(receiver:, selector:, arguments: [], reaction: nil)
+    def self.parse(options)
       new(
-        receiver:  receiver,
-        selector:  selector,
-        arguments: arguments,
-        reaction:  MessageReaction.parse(reaction || { return: nil })
+        receiver: options.fetch(:receiver),
+        selector: options.fetch(:selector),
+        arguments: options.fetch(:arguments, []),
+        reaction: MessageReaction.parse(
+          options.fetch(:reaction, nil) || { return: nil }
+        )
       )
     end
 

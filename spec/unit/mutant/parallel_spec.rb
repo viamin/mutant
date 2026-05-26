@@ -62,8 +62,8 @@ RSpec.describe Mutant::Parallel do
       }
     end
 
-    def mvar(*arguments)
-      ivar(*arguments).merge(receiver: Mutant::Variable::MVar)
+    def mvar(value, **attributes)
+      ivar(value, **attributes).merge(receiver: Mutant::Variable::MVar)
     end
 
     let(:raw_expectations) do

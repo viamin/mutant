@@ -63,6 +63,8 @@ module Mutant
       #
       # @return [self]
       def setup
+        ::Minitest.seed ||= 0
+
         Pathname.glob(TEST_FILE_PATTERN)
           .map(&:to_s)
           .each(&method(:require))

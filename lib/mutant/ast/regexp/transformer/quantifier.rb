@@ -38,6 +38,7 @@ module Mutant
               regexp_greedy_one_or_more:      [:one_or_more,  '+',  :greedy],
               regexp_greedy_zero_or_one:      [:zero_or_one,  '?',  :greedy],
               regexp_possessive_zero_or_one:  [:zero_or_one,  '?+', :possessive],
+              regexp_reluctant_zero_or_one: [:zero_or_one, '??', :reluctant],
               regexp_reluctant_zero_or_more:  [:zero_or_more, '*?', :reluctant],
               regexp_reluctant_one_or_more:   [:one_or_more,  '+?', :reluctant],
               regexp_possessive_zero_or_more: [:zero_or_more, '*+', :possessive],

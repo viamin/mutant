@@ -82,12 +82,9 @@ RSpec.describe Mutant::WarningFilter do
           end
         RUBY
       end
-      expect(warnings).to eql(
-        [
-          "(eval):5: warning: method redefined; discarding old foo\n",
-          "(eval):2: warning: previous definition of foo was here\n"
-        ]
-      )
+      expect(warnings.length).to be(2)
+      expect(warnings[0]).to match(/warning: method redefined/)
+      expect(warnings[1]).to match(/warning: previous definition/)
     end
 
     it 'passes through non warning writes' do

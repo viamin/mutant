@@ -14,8 +14,6 @@ RSpec.describe Mutant::Matcher::Methods::Instance, '#call' do
     Class.new do
       include parent
 
-      private :method_d
-
       def method_a; end
 
     protected
