@@ -9,6 +9,7 @@ Rake.application.load_imports
 task('metrics:mutant').clear
 namespace :metrics do
   task mutant: :coverage do
+    mutant_jobs = ENV['MUTANT_JOBS']
     arguments = %w[
       bundle exec mutant
       --include lib
@@ -17,7 +18,7 @@ namespace :metrics do
       --use rspec
       --zombie
     ]
-    arguments.concat(%w[--jobs 4]) if ENV.key?('CIRCLECI')
+    arguments.concat(['--jobs', mutant_jobs]) if mutant_jobs
 
     arguments.concat(%w[-- Mutant*])
 

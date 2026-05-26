@@ -2,7 +2,7 @@
 - name: rubyspec
   namespace: Rubyspec
   repo_uri: 'https://github.com/ruby/rubyspec.git'
-  repo_ref: 'origin/master'
+  repo_ref: 'd6a79c0d7902e5252fbe3c3daf6a16636d1d5be2'
   integration: mspec
   ruby_glob_pattern: '**/*_spec.rb'
   mutation_coverage: false
@@ -11,6 +11,11 @@
     "#<ArgumentError: No valid target found for '?' >":
     - core/matchdata/begin_spec.rb
     - core/matchdata/end_spec.rb
+    "#<Parser::SyntaxError: literal contains escape sequences incompatible with UTF-8>":
+    - optional/capi/encoding_spec.rb
+    - core/string/split_spec.rb
+    "#<Parser::SyntaxError: unexpected token tDOT2>":
+    - core/range/step_spec.rb
   exclude:
     - core/string/casecmp_spec.rb
     - core/symbol/casecmp_spec.rb

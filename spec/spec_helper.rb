@@ -4,9 +4,15 @@ if ENV['COVERAGE'] == 'true'
   require 'simplecov'
 
   SimpleCov.start do
+    project_root = File.expand_path('..', __dir__)
+
     command_name 'spec:unit'
 
+    add_filter do |source_file|
+      !source_file.filename.start_with?(project_root)
+    end
     add_filter 'config'
+    add_filter '.rubies'
     add_filter 'spec'
     add_filter 'vendor'
     add_filter 'test_app'

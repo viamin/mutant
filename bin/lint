@@ -1,0 +1,4 @@
+#!/bin/sh
+set -eu
+
+bundle exec rake metrics:rubocop

@@ -1,3 +1,18 @@
+GIT
+  remote: https://github.com/mbj/morpher.git
+  revision: c9f9f720933835e09acfe6100bb20e8bd3c01915
+  tag: v0.2.6
+  specs:
+    morpher (0.2.6)
+      abstract_type (~> 0.0.7)
+      adamantium (~> 0.2.0)
+      anima (~> 0.3.0)
+      ast (~> 2.2)
+      concord (~> 0.1.5)
+      equalizer (~> 0.0.9)
+      ice_nine (~> 0.11.0)
+      procto (~> 0.0.2)
+
 PATH
   remote: .
   specs:
@@ -14,6 +29,7 @@ PATH
       morpher (~> 0.2.6)
       parser (~> 2.5.1)
       procto (~> 0.0.2)
+      racc
       regexp_parser (~> 1.2)
       unparser (~> 0.4.2)
     mutant-rspec (0.8.25)
@@ -83,15 +99,7 @@ GEM
     kwalify (0.7.2)
     memoizable (0.4.2)
       thread_safe (~> 0.3, >= 0.3.1)
-    morpher (0.2.6)
-      abstract_type (~> 0.0.7)
-      adamantium (~> 0.2.0)
-      anima (~> 0.3.0)
-      ast (~> 2.2)
-      concord (~> 0.1.5)
-      equalizer (~> 0.0.9)
-      ice_nine (~> 0.11.0)
-      procto (~> 0.0.2)
+    ostruct (0.6.3)
     parallel (1.12.1)
     parser (2.5.3.0)
       ast (~> 2.4.0)
@@ -99,6 +107,7 @@ GEM
     powerpack (0.1.2)
     procto (0.0.3)
     psych (3.1.0)
+    racc (1.8.1)
     rainbow (3.0.0)
     rake (12.3.2)
     reek (5.3.0)
@@ -165,8 +174,10 @@ PLATFORMS
 
 DEPENDENCIES
   devtools (~> 0.1.23)
+  morpher!
   mutant!
+  ostruct
   parallel (~> 1.3)
 
 BUNDLED WITH
-   1.17.3
+   2.3.27
