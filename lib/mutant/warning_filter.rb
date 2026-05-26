@@ -49,12 +49,13 @@ module Mutant
     #
     # @return [Array<String>]
     def self.use
-      original = $stderr
-      $stderr = filter = new(original)
+      original_stderr = $stderr
+      $stderr = filter = new(original_stderr)
+
       yield
       filter.warnings
     ensure
-      $stderr = original
+      $stderr = original_stderr
     end
 
   end # WarningFilter

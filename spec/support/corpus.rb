@@ -3,6 +3,7 @@
 require 'anima'
 require 'mutant'
 require 'parallel'
+require 'yaml'
 
 # @api private
 module MutantSpec
@@ -54,7 +55,7 @@ module MutantSpec
       def verify_mutation_coverage
         checkout
         Dir.chdir(repo_path) do
-          Bundler.with_clean_env do
+          Bundler.with_unbundled_env do
             install_mutant
             system(
               %W[

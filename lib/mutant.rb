@@ -19,11 +19,18 @@ require 'pathname'
 require 'procto'
 require 'regexp_parser'
 require 'set'
+require 'stringio'
 
 module Warning
-  def self.warn(message)
-    return if message.include?('parser/current is loading')
-    super
+  PARSER_WARNING_PATTERNS = [
+    'parser/current is loading',
+    'parser/source/buffer.rb:97: warning: string returned by :'
+  ].freeze
+
+  def self.warn(message, *args, **kwargs)
+    return if PARSER_WARNING_PATTERNS.any? { |pattern| message.include?(pattern) }
+
+    super(message, *args, **kwargs)
   end
 end
 

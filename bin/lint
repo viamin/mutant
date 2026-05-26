@@ -1,4 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-exec bundle exec rubocop --format progress "$@"
+args=()
+
+for arg in "$@"; do
+  if [ "$arg" != "--staged" ]; then
+    args+=("$arg")
+  fi
+done
+
+exec bundle exec rubocop --format progress "${args[@]}"

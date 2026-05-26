@@ -62,7 +62,7 @@ end # ParserHelper
 module XSpecHelper
   def verify_events
     expectations = raw_expectations
-      .map(&XSpec::MessageExpectation.method(:parse))
+      .map { |expectation| XSpec::MessageExpectation.parse(**expectation) }
 
     XSpec::ExpectationVerifier.verify(self, expectations) do
       yield
