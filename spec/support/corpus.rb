@@ -135,6 +135,18 @@ module MutantSpec
 
     private
 
+      def relax_mutant_version_constraints
+        Dir[repo_path.join('*.gemspec')].each do |gemspec_path|
+          content = File.read(gemspec_path)
+          content = content.gsub(
+            /add_development_dependency\('mutant[^']*',\s*'~> [^']*'\)/
+          ) do |match|
+            match.sub(/'~> [^']*'/, "'>= 0'")
+          end
+          File.write(gemspec_path, content)
+        end
+      end
+
       # Count mutations and check error results against whitelist
       #
       # @param path [Pathname] path responsible for exception
@@ -191,15 +203,25 @@ module MutantSpec
       def install_mutant
         return if noinstall?
         relative = ROOT.relative_path_from(repo_path)
-        repo_path.join('Gemfile').open('a') do |file|
+        repo_path.join('Gemfile').open('w') do |file|
+          file << "# frozen_string_literal: true\n"
+          file << "source 'https://rubygems.org'\n"
+          file << "gemspec\n"
           file << "gem 'mutant', path: '#{relative}'\n"
           file << "gem 'mutant-rspec', path: '#{relative}'\n"
           file << "gem 'mutant-minitest', path: '#{relative}'\n"
           file << "eval_gemfile File.expand_path('#{relative.join('Gemfile.shared')}')\n"
         end
+        relax_mutant_version_constraints
         lockfile = repo_path.join('Gemfile.lock')
         lockfile.delete if lockfile.exist?
-        system(%w[bundle])
+        bundle_dir = repo_path.join('.bundle')
+        bundle_dir.mkdir unless bundle_dir.directory?
+        bundle_dir.join('config').write(<<~YAML)
+          ---
+          BUNDLE_PATH: "#{ROOT.join('vendor', 'bundle')}"
+        YAML
+        system(%w[bundle install])
       end
 
       # Run nested bundler commands without leaking the parent Gemfile while
@@ -221,11 +243,11 @@ module MutantSpec
       #
       # @return [Hash<String, String>]
       def bundler_environment_overrides
-        %w[BUNDLE_PATH BUNDLE_CACHE_PATH].each_with_object({}) do |key, object|
-          path = Bundler.settings[:path]
-          value = ENV[key] || path && File.expand_path(path, ROOT)
-          object[key] = value if value
-        end
+        path = Bundler.settings[:path]
+        value = ENV['BUNDLE_PATH'] || path && File.expand_path(path, ROOT)
+        result = {}
+        result['BUNDLE_PATH'] = value if value
+        result
       end
 
       # The effective ruby file paths
@@ -297,12 +319,16 @@ module MutantSpec
       #
       # rubocop:disable GuardClause - guard clause without else does not make sense
       def system(arguments)
-        return if Kernel.system(*arguments)
+        output = IO.popen(arguments, err: %i[child out], &:read)
+        return if $CHILD_STATUS.success?
 
         if block_given?
           yield
         else
-          fail "System command failed!: #{arguments.join(' ')}"
+          raise(
+            "System command failed!: #{arguments.join(' ')}\n" \
+            "Output:\n#{output}"
+          )
         end
       end
 
