@@ -1,9 +1,4 @@
 #!/usr/bin/env bash
-# frozen_string_literal: true
 set -euo pipefail
-
-if [ "${1:-}" = "--staged" ]; then
-  shift
-fi
 
 exec bundle exec rubocop --format progress "$@"
