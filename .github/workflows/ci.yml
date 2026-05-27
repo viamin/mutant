@@ -55,10 +55,11 @@ jobs:
     runs-on: ubuntu-latest
     env:
       MUTANT_JOBS: 4
+      MUTANT_SINCE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 0
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: '3.3'

@@ -41,14 +41,18 @@ module Mutant
         end
 
         def numbered_parameter_used?(candidate)
-          return false unless candidate.is_a?(::Parser::AST::Node)
+          return false unless candidate.respond_to?(:type)
           return true if numbered_parameter?(candidate)
 
           candidate.children.any?(&method(:numbered_parameter_used?))
         end
 
         def numbered_parameter?(candidate)
-          n_lvar?(candidate) && candidate.children.fetch(0).to_s.match?(/\A_\d+\z/)
+          return false unless candidate.respond_to?(:type) && n_lvar?(candidate)
+
+          name, = candidate.children
+
+          name.to_s.match?(/\A_\d+\z/)
         end
       end # Numblock
     end # Node

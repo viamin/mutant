@@ -21,13 +21,15 @@ module Mutant
         end
 
         def emit_argument_symbol_mutations
-          emit_type(s(:arg, :"_#{argument}")) unless argument.to_s.start_with?('_')
+          return if argument.name.byteslice(0).eql?('_')
+
+          emit_type(s(:arg, :"_#{argument}"))
         end
 
         def emit_argument_node_mutations
           emit_argument_mutations
           first = Mutant::Util.one(argument.children)
-          emit_type(first) if first.is_a?(::Parser::AST::Node)
+          emit_type(first) if first.respond_to?(:type)
         end
       end
     end

@@ -18,7 +18,8 @@ module Mutant
         end
 
         def emit_child_update(index, node)
-          wrapped = if node.type == :str || node.type == :begin
+          wrapped = case node.type
+                    when :str, :begin
                       node
                     else
                       s(:begin, node)

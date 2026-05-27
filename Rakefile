@@ -26,14 +26,15 @@ namespace :metrics do
 
   task :mutant do
     mutant_jobs = ENV['MUTANT_JOBS']
+    mutant_since = ENV.fetch('MUTANT_SINCE', 'HEAD~1')
     arguments = %w[
       bundle exec mutant
       --include lib
-      --since HEAD~1
       --require mutant
       --use rspec
       --zombie
     ]
+    arguments.concat(['--since', mutant_since])
     arguments.concat(['--jobs', mutant_jobs]) if mutant_jobs
 
     arguments.concat(%w[-- Mutant*])
