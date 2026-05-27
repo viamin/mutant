@@ -27,7 +27,7 @@ module Mutant
         def emit_argument_node_mutations
           emit_argument_mutations
           first = Mutant::Util.one(argument.children)
-          emit_type(first)
+          emit_type(first) if first.is_a?(::Parser::AST::Node)
         end
       end
     end

@@ -57,9 +57,10 @@ module MutantSpec
         Dir.chdir(repo_path) do
           with_nested_bundle_environment do
             install_mutant
+            relative = ROOT.relative_path_from(repo_path)
             system(
               %W[
-                bundle exec mutant
+                bundle exec ruby #{relative.join('bin', 'mutant')}
                 --use #{integration}
                 --include lib
                 --require #{name}
@@ -142,6 +143,12 @@ module MutantSpec
             /add_development_dependency\('mutant[^']*',\s*'~> [^']*'\)/
           ) do |match|
             match.sub(/'~> [^']*'/, "'>= 0'")
+          end
+          if integration == 'minitest'
+            content = content.gsub(
+              /add_development_dependency\('minitest',\s*'[^']*'\)/,
+              "add_development_dependency('minitest', '>= 0')"
+            )
           end
           File.write(gemspec_path, content)
         end

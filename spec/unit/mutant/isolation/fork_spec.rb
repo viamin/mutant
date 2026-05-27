@@ -101,7 +101,7 @@ RSpec.describe Mutant::Isolation::Fork do
       },
       {
         receiver:  writer,
-        selector:  :syswrite,
+        selector:  :write,
         arguments: [block_return_blob]
       },
       writer_close

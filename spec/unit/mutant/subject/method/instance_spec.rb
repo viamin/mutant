@@ -137,6 +137,6 @@ RSpec.describe Mutant::Subject::Method::Instance::Memoized do
   describe '#source' do
     subject { object.source }
 
-    it { should eql("def foo\nend\nmemoize(:foo)") }
+    it { should eql("def foo\nend\nmemoize(:foo)\n") }
   end
 end

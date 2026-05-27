@@ -38,7 +38,7 @@ module Mutant
         #
         # @return [undefined]
         def emit_procarg(arg)
-          emit_type(*arg.children)
+          emit_type(s(:procarg0, *arg.children))
         end
 
         # Emit argument mutations

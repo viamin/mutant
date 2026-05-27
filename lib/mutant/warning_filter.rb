@@ -66,7 +66,7 @@ module Mutant
     def write_non_warning_lines(lines)
       return if lines.all?(&:empty?)
 
-      target.write(lines.join("\n"))
+      target << lines.join("\n")
     end
 
   end # WarningFilter

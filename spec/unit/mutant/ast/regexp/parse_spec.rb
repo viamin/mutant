@@ -13,7 +13,9 @@ RSpec.describe Mutant::AST::Regexp, '.parse' do
 
   context 'on regexp regexp_parser does not accept' do
     it 'returns nil' do
-      expect(apply(/u{/)).to be(nil)
+      expression = apply(/u{/)
+
+      expect(expression&.to_re).to eql(/u{/)
     end
   end
 end

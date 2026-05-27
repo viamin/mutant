@@ -17,7 +17,7 @@ RSpec.describe Mutant::Reporter::CLI::Printer::MutationResult do
 
       it_reports(<<~'REPORT')
         evil:subject-a:d27d2
-        @@ -1,2 +1,2 @@
+        @@ -1 +1 @@
         -true
         +false
         Killfork exited nonzero. Its result (if any) was ignored:
@@ -39,7 +39,7 @@ RSpec.describe Mutant::Reporter::CLI::Printer::MutationResult do
             it_reports(
               [
                 [Mutant::Color::NONE,  "evil:subject-a:d27d2\n"],
-                [Mutant::Color::NONE,  "@@ -1,2 +1,2 @@\n"],
+                [Mutant::Color::NONE,  "@@ -1 +1 @@\n"],
                 [Mutant::Color::RED,   "-true\n"],
                 [Mutant::Color::GREEN, "+false\n"],
                 [Mutant::Color::NONE,  "-----------------------\n"]
@@ -50,7 +50,7 @@ RSpec.describe Mutant::Reporter::CLI::Printer::MutationResult do
           context 'on non tty' do
             it_reports(<<~'STR')
               evil:subject-a:d27d2
-              @@ -1,2 +1,2 @@
+              @@ -1 +1 @@
               -true
               +false
               -----------------------

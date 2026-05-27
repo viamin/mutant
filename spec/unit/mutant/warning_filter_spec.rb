@@ -13,6 +13,10 @@ RSpec.describe Mutant::WarningFilter do
     acc = writes
     Module.new do
       define_singleton_method(:write, &acc.method(:<<))
+      define_singleton_method(:<<) do |message|
+        acc << message
+        self
+      end
     end
   end
 
@@ -44,6 +48,22 @@ RSpec.describe Mutant::WarningFilter do
       it 'does not write message' do
         subject
         expect(writes).to eql([])
+      end
+    end
+
+    context 'when writing mixed warning and non warning lines' do
+      let(:message) do
+        <<~MESSAGE
+          foo
+          test.rb:1: warning: some warning
+          bar
+        MESSAGE
+      end
+
+      it 'captures warning lines and preserves non warning separators' do
+        expect(object).to receive(:write).once.and_call_original
+        expect { subject }.to change { object.warnings }.from([]).to(["test.rb:1: warning: some warning\n"])
+        expect(writes).to eql(["foo\nbar\n"])
       end
     end
   end
@@ -88,7 +108,7 @@ RSpec.describe Mutant::WarningFilter do
     end
 
     it 'passes through non warning writes' do
-      expect($stderr).to receive(:write).with('foo')
+      expect($stderr).to receive(:<<).with('foo')
       object.use do
         $stderr.write('foo')
       end

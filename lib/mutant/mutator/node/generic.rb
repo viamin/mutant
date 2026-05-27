@@ -34,8 +34,44 @@ module Mutant
           shadowarg
           rational
           complex
+          array_pattern
+          array_pattern_with_tail
           __FILE__
           __LINE__
+          blockarg_expr
+          blocknilarg
+          case_match
+          const_pattern
+          empty_else
+          find_pattern
+          forward_arg
+          forward_args
+          forwarded_args
+          forwarded_kwrestarg
+          forwarded_restarg
+          hash_pattern
+          ident
+          if_guard
+          in_match
+          in_pattern
+          itarg
+          itblock
+          kwargs
+          match_alt
+          match_as
+          match_nil_pattern
+          match_pattern
+          match_pattern_p
+          match_rest
+          match_var
+          match_with_trailing_comma
+          numargs
+          objc_kwarg
+          objc_restarg
+          objc_varargs
+          pin
+          restarg_expr
+          unless_guard
         ]
 
         unsupported_regexp_nodes = AST::Types::REGEXP.to_a - %i[
