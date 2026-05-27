@@ -1,8 +1,10 @@
 # frozen_string_literal: true
 
-require 'bundler/gem_tasks'
+require 'bundler/gem_helper'
 require 'rspec/core/rake_task'
 require 'rubocop/rake_task'
+
+Bundler::GemHelper.install_tasks name: 'mutant'
 
 RSpec::Core::RakeTask.new(:spec)
 RuboCop::RakeTask.new(:rubocop)
@@ -13,7 +15,16 @@ task default: :spec
 
 task('metrics:mutant').clear
 namespace :metrics do
-  task mutant: :coverage do
+  task :rubocop do
+    Kernel.system('bundle', 'exec', 'rubocop') or fail 'Rubocop task is not successful'
+  end
+
+  task :reek do
+    Kernel.system('bundle', 'exec', 'reek', '--config', 'config/reek.yml', 'lib') or
+      fail 'Reek task is not successful'
+  end
+
+  task :mutant do
     mutant_jobs = ENV['MUTANT_JOBS']
     arguments = %w[
       bundle exec mutant

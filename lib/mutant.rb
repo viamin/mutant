@@ -27,10 +27,11 @@ module Warning
     'parser/source/buffer.rb:97: warning: string returned by :'
   ].freeze
 
-  def self.warn(message, *args, **kwargs)
+  def self.warn(*arguments, **keywords)
+    message = arguments.fetch(0).to_s
     return if PARSER_WARNING_PATTERNS.any? { |pattern| message.include?(pattern) }
 
-    super(message, *args, **kwargs)
+    super(*arguments, **keywords)
   end
 end
 

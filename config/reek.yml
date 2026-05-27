@@ -52,7 +52,6 @@ detectors:
     - Mutant::Selector::Expression#call
     - Parser::Lexer#self.new
     max_allowed_nesting: 1
-    ignore_iterators: []
   NilCheck:
     enabled: false
   RepeatedConditional:

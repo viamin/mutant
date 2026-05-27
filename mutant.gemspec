@@ -41,6 +41,7 @@ Gem::Specification.new do |gem|
   gem.add_development_dependency('base64',    '~> 0.3')
   gem.add_development_dependency('parallel',  '~> 1.27')
   gem.add_development_dependency('rake',      '~> 13.2')
+  gem.add_development_dependency('reek')
   gem.add_development_dependency('rspec',     '~> 3.10')
   gem.add_development_dependency('rspec-core','~> 3.10')
   gem.add_development_dependency('rspec-its', '~> 1.3')

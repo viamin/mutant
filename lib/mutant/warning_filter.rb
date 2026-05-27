@@ -36,13 +36,10 @@ module Mutant
     #
     # @return [self]
     def write(message)
-      non_warning = []
-      warning = []
-      message.split("\n", -1).each do |line|
-        (WARNING_RE.match?(line) ? warning : non_warning) << line
-      end
-      warning.each { |line| warnings << "#{line}\n" }
-      target.write(non_warning.join("\n")) unless non_warning.all?(&:empty?)
+      warning, non_warning = message.split("\n", -1).partition { |line| WARNING_RE.match?(line) }
+
+      append_warnings(warning)
+      write_non_warning_lines(non_warning)
 
       self
     end
@@ -58,6 +55,18 @@ module Mutant
       filter.warnings
     ensure
       $stderr = original_stderr
+    end
+
+  private
+
+    def append_warnings(lines)
+      lines.each { |line| warnings << "#{line}\n" }
+    end
+
+    def write_non_warning_lines(lines)
+      return if lines.all?(&:empty?)
+
+      target.write(lines.join("\n"))
     end
 
   end # WarningFilter

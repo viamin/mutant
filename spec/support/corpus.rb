@@ -208,8 +208,12 @@ module MutantSpec
           file << "source 'https://rubygems.org'\n"
           file << "gemspec\n"
           file << "gem 'mutant', path: '#{relative}'\n"
-          file << "gem 'mutant-rspec', path: '#{relative}'\n"
-          file << "gem 'mutant-minitest', path: '#{relative}'\n"
+          case integration
+          when 'minitest'
+            file << "gem 'mutant-minitest', path: '#{relative}'\n"
+          when 'rspec'
+            file << "gem 'mutant-rspec', path: '#{relative}'\n"
+          end
           file << "eval_gemfile File.expand_path('#{relative.join('Gemfile.shared')}')\n"
         end
         relax_mutant_version_constraints
@@ -320,13 +324,15 @@ module MutantSpec
       # rubocop:disable GuardClause - guard clause without else does not make sense
       def system(arguments)
         output = IO.popen(arguments, err: %i[child out], &:read)
-        return if $CHILD_STATUS.success?
+        status = Process.last_status || $CHILD_STATUS
+        return if status&.success?
 
         if block_given?
           yield
         else
           raise(
             "System command failed!: #{arguments.join(' ')}\n" \
+            "Status: #{status.inspect}\n" \
             "Output:\n#{output}"
           )
         end
