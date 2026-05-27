@@ -48,6 +48,13 @@ RSpec.describe Mutant::Env::Bootstrap do
       .and_return(config.reporter)
   end
 
+  def reset_invalid_class_name(klass)
+    class << klass
+      undef :name
+      def name; end
+    end
+  end
+
   before do
     expect(integration_class).to receive(:new)
       .with(config)
@@ -91,11 +98,7 @@ RSpec.describe Mutant::Env::Bootstrap do
       end
 
       after do
-        # Fix Class#name so other specs do not see this one
-        class << invalid_class
-          undef :name
-          def name; end
-        end
+        reset_invalid_class_name(invalid_class)
       end
 
       before { expect_warning }
@@ -148,11 +151,7 @@ RSpec.describe Mutant::Env::Bootstrap do
       end
 
       after do
-        # Fix Class#name so other specs do not see this one
-        class << invalid_class
-          undef :name
-          def name; end
-        end
+        reset_invalid_class_name(invalid_class)
       end
 
       before { expect_warning }

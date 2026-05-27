@@ -127,7 +127,7 @@ RSpec.describe Mutant::Isolation::Fork do
         {
           receiver:  io,
           selector:  :pipe,
-          arguments: [binmode: true],
+          arguments: [{ binmode: true }],
           reaction:  {
             yields: [[reader, writer]]
           }

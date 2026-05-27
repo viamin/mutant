@@ -41,14 +41,14 @@ module Mutant
         end
 
         def numbered_parameter_used?(candidate)
-          return false unless candidate.respond_to?(:type)
+          return false unless candidate.is_a?(::Parser::AST::Node)
           return true if numbered_parameter?(candidate)
 
           candidate.children.any?(&method(:numbered_parameter_used?))
         end
 
         def numbered_parameter?(candidate)
-          return false unless candidate.respond_to?(:type) && n_lvar?(candidate)
+          return false unless candidate.is_a?(::Parser::AST::Node) && n_lvar?(candidate)
 
           name, = candidate.children
 

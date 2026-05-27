@@ -54,9 +54,11 @@ RSpec.describe Mutant::Parallel do
         receiver:  Mutant::Variable::IVar,
         selector:  :new,
         arguments: [
-          condition_variable: condition_variable,
-          mutex:              mutex,
-          **attributes
+          {
+            condition_variable: condition_variable,
+            mutex:              mutex,
+            **attributes
+          }
         ],
         reaction:  { return: value }
       }
@@ -77,12 +79,14 @@ RSpec.describe Mutant::Parallel do
           receiver:  Mutant::Parallel::Worker,
           selector:  :new,
           arguments: [
-            processor:       processor,
-            var_active_jobs: var_active_jobs,
-            var_final:       var_final,
-            var_running:     var_running,
-            var_sink:        var_sink,
-            var_source:      var_source
+            {
+              processor:       processor,
+              var_active_jobs: var_active_jobs,
+              var_final:       var_final,
+              var_running:     var_running,
+              var_sink:        var_sink,
+              var_source:      var_source
+            }
           ],
           reaction:  { return: worker }
         },

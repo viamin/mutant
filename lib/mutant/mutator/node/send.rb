@@ -192,7 +192,7 @@ module Mutant
         # @return [undefined]
         def mutate_arguments
           emit_type(receiver, selector)
-          remaining_children_with_index.each do |_node, index|
+          remaining_children_indices.each do |index|
             mutate_child(index)
             delete_child(index)
           end
