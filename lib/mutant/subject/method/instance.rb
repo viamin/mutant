@@ -37,7 +37,7 @@ module Mutant
           #
           # @return [Parser::AST::Node]
           def wrap_node(mutant)
-            s(:begin, mutant, s(:send, nil, :memoize, s(:args, s(:sym, name))))
+            s(:begin, mutant, s(:send, nil, :memoize, s(:sym, name)))
           end
 
         end # Memoized

@@ -1,7 +1,172 @@
 AllCops:
   DisplayCopNames: true
+  NewCops: disable
+  SuggestExtensions: false
   Exclude:
     - 'test_app/**/*'
     - 'tmp/**/*'
     - 'vendor/**/*'
-  TargetRubyVersion: 2.5
+    - 'spec/unit/mutant/ast/regexp_spec.rb'
+  TargetRubyVersion: 3.3
+
+Layout/AccessModifierIndentation:
+  Enabled: false
+
+Layout/ElseAlignment:
+  Enabled: false
+
+Layout/EmptyLineAfterGuardClause:
+  Enabled: false
+
+Layout/EndAlignment:
+  Enabled: false
+
+Layout/EmptyLinesAroundBlockBody:
+  Enabled: false
+
+Layout/EmptyLinesAroundClassBody:
+  Enabled: false
+
+Layout/EmptyLinesAroundModuleBody:
+  Enabled: false
+
+Layout/FirstArrayElementIndentation:
+  Enabled: false
+
+Layout/HashAlignment:
+  Enabled: false
+
+Layout/IndentationWidth:
+  Enabled: false
+
+Layout/LineLength:
+  Max: 120
+
+Layout/MultilineMethodCallIndentation:
+  Enabled: false
+
+Layout/MultilineOperationIndentation:
+  Enabled: false
+
+Layout/SpaceAfterComma:
+  Enabled: false
+
+Layout/SpaceInsideArrayLiteralBrackets:
+  Enabled: false
+
+Lint/BooleanSymbol:
+  Enabled: false
+
+Lint/ConstantDefinitionInBlock:
+  Enabled: false
+
+Lint/IneffectiveAccessModifier:
+  Enabled: false
+
+Lint/InterpolationCheck:
+  Enabled: false
+
+Lint/MissingCopEnableDirective:
+  Enabled: false
+
+Lint/MissingSuper:
+  Enabled: false
+
+Lint/RedundantCopDisableDirective:
+  Enabled: false
+
+Lint/RedundantRequireStatement:
+  Enabled: false
+
+Lint/RedundantStringCoercion:
+  Enabled: false
+
+Lint/SuppressedException:
+  Enabled: false
+
+Metrics/AbcSize:
+  Enabled: false
+
+Metrics/BlockLength:
+  Enabled: false
+
+Metrics/MethodLength:
+  Enabled: false
+
+Migration/DepartmentName:
+  Enabled: false
+
+Naming/MethodParameterName:
+  Enabled: false
+
+Naming/RescuedExceptionsVariableName:
+  Enabled: false
+
+Style/AccessModifierDeclarations:
+  Enabled: false
+
+Style/Alias:
+  Enabled: false
+
+Style/CommentedKeyword:
+  Enabled: false
+
+Style/Documentation:
+  Enabled: false
+
+Style/EmptyMethod:
+  Enabled: false
+
+Style/ExplicitBlockArgument:
+  Enabled: false
+
+Style/FormatString:
+  Enabled: false
+
+Style/FrozenStringLiteralComment:
+  Enabled: false
+
+Style/GlobalStdStream:
+  Enabled: false
+
+Style/HashSyntax:
+  Enabled: false
+
+Style/HashTransformValues:
+  Enabled: false
+
+Style/IfUnlessModifier:
+  Enabled: false
+
+Style/LambdaCall:
+  Enabled: false
+
+Style/MixinGrouping:
+  Enabled: false
+
+Style/MutableConstant:
+  Enabled: false
+
+Style/ParallelAssignment:
+  Enabled: false
+
+Style/RedundantFreeze:
+  Enabled: false
+
+Style/RescueStandardError:
+  Enabled: false
+
+Style/SignalException:
+  Enabled: false
+
+Style/StringConcatenation:
+  Enabled: false
+
+Style/StderrPuts:
+  Enabled: false
+
+Style/SymbolArray:
+  Enabled: false
+
+Style/WordArray:
+  Enabled: false

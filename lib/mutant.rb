@@ -14,11 +14,26 @@ require 'morpher'
 require 'open3'
 require 'optparse'
 require 'parser'
-require 'parser/current'
+require 'parser/ruby33'
 require 'pathname'
+require 'procto'
 require 'regexp_parser'
 require 'set'
 require 'stringio'
+
+module Warning
+  PARSER_WARNING_PATTERNS = [
+    'parser/current is loading',
+    'parser/source/buffer.rb:97: warning: string returned by :'
+  ].freeze
+
+  def self.warn(message, *args, **kwargs)
+    return if PARSER_WARNING_PATTERNS.any? { |pattern| message.include?(pattern) }
+
+    super(message, *args, **kwargs)
+  end
+end
+
 require 'unparser'
 
 # This setting is done to make errors within the parallel
@@ -33,6 +48,7 @@ module Mutant
   EMPTY_ARRAY    = [].freeze
   EMPTY_HASH     = {}.freeze
   SCOPE_OPERATOR = '::'
+  PARSER_CLASS   = Parser::Ruby33
 
   # Test if CI is detected via environment
   #
@@ -45,6 +61,7 @@ end # Mutant
 require 'mutant/version'
 require 'mutant/env'
 require 'mutant/env/bootstrap'
+require 'mutant/morpher_compat'
 require 'mutant/util'
 require 'mutant/registry'
 require 'mutant/ast'

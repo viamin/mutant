@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'yaml'
+
 module Mutant
   module Meta
     class Example
@@ -60,7 +62,7 @@ module Mutant
         # @return [Enumerable<Mutation>]
         def invalid_syntax
           mutations.reject do |mutation|
-            ::Parser::CurrentRuby.parse(mutation.source)
+            Mutant::PARSER_CLASS.parse(mutation.source)
           rescue ::Parser::SyntaxError # rubocop:disable Lint/HandleExceptions
           end
         end

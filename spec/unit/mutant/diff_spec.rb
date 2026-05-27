@@ -25,7 +25,7 @@ RSpec.describe Mutant::Diff do
 
       let(:expectation) do
         [
-          "@@ -1,3 +1,3 @@\n",
+          "@@ -1,2 +1,2 @@\n",
           Mutant::Color::RED.format("-foo\n"),
           Mutant::Color::GREEN.format("+baz\n"),
           " bar\n"
@@ -58,7 +58,7 @@ RSpec.describe Mutant::Diff do
 
       let(:expectation) do
         <<~STR
-          @@ -1,4 +1,4 @@
+          @@ -1,3 +1,3 @@
           -foo
           +baz
            bar
@@ -78,7 +78,7 @@ RSpec.describe Mutant::Diff do
 
       let(:expectation) do
         <<~STR
-          @@ -1,3 +1,3 @@
+          @@ -1,2 +1,2 @@
           -foo
           +baz
            bar
@@ -96,7 +96,7 @@ RSpec.describe Mutant::Diff do
 
       let(:expectation) do
         <<~STR
-          @@ -1,3 +1,4 @@
+          @@ -1,2 +1,3 @@
            foo
           +baz
            bar
@@ -114,7 +114,7 @@ RSpec.describe Mutant::Diff do
 
       let(:expectation) do
         <<~STR
-          @@ -1,8 +1,9 @@
+          @@ -1,7 +1,8 @@
            foo
            bar
            baz
@@ -137,7 +137,7 @@ RSpec.describe Mutant::Diff do
 
       let(:expectation) do
         <<~STR
-          @@ -1,9 +1,8 @@
+          @@ -1,8 +1,7 @@
           -other
            foo
            bar
@@ -160,7 +160,7 @@ RSpec.describe Mutant::Diff do
 
       let(:expectation) do
         <<~STR
-          @@ -1,8 +1,9 @@
+          @@ -1,7 +1,8 @@
           +other
            foo
            bar

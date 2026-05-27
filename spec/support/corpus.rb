@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
 require 'anima'
-require 'morpher'
 require 'mutant'
 require 'parallel'
+require 'yaml'
 
 # @api private
 module MutantSpec
@@ -155,7 +155,7 @@ module MutantSpec
       def check_generation(path)
         relative_path = path.relative_path_from(repo_path)
 
-        node = Parser::CurrentRuby.parse(path.read)
+        node = Mutant::PARSER_CLASS.parse(path.read)
         fail "Cannot parse: #{path}" unless node
 
         mutations = Mutant::Mutator.mutate(node)
@@ -384,37 +384,28 @@ module MutantSpec
         end
       end # ErrorWhitelist
 
-      LOADER = Morpher.build do
-        s(:block,
-          s(:guard, s(:primitive, Array)),
-          s(:map,
-            s(:block,
-              s(:guard, s(:primitive, Hash)),
-              s(:hash_transform,
-                s(:key_symbolize, :repo_uri,            s(:guard, s(:primitive, String))),
-                s(:key_symbolize, :repo_ref,            s(:guard, s(:primitive, String))),
-                s(:key_symbolize, :ruby_glob_pattern,   s(:guard, s(:primitive, String))),
-                s(:key_symbolize, :name,                s(:guard, s(:primitive, String))),
-                s(:key_symbolize, :namespace,           s(:guard, s(:primitive, String))),
-                s(:key_symbolize, :integration,         s(:guard, s(:primitive, String))),
-                s(:key_symbolize, :mutation_coverage,
-                  s(:guard, s(:or, s(:primitive, TrueClass), s(:primitive, FalseClass)))),
-                s(:key_symbolize, :mutation_generation,
-                  s(:guard, s(:or, s(:primitive, TrueClass), s(:primitive, FalseClass)))),
-                s(:key_symbolize, :expected_errors,
-                  s(:block,
-                    s(:guard, s(:primitive, Hash)),
-                    s(:custom,
-                      [
-                        ->(hash) { hash.map { |key, values| [key, values.map(&Pathname.method(:new))] }.to_h },
-                        ->(hash) { hash.map { |key, values| [key, values.map(&:to_s)]                 }.to_h }
-                      ]),
-                    s(:load_attribute_hash, s(:param, ErrorWhitelist)))),
-                s(:key_symbolize, :exclude, s(:map, s(:guard, s(:primitive, String))))),
-              s(:anima_load, Project))))
+      def self.load(raw_projects)
+        raw_projects.map do |attributes|
+          Project.new(
+            expected_errors:     ErrorWhitelist.new(
+              attributes.fetch('expected_errors').to_h do |error, paths|
+                [error, paths.map(&Pathname.method(:new))]
+              end
+            ),
+            mutation_coverage:   attributes.fetch('mutation_coverage'),
+            mutation_generation: attributes.fetch('mutation_generation'),
+            integration:         attributes.fetch('integration'),
+            name:                attributes.fetch('name'),
+            namespace:           attributes.fetch('namespace'),
+            repo_uri:            attributes.fetch('repo_uri'),
+            repo_ref:            attributes.fetch('repo_ref'),
+            ruby_glob_pattern:   attributes.fetch('ruby_glob_pattern'),
+            exclude:             attributes.fetch('exclude')
+          )
+        end
       end
 
-      ALL = LOADER.call(YAML.load_file(ROOT.join('spec', 'integrations.yml')))
+      ALL = load(YAML.load_file(ROOT.join('spec', 'integrations.yml')))
     end # Project
   end # Corpus
 end # MutantSpec

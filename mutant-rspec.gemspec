@@ -10,6 +10,8 @@ Gem::Specification.new do |gem|
   gem.description = 'Rspec integration for mutant'
   gem.summary     = gem.description
   gem.homepage    = 'https://github.com/mbj/mutant'
+  gem.license     = 'MIT'
+  gem.required_ruby_version = '>= 3.3', '< 4.0'
 
   gem.require_paths    = %w[lib]
   gem.files            = `git ls-files -- lib/mutant/integration/rspec.rb`.split("\n")
@@ -17,5 +19,5 @@ Gem::Specification.new do |gem|
   gem.extra_rdoc_files = %w[LICENSE]
 
   gem.add_runtime_dependency('mutant', "~> #{gem.version}")
-  gem.add_runtime_dependency('rspec-core', '>= 3.4.0', '< 4.0.0')
+  gem.add_runtime_dependency('rspec-core', '>= 3.13', '< 4.0.0')
 end

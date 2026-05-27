@@ -4,22 +4,28 @@ module Mutant
   class Mutator
     class Node
 
-      # Dstr mutator
       class Dstr < Generic
 
         handle(:dstr)
 
       private
 
-        # Emit mutations
-        #
-        # @return [undefined]
         def dispatch
-          super()
+          children.each_with_index do |child, index|
+            mutate_child(index) if child.instance_of?(::Parser::AST::Node)
+          end
           emit_singletons
         end
 
-      end # Dstr
-    end # Node
-  end # Mutator
+        def emit_child_update(index, node)
+          wrapped = if node.type == :str || node.type == :begin
+                      node
+                    else
+                      s(:begin, node)
+                    end
+          super(index, wrapped)
+        end
+      end
+    end
+  end
 end # Mutant
