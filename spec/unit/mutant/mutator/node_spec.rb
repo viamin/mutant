@@ -311,6 +311,15 @@ RSpec.describe Mutant::Mutator::Node::ProcargZero do
           ].to_set
         )
       end
+
+      it 'unwraps subclasses of Parser::AST::Node' do
+        subclass     = Class.new(Parser::AST::Node)
+        inner        = subclass.new(:arg, [:a])
+        input        = s(:procarg0, Parser::AST::Node.new(:mlhs, [inner]))
+        result       = described_class.call(input)
+
+        expect(result).to include(s(:procarg0, inner))
+      end
     end
   end
 end
@@ -465,6 +474,12 @@ RSpec.describe Mutant::Mutator::Node::Numblock do
     it 'rejects local variables whose name is not string-coercible to a numbered parameter' do
       expect(mutator.__send__(:numbered_parameter?, s(:lvar, 1))).to be(false)
     end
+
+    it 'recognizes subclasses of Parser::AST::Node' do
+      subclass = Class.new(Parser::AST::Node)
+      node = subclass.new(:lvar, [:_1])
+      expect(mutator.__send__(:numbered_parameter?, node)).to be(true)
+    end
   end
 
   describe '#numbered_parameter_used?' do
@@ -484,6 +499,12 @@ RSpec.describe Mutant::Mutator::Node::Numblock do
 
     it 'returns false when no numbered parameters are present' do
       expect(mutator.__send__(:numbered_parameter_used?, s(:array, s(:lvar, :value)))).to be(false)
+    end
+
+    it 'recognizes subclasses of Parser::AST::Node' do
+      subclass = Class.new(Parser::AST::Node)
+      node = subclass.new(:lvar, [:_1])
+      expect(mutator.__send__(:numbered_parameter_used?, node)).to be(true)
     end
   end
 end
