@@ -102,6 +102,7 @@ RSpec.describe Mutant::CLI do
       let(:flags) { %w[--help] }
 
       before do
+        expect(expected_message).not_to include('--usage')
         expect($stdout).to receive(:puts).with(expected_message)
         expect(Kernel).to receive(:exit)
       end
@@ -166,15 +167,29 @@ RSpec.describe Mutant::CLI do
     end
 
     context 'with usage flag' do
-      let(:flags) { %w[--usage opensource] }
-
       before do
         expect($stderr).to receive(:puts).with(
           'warning: --usage is a no-op in viamin/mutant (MIT-licensed); flag will be removed in a future release'
         )
       end
 
-      it_should_behave_like 'a cli parser'
+      context 'when passed as separate option and value' do
+        let(:flags) { %w[--usage opensource] }
+
+        it_should_behave_like 'a cli parser'
+      end
+
+      context 'when passed as inline option assignment' do
+        let(:flags) { %w[--usage=commercial] }
+
+        it_should_behave_like 'a cli parser'
+      end
+
+      context 'when passed with an unsupported value' do
+        let(:flags) { %w[--usage proprietary] }
+
+        it_should_behave_like 'a cli parser'
+      end
     end
 
     context 'with version flag' do

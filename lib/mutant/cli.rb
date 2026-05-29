@@ -7,20 +7,27 @@ module Mutant
 
   def self.filter_deprecated_usage(arguments)
     warned = false
+    filtered = []
+    index = 0
 
-    [
-      arguments.each_with_index.with_object([]) do |(argument, index), filtered|
-        next warned = true if argument.start_with?('--usage=')
-        next if DEPRECATED_USAGE_ARGS.include?(argument) && arguments[index - 1] == '--usage'
+    while index < arguments.length
+      argument = arguments[index]
 
-        if argument == '--usage'
-          warned = true
-        else
-          filtered << argument
-        end
-      end,
-      warned
-    ]
+      if argument.start_with?('--usage=')
+        warned = true
+      elsif argument == '--usage'
+        warned = true
+
+        next_argument = arguments[index + 1]
+        index += 1 if next_argument && !next_argument.start_with?('-')
+      else
+        filtered << argument
+      end
+
+      index += 1
+    end
+
+    [filtered, warned]
   end
 
   # Commandline parser / runner
