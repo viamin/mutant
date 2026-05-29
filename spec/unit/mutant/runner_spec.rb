@@ -8,8 +8,10 @@ RSpec.describe Mutant::Runner do
     let(:env_result)         { instance_double(Mutant::Result::Env)            }
     let(:kernel)             { class_double(Kernel)                            }
     let(:mutex)              { class_double(Mutex)                             }
+    let(:partial_env_result) { instance_double(Mutant::Result::Env)            }
     let(:processor)          { instance_double(Method)                         }
     let(:reporter)           { instance_double(Mutant::Reporter, delay: delay) }
+    let(:sink)               { instance_double(Mutant::Runner::Sink)           }
     let(:thread)             { class_double(Thread)                            }
 
     let(:env) do
@@ -53,7 +55,7 @@ RSpec.describe Mutant::Runner do
         jobs:               1,
         mutex:              mutex,
         processor:          processor,
-        sink:               Mutant::Runner::Sink.new(env),
+        sink:               sink,
         source:             Mutant::Parallel::Source::Array.new(env.mutations),
         thread:             thread
       )
@@ -87,6 +89,12 @@ RSpec.describe Mutant::Runner do
           selector:  :method,
           arguments: [:kill],
           reaction:  { return: processor }
+        },
+        {
+          receiver:  Mutant::Runner::Sink,
+          selector:  :new,
+          arguments: [env],
+          reaction:  { return: sink }
         },
         {
           receiver:  Mutant::Parallel,
@@ -131,6 +139,44 @@ RSpec.describe Mutant::Runner do
 
     it 'returns env result' do
       verify_events { expect(apply).to eql(env_result) }
+    end
+
+    context 'when interrupted before first result is returned' do
+      let(:raw_expectations) do
+        [
+          *super()[0..5],
+          {
+            receiver:  driver,
+            selector:  :wait_timeout,
+            arguments: [delay],
+            reaction:  { exception: Interrupt.new }
+          },
+          {
+            receiver:  Signal,
+            selector:  :trap,
+            arguments: ['INT', 'DEFAULT']
+          },
+          {
+            receiver:  Signal,
+            selector:  :trap,
+            arguments: ['TERM', 'DEFAULT']
+          },
+          {
+            receiver:  sink,
+            selector:  :status,
+            reaction:  { return: partial_env_result }
+          },
+          {
+            receiver:  reporter,
+            selector:  :report,
+            arguments: [partial_env_result]
+          }
+        ]
+      end
+
+      it 'reports the current sink status before re-raising' do
+        verify_events { expect { apply }.to raise_error(Interrupt) }
+      end
     end
   end
 end

@@ -76,6 +76,24 @@ RSpec.describe Mutant::CLI do
       Mutant::Matcher::Config::DEFAULT
         .with(match_expressions: expressions.map(&method(:parse_expression)))
     end
+    let(:help_message) do
+      <<~MESSAGE
+        usage: mutant [options] MATCH_EXPRESSION ...
+        Environment:
+                --zombie                     Run mutant zombified
+            -I, --include DIRECTORY          Add DIRECTORY to $LOAD_PATH
+            -r, --require NAME               Require file with NAME
+            -j, --jobs NUMBER                Number of kill jobs. Defaults to MUTANT_JOBS or 1.
+
+        Options:
+                --use INTEGRATION            Use INTEGRATION to kill mutations
+                --ignore-subject EXPRESSION  Ignore subjects that match EXPRESSION as prefix
+                --since REVISION             Only select subjects touched since REVISION
+                --fail-fast                  Fail fast
+                --version                    Print mutants version
+            -h, --help                       Show this message
+      MESSAGE
+    end
 
     let(:flags)       { []           }
     let(:expressions) { %w[TestApp*] }
@@ -108,24 +126,27 @@ RSpec.describe Mutant::CLI do
 
       it_should_behave_like 'a cli parser'
 
-      let(:expected_message) do
-        <<~MESSAGE
-          usage: mutant [options] MATCH_EXPRESSION ...
-          Environment:
-                  --zombie                     Run mutant zombified
-              -I, --include DIRECTORY          Add DIRECTORY to $LOAD_PATH
-              -r, --require NAME               Require file with NAME
-              -j, --jobs NUMBER                Number of kill jobs. Defaults to MUTANT_JOBS or 1.
+      let(:expected_message) { help_message }
+    end
 
-          Options:
-                  --use INTEGRATION            Use INTEGRATION to kill mutations
-                  --ignore-subject EXPRESSION  Ignore subjects that match EXPRESSION as prefix
-                  --since REVISION             Only select subjects touched since REVISION
-                  --fail-fast                  Fail fast
-                  --version                    Print mutants version
-              -h, --help                       Show this message
-        MESSAGE
+    context 'with invalid MUTANT_JOBS env variable and help flag' do
+      let(:flags) { %w[--help] }
+
+      around do |example|
+        ENV.store('MUTANT_JOBS', 'nope')
+        example.run
+      ensure
+        ENV.delete('MUTANT_JOBS')
       end
+
+      before do
+        expect($stdout).to receive(:puts).with(expected_message)
+        expect(Kernel).to receive(:exit)
+      end
+
+      it_should_behave_like 'a cli parser'
+
+      let(:expected_message) { help_message }
     end
 
     context 'with include flag' do
@@ -167,6 +188,24 @@ RSpec.describe Mutant::CLI do
 
     context 'with version flag' do
       let(:flags) { %w[--version] }
+
+      before do
+        expect(Kernel).to receive(:exit)
+        expect($stdout).to receive(:puts).with("mutant-#{Mutant::VERSION}")
+      end
+
+      it_should_behave_like 'a cli parser'
+    end
+
+    context 'with invalid MUTANT_JOBS env variable and version flag' do
+      let(:flags) { %w[--version] }
+
+      around do |example|
+        ENV.store('MUTANT_JOBS', 'nope')
+        example.run
+      ensure
+        ENV.delete('MUTANT_JOBS')
+      end
 
       before do
         expect(Kernel).to receive(:exit)
@@ -283,6 +322,23 @@ RSpec.describe Mutant::CLI do
       end
 
       it 'CLI --jobs overrides MUTANT_JOBS' do
+        expect(subject.config.jobs).to eql(2)
+      end
+
+      it_should_behave_like 'a cli parser'
+    end
+
+    context 'with invalid MUTANT_JOBS env variable and --jobs flag' do
+      let(:flags) { %w[--jobs 2] }
+
+      around do |example|
+        ENV.store('MUTANT_JOBS', 'nope')
+        example.run
+      ensure
+        ENV.delete('MUTANT_JOBS')
+      end
+
+      it 'CLI --jobs ignores invalid MUTANT_JOBS defaults' do
         expect(subject.config.jobs).to eql(2)
       end
 

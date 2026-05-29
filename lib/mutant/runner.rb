@@ -29,7 +29,7 @@ module Mutant
     def run_mutation_analysis
       @result = with_signal_handlers { run_driver(Parallel.async(mutation_test_config)) }
     ensure
-      reporter.report(@result) if @result
+      reporter.report(@result || mutation_sink.status)
     end
 
     # Run with signal handlers for graceful shutdown
@@ -67,10 +67,17 @@ module Mutant
         jobs:               config.jobs,
         mutex:              config.mutex,
         processor:          env.method(:kill),
-        sink:               Sink.new(env),
+        sink:               mutation_sink,
         source:             Parallel::Source::Array.new(env.mutations),
         thread:             config.thread
       )
+    end
+
+    # Sink used to collect intermediate and final results
+    #
+    # @return [Sink]
+    def mutation_sink
+      @mutation_sink ||= Sink.new(env)
     end
 
     # Reporter to use

@@ -32,19 +32,17 @@ module Mutant
 
     def initialize(arguments)
       @config = Config::DEFAULT
+      @exit_requested = @jobs_explicit = false
 
-      apply_env_defaults
       parse(arguments)
+      apply_env_defaults unless @jobs_explicit || @exit_requested
     end
 
     attr_reader :config
 
   private
 
-    def apply_env_defaults
-      env_jobs = ENV['MUTANT_JOBS']
-      with(jobs: ParseJobs.(env_jobs, 'MUTANT_JOBS')) if env_jobs
-    end
+    def apply_env_defaults = (env_jobs = ENV['MUTANT_JOBS']) && with(jobs: ParseJobs.(env_jobs, 'MUTANT_JOBS'))
 
     # Parse the command-line options
     #
@@ -98,6 +96,7 @@ module Mutant
         add(:requires, name)
       end
       opts.on('-j', '--jobs NUMBER', 'Number of kill jobs. Defaults to MUTANT_JOBS or 1.') do |number|
+        @jobs_explicit = true
         with(jobs: ParseJobs.(number, '--jobs'))
       end
     end
@@ -158,10 +157,12 @@ module Mutant
         with(fail_fast: true)
       end
       opts.on('--version', 'Print mutants version') do
+        @exit_requested = true
         puts("mutant-#{VERSION}")
         config.kernel.exit
       end
       opts.on_tail('-h', '--help', 'Show this message') do
+        @exit_requested = true
         puts(opts.to_s)
         config.kernel.exit
       end
@@ -172,9 +173,7 @@ module Mutant
     # @param [Hash<Symbol, Object>] attributes
     #
     # @return [undefined]
-    def with(attributes)
-      @config = config.with(attributes)
-    end
+    def with(attributes) = @config = config.with(attributes)
 
     # Add configuration
     #
@@ -185,9 +184,7 @@ module Mutant
     #   the value to add
     #
     # @return [undefined]
-    def add(attribute, value)
-      with(attribute => config.public_send(attribute) + [value])
-    end
+    def add(attribute, value) = with(attribute => config.public_send(attribute) + [value])
 
     # Add matcher configuration
     #
@@ -198,9 +195,7 @@ module Mutant
     #   the value to add
     #
     # @return [undefined]
-    def add_matcher(attribute, value)
-      with(matcher: config.matcher.add(attribute, value))
-    end
+    def add_matcher(attribute, value) = with(matcher: config.matcher.add(attribute, value))
 
   end # CLI
 end # Mutant
