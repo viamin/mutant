@@ -70,6 +70,21 @@ bundle exec mutant --include lib --require virtus --since master --use rspec Vir
 
 Note that this feature requires at least git `2.13.0`.
 
+Subject Matchers
+----------------
+
+Mutant accepts subject matcher expressions as CLI positional arguments and through matcher configuration.
+
+| Syntax | Meaning |
+| --- | --- |
+| `MyApp::Foo` | All methods on `MyApp::Foo` and its nested constants. |
+| `MyApp::Foo*` | `MyApp::Foo` and all constants under that namespace. |
+| `MyApp::Foo#bar` | Instance method `MyApp::Foo#bar` only. |
+| `MyApp::Foo.bar` | Singleton method `MyApp::Foo.bar` only. |
+| `source:app/models/**/*.rb` | All subjects defined in files matching the glob. |
+
+Use `--include-subject EXPRESSION` to append additional subject matchers from the CLI without replacing any configured matcher list.
+
 Presentations
 -------------
 

@@ -7,6 +7,16 @@ module Mutant
       include AbstractType, Anima.new(:scope_name)
       private(*anima.attribute_names)
 
+    private
+
+      def prefix_match_length(expression)
+        if expression.syntax.match?(/\A#{Regexp.escape(scope_name)}(?:(?:#{SCOPE_OPERATOR})|[.#]|\z)/)
+          scope_name.length
+        else
+          0
+        end
+      end
+
       # Recursive namespace expression
       class Recursive < self
         REGEXP = /\A#{SCOPE_NAME_PATTERN}?\*\z/.freeze
@@ -58,16 +68,13 @@ module Mutant
       # Exact namespace expression
       class Exact < self
 
-        MATCHER = Matcher::Scope
-        private_constant(*constants(false))
-
         REGEXP = /\A#{SCOPE_NAME_PATTERN}\z/.freeze
 
         # Matcher matcher on expression
         #
         # @return [Matcher]
         def matcher
-          Matcher::Scope.new(Object.const_get(scope_name))
+          Matcher::Namespace.new(self)
         end
 
         # Syntax for expression
@@ -75,6 +82,19 @@ module Mutant
         # @return [String]
         alias_method :syntax, :scope_name
         public :syntax
+
+        # Length of match with other expression
+        #
+        # @param [Expression] expression
+        #
+        # @return [Integer]
+        def match_length(expression)
+          if eql?(expression)
+            syntax.length
+          else
+            prefix_match_length(expression)
+          end
+        end
 
       end # Exact
     end # Namespace

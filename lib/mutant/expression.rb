@@ -39,6 +39,13 @@ module Mutant
       !match_length(other).zero?
     end
 
+    # Predicate for ignored subjects
+    #
+    # @return [#call]
+    def subject_predicate
+      Matcher::Compiler::SubjectPrefix.new(self)
+    end
+
     # Try to parse input into expression of receiver class
     #
     # @param [String] input

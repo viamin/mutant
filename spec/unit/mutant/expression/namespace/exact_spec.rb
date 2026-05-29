@@ -7,7 +7,7 @@ RSpec.describe Mutant::Expression::Namespace::Exact do
   describe '#matcher' do
     subject { object.matcher }
 
-    it { should eql(Mutant::Matcher::Scope.new(TestApp::Literal)) }
+    it { should eql(Mutant::Matcher::Namespace.new(object)) }
   end
 
   describe '#match_length' do
@@ -23,6 +23,24 @@ RSpec.describe Mutant::Expression::Namespace::Exact do
       let(:other) { parse_expression('Foo*') }
 
       it { should be(0) }
+    end
+
+    context 'when other expression describes a nested namespace' do
+      let(:other) { parse_expression('TestApp::Literal::Deep') }
+
+      it { should be(object.syntax.length) }
+    end
+
+    context 'when other expression describes a singleton method' do
+      let(:other) { parse_expression('TestApp::Literal.foo') }
+
+      it { should be(object.syntax.length) }
+    end
+
+    context 'when other expression describes an instance method' do
+      let(:other) { parse_expression('TestApp::Literal#foo') }
+
+      it { should be(object.syntax.length) }
     end
   end
 end
