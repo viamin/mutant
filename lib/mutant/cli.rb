@@ -28,6 +28,7 @@ module Mutant
     def initialize(arguments)
       @config = Config::DEFAULT
 
+      apply_env_defaults
       parse(arguments)
     end
 
@@ -37,6 +38,14 @@ module Mutant
     attr_reader :config
 
   private
+
+    # Apply environment variable defaults
+    #
+    # @return [undefined]
+    def apply_env_defaults
+      env_jobs = ENV['MUTANT_JOBS']
+      with(jobs: Integer(env_jobs)) if env_jobs
+    end
 
     # Parse the command-line options
     #
@@ -89,7 +98,7 @@ module Mutant
       opts.on('-r', '--require NAME', 'Require file with NAME') do |name|
         add(:requires, name)
       end
-      opts.on('-j', '--jobs NUMBER', 'Number of kill jobs. Defaults to number of processors.') do |number|
+      opts.on('-j', '--jobs NUMBER', 'Number of kill jobs. Defaults to MUTANT_JOBS or 1.') do |number|
         with(jobs: Integer(number))
       end
     end

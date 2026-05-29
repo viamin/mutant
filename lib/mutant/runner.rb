@@ -27,8 +27,21 @@ module Mutant
     #
     # @return [undefined]
     def run_mutation_analysis
-      @result = run_driver(Parallel.async(mutation_test_config))
-      reporter.report(result)
+      @result = with_signal_handlers { run_driver(Parallel.async(mutation_test_config)) }
+    ensure
+      reporter.report(@result) if @result
+    end
+
+    # Run with signal handlers for graceful shutdown
+    #
+    # @return [Object]
+    def with_signal_handlers
+      old_int  = Signal.trap('INT')  { raise Interrupt }
+      old_term = Signal.trap('TERM') { raise Interrupt }
+      yield
+    ensure
+      Signal.trap('INT', old_int) if old_int
+      Signal.trap('TERM', old_term) if old_term
     end
 
     # Run driver

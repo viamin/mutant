@@ -247,7 +247,7 @@ module Mutant
         marshal: Marshal,
         process: Process
       ),
-      jobs:               Etc.nprocessors,
+      jobs:               1,
       kernel:             Kernel,
       load_path:          $LOAD_PATH,
       matcher:            Matcher::Config::DEFAULT,

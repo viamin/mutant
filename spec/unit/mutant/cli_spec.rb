@@ -115,7 +115,7 @@ RSpec.describe Mutant::CLI do
                   --zombie                     Run mutant zombified
               -I, --include DIRECTORY          Add DIRECTORY to $LOAD_PATH
               -r, --require NAME               Require file with NAME
-              -j, --jobs NUMBER                Number of kill jobs. Defaults to number of processors.
+              -j, --jobs NUMBER                Number of kill jobs. Defaults to MUTANT_JOBS or 1.
 
           Options:
                   --use INTEGRATION            Use INTEGRATION to kill mutations
@@ -176,6 +176,14 @@ RSpec.describe Mutant::CLI do
       it_should_behave_like 'a cli parser'
     end
 
+    context 'without jobs flag or env variable' do
+      it 'defaults to 1 job' do
+        expect(subject.config.jobs).to eql(1)
+      end
+
+      it_should_behave_like 'a cli parser'
+    end
+
     context 'with jobs flag' do
       let(:flags) { %w[--jobs 0] }
 
@@ -184,6 +192,38 @@ RSpec.describe Mutant::CLI do
       it 'configures expected coverage' do
         expect(subject.config.jobs).to eql(0)
       end
+    end
+
+    context 'with MUTANT_JOBS env variable' do
+      around do |example|
+        ENV.store('MUTANT_JOBS', '4')
+        example.run
+      ensure
+        ENV.delete('MUTANT_JOBS')
+      end
+
+      it 'uses MUTANT_JOBS as default jobs value' do
+        expect(subject.config.jobs).to eql(4)
+      end
+
+      it_should_behave_like 'a cli parser'
+    end
+
+    context 'with MUTANT_JOBS env variable and --jobs flag' do
+      let(:flags) { %w[--jobs 2] }
+
+      around do |example|
+        ENV.store('MUTANT_JOBS', '4')
+        example.run
+      ensure
+        ENV.delete('MUTANT_JOBS')
+      end
+
+      it 'CLI --jobs overrides MUTANT_JOBS' do
+        expect(subject.config.jobs).to eql(2)
+      end
+
+      it_should_behave_like 'a cli parser'
     end
 
     context 'with require flags' do

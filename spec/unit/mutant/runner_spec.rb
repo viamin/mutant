@@ -71,6 +71,18 @@ RSpec.describe Mutant::Runner do
           arguments: [env]
         },
         {
+          receiver:  Signal,
+          selector:  :trap,
+          arguments: ['INT'],
+          reaction:  { return: 'DEFAULT' }
+        },
+        {
+          receiver:  Signal,
+          selector:  :trap,
+          arguments: ['TERM'],
+          reaction:  { return: 'DEFAULT' }
+        },
+        {
           receiver:  env,
           selector:  :method,
           arguments: [:kill],
@@ -98,6 +110,16 @@ RSpec.describe Mutant::Runner do
           selector:  :wait_timeout,
           arguments: [delay],
           reaction:  { return: status_b }
+        },
+        {
+          receiver:  Signal,
+          selector:  :trap,
+          arguments: ['INT', 'DEFAULT']
+        },
+        {
+          receiver:  Signal,
+          selector:  :trap,
+          arguments: ['TERM', 'DEFAULT']
         },
         {
           receiver:  reporter,
