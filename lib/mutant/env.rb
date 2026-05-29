@@ -26,6 +26,7 @@ module Mutant
       start = Timer.now
 
       Result::Mutation.new(
+        coverage_criteria: config.coverage_criteria,
         isolation_result: run_mutation_tests(mutation),
         mutation:         mutation,
         runtime:          Timer.now - start
@@ -51,9 +52,34 @@ module Mutant
     #
     # @return [Result::Isolation]
     def run_mutation_tests(mutation)
-      config.isolation.call do
-        mutation.insert(config.kernel)
-        integration.call(selections.fetch(mutation.subject))
+      with_environment_variables do
+        config.isolation.call do
+          mutation.insert(config.kernel)
+          integration.call(selections.fetch(mutation.subject))
+        end
+      end
+    end
+
+    # Run block with configured environment variables
+    #
+    # @return [Object]
+    def with_environment_variables
+      original = config.environment_variables.each_with_object({}) do |(key, _value), state|
+        state[key] = ENV[key]
+      end
+
+      config.environment_variables.each do |key, value|
+        ENV[key] = value
+      end
+
+      yield
+    ensure
+      original.each do |key, value|
+        if value.nil?
+          ENV.delete(key)
+        else
+          ENV[key] = value
+        end
       end
     end
 

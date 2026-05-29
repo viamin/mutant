@@ -3,6 +3,7 @@
 RSpec.describe Mutant::Result::Mutation do
   let(:object) do
     described_class.new(
+      coverage_criteria: coverage_criteria,
       isolation_result: isolation_result,
       mutation:         mutation,
       runtime:          2.0
@@ -10,6 +11,7 @@ RSpec.describe Mutant::Result::Mutation do
   end
 
   let(:mutation) { instance_double(Mutant::Mutation) }
+  let(:coverage_criteria) { instance_double(Mutant::Config::CoverageCriteria) }
 
   let(:test_result) do
     instance_double(
@@ -53,8 +55,8 @@ RSpec.describe Mutant::Result::Mutation do
 
     context 'if isolation is successful' do
       before do
-        expect(mutation.class).to receive(:success?)
-          .with(test_result)
+        expect(coverage_criteria).to receive(:success?)
+          .with(mutation: mutation, isolation_result: isolation_result)
           .and_return(true)
       end
 
@@ -63,6 +65,12 @@ RSpec.describe Mutant::Result::Mutation do
 
     context 'if isolation is not successful' do
       include_context 'unsuccessful isolation'
+
+      before do
+        expect(coverage_criteria).to receive(:success?)
+          .with(mutation: mutation, isolation_result: isolation_result)
+          .and_return(false)
+      end
 
       it { should be(false) }
     end

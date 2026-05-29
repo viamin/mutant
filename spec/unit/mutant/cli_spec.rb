@@ -115,7 +115,7 @@ RSpec.describe Mutant::CLI do
                   --zombie                     Run mutant zombified
               -I, --include DIRECTORY          Add DIRECTORY to $LOAD_PATH
               -r, --require NAME               Require file with NAME
-              -j, --jobs NUMBER                Number of kill jobs. Defaults to number of processors.
+              -j, --jobs NUMBER                Number of kill jobs. Defaults to 1.
 
           Options:
                   --use INTEGRATION            Use INTEGRATION to kill mutations
@@ -183,6 +183,37 @@ RSpec.describe Mutant::CLI do
 
       it 'configures expected coverage' do
         expect(subject.config.jobs).to eql(0)
+      end
+    end
+
+    context 'with config file' do
+      around do |example|
+        Dir.mktmpdir do |directory|
+          Dir.chdir(directory) do
+            Pathname.new(directory).join('.mutant.yml').write(<<~YAML)
+              jobs: 4
+            YAML
+            example.run
+          end
+        end
+      end
+
+      context 'without overriding flags' do
+        it_should_behave_like 'a cli parser'
+
+        it 'loads jobs from config file' do
+          expect(subject.config.jobs).to eql(4)
+        end
+      end
+
+      context 'with overriding jobs flag' do
+        let(:flags) { %w[--jobs 0] }
+
+        it_should_behave_like 'a cli parser'
+
+        it 'prefers cli flags over config file values' do
+          expect(subject.config.jobs).to eql(0)
+        end
       end
     end
 

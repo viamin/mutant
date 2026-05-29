@@ -26,7 +26,7 @@ module Mutant
     #
     # @return [undefined]
     def initialize(arguments)
-      @config = Config::DEFAULT
+      @config = load_config
 
       parse(arguments)
     end
@@ -37,6 +37,15 @@ module Mutant
     attr_reader :config
 
   private
+
+    # Load file config
+    #
+    # @return [Config]
+    def load_config
+      Config::Loader.call(Config::DEFAULT)
+    rescue Config::Loader::Error => exception
+      raise Error, exception.message
+    end
 
     # Parse the command-line options
     #
@@ -89,7 +98,7 @@ module Mutant
       opts.on('-r', '--require NAME', 'Require file with NAME') do |name|
         add(:requires, name)
       end
-      opts.on('-j', '--jobs NUMBER', 'Number of kill jobs. Defaults to number of processors.') do |number|
+      opts.on('-j', '--jobs NUMBER', 'Number of kill jobs. Defaults to 1.') do |number|
         with(jobs: Integer(number))
       end
     end
