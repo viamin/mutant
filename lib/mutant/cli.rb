@@ -3,7 +3,6 @@
 module Mutant
   USAGE_WARNING = 'warning: --usage is a no-op in viamin/mutant '\
                   '(MIT-licensed); flag will be removed in a future release'
-  DEPRECATED_USAGE_ARGS = %w[opensource commercial].freeze
 
   def self.filter_deprecated_usage(arguments)
     warned = false
