@@ -3,6 +3,8 @@
 module Mutant
   # Abstract base class for mutant environments
   class Env
+    ENVIRONMENT_VARIABLE_MUTEX = Mutex.new
+
     include Adamantium::Flat, Anima.new(
       :config,
       :integration,
@@ -52,8 +54,8 @@ module Mutant
     #
     # @return [Result::Isolation]
     def run_mutation_tests(mutation)
-      with_environment_variables do
-        config.isolation.call do
+      config.isolation.call do
+        with_environment_variables do
           mutation.insert(config.kernel)
           integration.call(selections.fetch(mutation.subject))
         end
@@ -64,21 +66,23 @@ module Mutant
     #
     # @return [Object]
     def with_environment_variables
-      original = config.environment_variables.each_with_object({}) do |(key, _value), state|
-        state[key] = ENV[key]
-      end
+      ENVIRONMENT_VARIABLE_MUTEX.synchronize do
+        original = config.environment_variables.each_with_object({}) do |(key, _value), state|
+          state[key] = ENV[key]
+        end
 
-      config.environment_variables.each do |key, value|
-        ENV[key] = value
-      end
-
-      yield
-    ensure
-      original.each do |key, value|
-        if value.nil?
-          ENV.delete(key)
-        else
+        config.environment_variables.each do |key, value|
           ENV[key] = value
+        end
+
+        yield
+      ensure
+        original.each do |key, value|
+          if value.nil?
+            ENV.delete(key)
+          else
+            ENV[key] = value
+          end
         end
       end
     end

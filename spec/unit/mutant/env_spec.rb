@@ -134,6 +134,45 @@ RSpec.describe Mutant::Env do
 
       include_examples 'mutation kill'
     end
+
+    context 'when environment variables are configured and integration raises' do
+      let(:config) do
+        super().with(
+          environment_variables: {
+            'MUTANT_ENV_SPEC' => 'configured'
+          }
+        )
+      end
+
+      let(:exception) { RuntimeError.new('integration failure') }
+
+      before do
+        ENV.delete('MUTANT_ENV_SPEC')
+
+        expect(mutation).to receive(:insert)
+          .ordered
+          .with(config.kernel) do
+            expect(ENV.fetch('MUTANT_ENV_SPEC')).to eql('configured')
+          end
+
+        expect(integration).to receive(:call)
+          .ordered
+          .with(tests) do
+            expect(ENV.fetch('MUTANT_ENV_SPEC')).to eql('configured')
+            raise exception
+          end
+      end
+
+      let(:isolation_result) do
+        Mutant::Isolation::Result::Exception.new(exception)
+      end
+
+      after do
+        expect(ENV.key?('MUTANT_ENV_SPEC')).to be(false)
+      end
+
+      include_examples 'mutation kill'
+    end
   end
 
   describe '#selections' do
