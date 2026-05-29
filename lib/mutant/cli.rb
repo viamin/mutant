@@ -1,6 +1,28 @@
 # frozen_string_literal: true
 
 module Mutant
+  USAGE_WARNING = 'warning: --usage is a no-op in viamin/mutant '\
+                  '(MIT-licensed); flag will be removed in a future release'
+  DEPRECATED_USAGE_ARGS = %w[opensource commercial].freeze
+
+  def self.filter_deprecated_usage(arguments)
+    warned = false
+
+    [
+      arguments.each_with_index.with_object([]) do |(argument, index), filtered|
+        next warned = true if argument.start_with?('--usage=')
+        next if DEPRECATED_USAGE_ARGS.include?(argument) && arguments[index - 1] == '--usage'
+
+        if argument == '--usage'
+          warned = true
+        else
+          filtered << argument
+        end
+      end,
+      warned
+    ]
+  end
+
   # Commandline parser / runner
   class CLI
     include Adamantium::Flat, Equalizer.new(:config), Procto.call(:config)
@@ -48,6 +70,8 @@ module Mutant
     #
     # @return [undefined]
     def parse(arguments)
+      sanitized_arguments, warned = Mutant.filter_deprecated_usage(arguments)
+
       opts = OptionParser.new do |builder|
         builder.banner = 'usage: mutant [options] MATCH_EXPRESSION ...'
         %i[add_environment_options add_mutation_options add_filter_options add_debug_options].each do |name|
@@ -55,7 +79,8 @@ module Mutant
         end
       end
 
-      parse_match_expressions(opts.parse!(arguments))
+      $stderr.puts(USAGE_WARNING) if warned
+      parse_match_expressions(opts.parse!(sanitized_arguments))
     rescue OptionParser::ParseError => error
       raise(Error, error)
     end

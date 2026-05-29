@@ -165,6 +165,18 @@ RSpec.describe Mutant::CLI do
       end
     end
 
+    context 'with usage flag' do
+      let(:flags) { %w[--usage opensource] }
+
+      before do
+        expect($stderr).to receive(:puts).with(
+          'warning: --usage is a no-op in viamin/mutant (MIT-licensed); flag will be removed in a future release'
+        )
+      end
+
+      it_should_behave_like 'a cli parser'
+    end
+
     context 'with version flag' do
       let(:flags) { %w[--version] }
 
