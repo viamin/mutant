@@ -36,6 +36,46 @@ Topics
 * [Rspec Integration](/docs/mutant-rspec.md)
 * [Minitest Integration](/docs/mutant-minitest.md)
 
+Subcommands
+-----------
+
+Mutant uses a subcommand-based CLI. The available subcommands are:
+
+### `mutant run [options] MATCH_EXPRESSION ...`
+
+Run mutation testing. This is the primary command. All options from the previous single-command form are accepted here.
+
+```
+bundle exec mutant run --use rspec --include lib --require myapp MyApp*
+```
+
+### `mutant environment [options]`
+
+Print the resolved configuration (after merging CLI flags) and exit. Useful for debugging which settings are active.
+
+```
+bundle exec mutant environment --use rspec --include lib MyApp*
+```
+
+### `mutant session <subcommand>`
+
+Inspect mutation testing session results.
+
+* `mutant session list` — List sessions
+* `mutant session show <id>` — Show details of a specific session
+
+### `mutant help [subcommand]`
+
+Display help for mutant or a specific subcommand.
+
+```
+bundle exec mutant help run
+```
+
+### Backward Compatibility
+
+Invoking `mutant` without a subcommand (e.g. `mutant --use rspec MyApp*`) is temporarily accepted as an alias for `mutant run`, but prints a deprecation warning. This alias will be removed in a future release.
+
 Mutation-Operators
 ------------------
 
@@ -65,7 +105,7 @@ Only Mutating Changed Code
 Running mutant for the first time on an existing codebase can be a rather disheartening experience due to the large number of alive mutations found! Mutant has a setting that can help. Using the `--since` argument, mutant will only mutate code that has been modified. This allows you to introduce mutant into an existing code base without drowning in errors. Example usage that will mutate all code changed between master and the current branch:
 
 ```
-bundle exec mutant --include lib --require virtus --since master --use rspec Virtus::Attribute#type
+bundle exec mutant run --include lib --require virtus --since master --use rspec Virtus::Attribute#type
 ```
 
 Note that this feature requires at least git `2.13.0`.

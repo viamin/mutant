@@ -80,7 +80,7 @@ RSpec.describe Mutant::CLI do
     let(:flags)       { []           }
     let(:expressions) { %w[TestApp*] }
 
-    let(:arguments) { flags + expressions }
+    let(:arguments) { %w[run] + flags + expressions }
 
     context 'with unknown flag' do
       let(:flags) { %w[--invalid] }
@@ -110,7 +110,7 @@ RSpec.describe Mutant::CLI do
 
       let(:expected_message) do
         <<~MESSAGE
-          usage: mutant [options] MATCH_EXPRESSION ...
+          usage: mutant run [options] MATCH_EXPRESSION ...
           Environment:
                   --zombie                     Run mutant zombified
               -I, --include DIRECTORY          Add DIRECTORY to $LOAD_PATH
@@ -243,6 +243,149 @@ RSpec.describe Mutant::CLI do
 
       it 'sets the zombie option' do
         expect(subject.config.zombie).to be(true)
+      end
+    end
+
+    context 'backward compatibility without subcommand' do
+      let(:arguments) { flags + expressions }
+      let(:flags)     { %w[--zombie] }
+
+      it 'prints deprecation warning to stderr' do
+        expect($stderr).to receive(:puts).with(Mutant::CLI::DEPRECATION_WARNING)
+        subject
+      end
+
+      it 'still parses arguments correctly' do
+        allow($stderr).to receive(:puts)
+        expect(subject.config.zombie).to be(true)
+      end
+    end
+
+    context 'backward compatibility with flags but no subcommand' do
+      let(:arguments) { %w[--fail-fast TestApp*] }
+
+      it 'prints deprecation warning and processes args as run' do
+        expect($stderr).to receive(:puts).with(Mutant::CLI::DEPRECATION_WARNING)
+        expect(subject.config.fail_fast).to be(true)
+      end
+    end
+
+    context 'help subcommand' do
+      context 'with no argument' do
+        let(:arguments) { %w[help] }
+
+        before do
+          expect($stdout).to receive(:puts)
+          expect(Kernel).to receive(:exit)
+        end
+
+        it 'prints main help' do
+          subject
+        end
+      end
+
+      context 'with run argument' do
+        let(:arguments) { %w[help run] }
+
+        before do
+          expect($stdout).to receive(:puts)
+          expect(Kernel).to receive(:exit)
+        end
+
+        it 'prints run help' do
+          subject
+        end
+      end
+
+      context 'with environment argument' do
+        let(:arguments) { %w[help environment] }
+
+        before do
+          expect($stdout).to receive(:puts)
+          expect(Kernel).to receive(:exit)
+        end
+
+        it 'prints environment help' do
+          subject
+        end
+      end
+
+      context 'with session argument' do
+        let(:arguments) { %w[help session] }
+
+        before do
+          expect($stdout).to receive(:puts)
+          expect(Kernel).to receive(:exit)
+        end
+
+        it 'prints session help' do
+          subject
+        end
+      end
+    end
+
+    context 'environment subcommand' do
+      let(:arguments) { %w[environment --zombie TestApp*] }
+
+      before do
+        expect($stdout).to receive(:puts).at_least(:once)
+        expect(Kernel).to receive(:exit)
+      end
+
+      it 'parses config options' do
+        subject
+      end
+    end
+
+    context 'session subcommand' do
+      context 'list' do
+        let(:arguments) { %w[session list] }
+
+        before do
+          expect($stdout).to receive(:puts)
+          expect(Kernel).to receive(:exit)
+        end
+
+        it 'runs session list' do
+          subject
+        end
+      end
+
+      context 'show with id' do
+        let(:arguments) { %w[session show abc123] }
+
+        before do
+          expect($stdout).to receive(:puts)
+          expect(Kernel).to receive(:exit)
+        end
+
+        it 'runs session show' do
+          subject
+        end
+      end
+
+      context 'show without id' do
+        let(:arguments) { %w[session show] }
+
+        it 'raises error' do
+          expect { subject }.to raise_error(
+            Mutant::CLI::Error,
+            'session show requires a session ID argument'
+          )
+        end
+      end
+
+      context 'with no sub-subcommand' do
+        let(:arguments) { %w[session] }
+
+        before do
+          expect($stdout).to receive(:puts)
+          expect(Kernel).to receive(:exit)
+        end
+
+        it 'prints session help' do
+          subject
+        end
       end
     end
   end
