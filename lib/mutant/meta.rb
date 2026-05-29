@@ -5,7 +5,10 @@ module Mutant
   module Meta
     require 'mutant/meta/example'
     require 'mutant/meta/example/dsl'
+    require 'mutant/meta/example/documentation'
     require 'mutant/meta/example/verification'
+    require 'mutant/meta/coverage/entries'
+    require 'mutant/meta/coverage'
 
     # Mutation example
     class Example

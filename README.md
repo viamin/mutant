@@ -33,14 +33,17 @@ Topics
 * [Known Problems](/docs/known-problems.md)
 * [Limitations](/docs/limitations.md)
 * [Concurrency](/docs/concurrency.md)
+* [Mutators](/docs/mutators.md)
+* [Mutator Coverage](/docs/mutator-coverage.md)
 * [Rspec Integration](/docs/mutant-rspec.md)
 * [Minitest Integration](/docs/mutant-minitest.md)
 
 Mutation-Operators
 ------------------
 
-Mutant supports a wide range of mutation operators. An exhaustive list can be found in the [mutant-meta](https://github.com/mbj/mutant/tree/master/meta).
-The `mutant-meta` is arranged to the AST-Node-Types of parser. Refer to parsers [AST documentation](https://github.com/whitequark/parser/blob/master/doc/AST_FORMAT.md) in doubt.
+Mutant supports a wide range of mutation operators. The currently shipped operator families are documented in [docs/mutators.md](/docs/mutators.md), and the modern-Ruby coverage gaps tracked by issue `#18` are documented in [docs/mutator-coverage.md](/docs/mutator-coverage.md).
+
+The local `meta/` directory remains the exhaustive behavioral specification. It is arranged by parser AST node type; refer to parser's [AST documentation](https://github.com/whitequark/parser/blob/master/doc/AST_FORMAT.md) in doubt.
 
 There is no easy and universal way to count the number of mutation operators a tool supports.
 
