@@ -1,6 +1,16 @@
 # frozen_string_literal: true
 
 module Mutant
+  ParseJobs = lambda do |input, source|
+    jobs = Integer(input)
+
+    raise CLI::Error, "#{source} must be >= 1" if jobs < 1
+
+    jobs
+  rescue ArgumentError
+    raise CLI::Error, "#{source} must be an integer"
+  end
+
   # Commandline parser / runner
   class CLI
     include Adamantium::Flat, Equalizer.new(:config), Procto.call(:config)
@@ -20,11 +30,6 @@ module Mutant
       false
     end
 
-    # Initialize object
-    #
-    # @param [Array<String>]
-    #
-    # @return [undefined]
     def initialize(arguments)
       @config = Config::DEFAULT
 
@@ -32,19 +37,13 @@ module Mutant
       parse(arguments)
     end
 
-    # Config parsed from CLI
-    #
-    # @return [Config]
     attr_reader :config
 
   private
 
-    # Apply environment variable defaults
-    #
-    # @return [undefined]
     def apply_env_defaults
       env_jobs = ENV['MUTANT_JOBS']
-      with(jobs: Integer(env_jobs)) if env_jobs
+      with(jobs: ParseJobs.(env_jobs, 'MUTANT_JOBS')) if env_jobs
     end
 
     # Parse the command-line options
@@ -99,7 +98,7 @@ module Mutant
         add(:requires, name)
       end
       opts.on('-j', '--jobs NUMBER', 'Number of kill jobs. Defaults to MUTANT_JOBS or 1.') do |number|
-        with(jobs: Integer(number))
+        with(jobs: ParseJobs.(number, '--jobs'))
       end
     end
 

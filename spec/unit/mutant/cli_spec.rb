@@ -185,13 +185,76 @@ RSpec.describe Mutant::CLI do
     end
 
     context 'with jobs flag' do
-      let(:flags) { %w[--jobs 0] }
+      let(:flags) { %w[--jobs 2] }
 
       it_should_behave_like 'a cli parser'
 
       it 'configures expected coverage' do
-        expect(subject.config.jobs).to eql(0)
+        expect(subject.config.jobs).to eql(2)
       end
+    end
+
+    context 'with invalid jobs flag' do
+      let(:flags) { %w[--jobs nope] }
+
+      let(:expected_message) { '--jobs must be an integer' }
+
+      it_should_behave_like 'an invalid cli run'
+    end
+
+    context 'with jobs flag below minimum' do
+      let(:flags) { %w[--jobs 0] }
+
+      let(:expected_message) { '--jobs must be >= 1' }
+
+      it_should_behave_like 'an invalid cli run'
+    end
+
+    context 'with negative jobs flag' do
+      let(:flags) { %w[--jobs -1] }
+
+      let(:expected_message) { '--jobs must be >= 1' }
+
+      it_should_behave_like 'an invalid cli run'
+    end
+
+    context 'with invalid MUTANT_JOBS env variable' do
+      around do |example|
+        ENV.store('MUTANT_JOBS', 'nope')
+        example.run
+      ensure
+        ENV.delete('MUTANT_JOBS')
+      end
+
+      let(:expected_message) { 'MUTANT_JOBS must be an integer' }
+
+      it_should_behave_like 'an invalid cli run'
+    end
+
+    context 'with MUTANT_JOBS env variable below minimum' do
+      around do |example|
+        ENV.store('MUTANT_JOBS', '0')
+        example.run
+      ensure
+        ENV.delete('MUTANT_JOBS')
+      end
+
+      let(:expected_message) { 'MUTANT_JOBS must be >= 1' }
+
+      it_should_behave_like 'an invalid cli run'
+    end
+
+    context 'with negative MUTANT_JOBS env variable' do
+      around do |example|
+        ENV.store('MUTANT_JOBS', '-1')
+        example.run
+      ensure
+        ENV.delete('MUTANT_JOBS')
+      end
+
+      let(:expected_message) { 'MUTANT_JOBS must be >= 1' }
+
+      it_should_behave_like 'an invalid cli run'
     end
 
     context 'with MUTANT_JOBS env variable' do
