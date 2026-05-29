@@ -15,8 +15,14 @@ module Mutant
         #
         # @return [undefined]
         def dispatch
-          mutate_single_child do |child|
-            emit(child)
+          if children.one?
+            mutate_single_child do |child|
+              emit(child)
+            end
+          else
+            children.each_with_index do |child, index|
+              mutate_child(index) if child.instance_of?(::Parser::AST::Node)
+            end
           end
         end
       end # Begin

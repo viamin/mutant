@@ -33,7 +33,7 @@ module Mutant
         #
         # @return [Boolean]
         def skip?
-          name.to_s.start_with?(UNDERSCORE)
+          name.to_s.start_with?(UNDERSCORE) || local_variable_used_in_scope?(name)
         end
 
         # Mutator for optional arguments

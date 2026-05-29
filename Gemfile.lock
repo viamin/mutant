@@ -12,11 +12,11 @@ PATH
       ice_nine (~> 0.11.2)
       memoizable (~> 0.4.2)
       morpher (~> 0.4.2)
-      parser (~> 3.3.0)
+      parser (~> 3.3.6)
       procto (~> 0.0.3)
       racc (~> 1.8)
-      regexp_parser (~> 2.3.1, < 2.4)
-      unparser (~> 0.6.5)
+      regexp_parser (~> 2.10)
+      unparser (~> 0.9.0)
 
 GEM
   remote: https://rubygems.org/
@@ -103,7 +103,7 @@ GEM
       parser (~> 3.3.0)
       rainbow (>= 2.0, < 4.0)
       rexml (~> 3.1)
-    regexp_parser (2.3.1)
+    regexp_parser (2.12.0)
     rexml (3.4.4)
     rspec (3.13.2)
       rspec-core (~> 3.13.0)
@@ -143,9 +143,10 @@ GEM
     simplecov_json_formatter (0.1.4)
     thread_safe (0.3.6)
     unicode-display_width (2.6.0)
-    unparser (0.6.5)
-      diff-lcs (~> 1.3)
-      parser (>= 3.1.0)
+    unparser (0.9.0)
+      diff-lcs (>= 1.6, < 3)
+      parser (>= 3.3.0)
+      prism (>= 1.5.1)
     zeitwerk (2.8.2)
 
 PLATFORMS
@@ -199,7 +200,7 @@ CHECKSUMS
   rainbow (3.1.1) sha256=039491aa3a89f42efa1d6dec2fc4e62ede96eb6acd95e52f1ad581182b79bc6a
   rake (13.4.2) sha256=cb825b2bd5f1f8e91ca37bddb4b9aaf345551b4731da62949be002fa89283701
   reek (6.5.0) sha256=d26d3a492773b2bbc228888067a21afe33ac07954a17dbd64cdeae42c4c69be1
-  regexp_parser (2.3.1) sha256=46cf42c6b7d95aabd12b8976edd767d0db0c54e3034c425a3695d6bd23476e1c
+  regexp_parser (2.12.0) sha256=35a916a1d63190ab5c9009457136ae5f3c0c7512d60291d0d1378ba18ce08ebb
   rexml (3.4.4) sha256=19e0a2c3425dfbf2d4fc1189747bdb2f849b6c5e74180401b15734bc97b5d142
   rspec (3.13.2) sha256=206284a08ad798e61f86d7ca3e376718d52c0bc944626b2349266f239f820587
   rspec-core (3.13.6) sha256=a8823c6411667b60a8bca135364351dda34cd55e44ff94c4be4633b37d828b2d
@@ -215,7 +216,7 @@ CHECKSUMS
   simplecov_json_formatter (0.1.4) sha256=529418fbe8de1713ac2b2d612aa3daa56d316975d307244399fa4838c601b428
   thread_safe (0.3.6) sha256=9ed7072821b51c57e8d6b7011a8e282e25aeea3a4065eab326e43f66f063b05a
   unicode-display_width (2.6.0) sha256=12279874bba6d5e4d2728cef814b19197dbb10d7a7837a869bab65da943b7f5a
-  unparser (0.6.5) sha256=1c702926651c3b71f97a7169221f2178191f7165a4859aef2a776d31f8e8ee18
+  unparser (0.9.0) sha256=4331f174a73a23b69250b13d47da3794ed1449711ee0f9ed8947dc020ba76067
   zeitwerk (2.8.2) sha256=7212a61311083c604184b1ea2574b9aa05cd14f855a0841c06985cabe9181d12
 
 BUNDLED WITH

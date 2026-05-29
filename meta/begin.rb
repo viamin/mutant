@@ -8,10 +8,6 @@ Mutant::Meta::Example.add :begin do
   mutation 'false; false'
   mutation 'nil; false'
   mutation 'true; nil'
-
-  # Delete each statement
-  mutation 'true'
-  mutation 'false'
 end
 
 Mutant::Meta::Example.add :begin do

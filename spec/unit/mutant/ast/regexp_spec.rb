@@ -387,6 +387,19 @@ RegexpSpec.expect_mapping(/\xFF/n, :regexp_hex_escape) do
     s(:regexp_hex_escape, '\\xFF'))
 end
 
+RSpec.describe Mutant::AST::Regexp::Transformer::Text do
+  context 'when mapping utf8 hex escape ast' do
+    let(:ast) { s(:regexp_utf8_hex_escape, '\\xFF') }
+
+    it 'transforms ast back to expression' do
+      expression = Mutant::AST::Regexp.to_expression(ast)
+
+      expect(expression.class).to eql(::Regexp::Expression::EscapeSequence::UTF8Hex)
+      expect(expression.text).to eql('\\xFF')
+    end
+  end
+end
+
 RegexpSpec.expect_mapping(/\h/, :regexp_hex_type) do
   s(:regexp_root_expression,
     s(:regexp_hex_type))

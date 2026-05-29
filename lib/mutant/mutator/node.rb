@@ -176,6 +176,44 @@ module Mutant
         end
       end
 
+      # Detect whether a local variable name is referenced in the current scope body.
+      #
+      # The check is intentionally conservative. If a name is referenced anywhere in
+      # the body of the current block/def scope, argument-removal and argument-rename
+      # mutations are skipped to preserve unparser round-trip semantics.
+      #
+      # @param [Symbol] name
+      #
+      # @return [Boolean]
+      def local_variable_used_in_scope?(name)
+        local_variable_used_in_node?(scope_body_node, name)
+      end
+
+      # Scope body node for argument-like children.
+      #
+      # @return [Parser::AST::Node, nil]
+      def scope_body_node
+        scope_owner_node&.children&.last
+      end
+
+      def local_variable_used_in_node?(candidate, name)
+        return false unless candidate.is_a?(::Parser::AST::Node)
+        return true if n_lvar?(candidate) && candidate.children.eql?([name])
+
+        candidate.children.any? { |child| local_variable_used_in_node?(child, name) }
+      end
+
+      def scope_owner_node
+        current = self
+
+        until current.nil?
+          candidate = current.node
+          return candidate if %i[block numblock def defs].include?(candidate.type)
+
+          current = current.parent
+        end
+      end
+
     end # Node
   end # Mutator
 end # Mutant

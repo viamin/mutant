@@ -11,7 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ruby-version: ['3.3']
+        ruby-version: ['3.3', '3.4']
     steps:
       - uses: actions/checkout@v6
       - uses: ruby/setup-ruby@v1
@@ -26,33 +26,53 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - suite: rspec
+          - ruby-version: '3.3'
+            suite: rspec
             command: bundle exec rspec spec/integration/mutant/rspec_spec.rb
-          - suite: minitest
+          - ruby-version: '3.3'
+            suite: minitest
             command: bundle exec rspec spec/integration/mutant/minitest_spec.rb
-          - suite: generation
+          - ruby-version: '3.3'
+            suite: generation
+            command: bundle exec rspec spec/integration/mutant/corpus_spec.rb
+          - ruby-version: '3.4'
+            suite: rspec
+            command: bundle exec rspec spec/integration/mutant/rspec_spec.rb
+          - ruby-version: '3.4'
+            suite: minitest
+            command: bundle exec rspec spec/integration/mutant/minitest_spec.rb
+          - ruby-version: '3.4'
+            suite: generation
             command: bundle exec rspec spec/integration/mutant/corpus_spec.rb
     steps:
       - uses: actions/checkout@v6
       - uses: ruby/setup-ruby@v1
         with:
-          ruby-version: '3.3'
+          ruby-version: ${{ matrix.ruby-version }}
           bundler-cache: true
       - run: ${{ matrix.command }}
 
   metrics:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby-version: ['3.3', '3.4']
     steps:
       - uses: actions/checkout@v6
       - uses: ruby/setup-ruby@v1
         with:
-          ruby-version: '3.3'
+          ruby-version: ${{ matrix.ruby-version }}
           bundler-cache: true
       - run: bundle exec rake metrics:rubocop
       - run: bundle exec rake metrics:reek
 
   mutant:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby-version: ['3.3', '3.4']
     env:
       MUTANT_JOBS: 4
       MUTANT_SINCE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
@@ -62,6 +82,6 @@ jobs:
           fetch-depth: 0
       - uses: ruby/setup-ruby@v1
         with:
-          ruby-version: '3.3'
+          ruby-version: ${{ matrix.ruby-version }}
           bundler-cache: true
       - run: bundle exec rake metrics:mutant

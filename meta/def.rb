@@ -84,10 +84,6 @@ Mutant::Meta::Example.add :def do
   mutation 'def foo; true; nil; end'
   mutation 'def foo; nil; false; end'
 
-  # Remove statement in block
-  mutation 'def foo; true; end'
-  mutation 'def foo; false; end'
-
   # Remove all statements
   mutation 'def foo; end'
 
@@ -194,10 +190,6 @@ Mutant::Meta::Example.add :def do
   mutation 'def self.foo; true; true; end'
   mutation 'def self.foo; true; nil; end'
   mutation 'def self.foo; nil; false; end'
-
-  # Body presence mutation
-  mutation 'def self.foo; true; end'
-  mutation 'def self.foo; false; end'
 
   # Remove all statements
   mutation 'def self.foo; end'

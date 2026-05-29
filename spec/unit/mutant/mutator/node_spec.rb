@@ -282,6 +282,84 @@ RSpec.describe Mutant::Mutator::Node::Dsym do
   end
 end
 
+RSpec.describe Mutant::Mutator::Node::Argument do
+  describe '.call' do
+    it 'does not rename used block arguments' do
+      input  = parse('foo { |value| "#{value}" }')
+      body   = input.children.fetch(2)
+      result = Mutant::Mutator.mutate(input)
+
+      expect(result).not_to include(
+        s(:block, s(:send, nil, :foo), s(:args, s(:arg, :_value)), body)
+      )
+    end
+  end
+end
+
+RSpec.describe Mutant::Mutator::Node::Arguments do
+  describe '.call' do
+    it 'does not remove used block arguments' do
+      input  = parse('foo { |unit, length| "#{unit}^#{length}" }')
+      body   = input.children.fetch(2)
+      result = Mutant::Mutator.mutate(input)
+
+      expect(result).not_to include(
+        s(:block, s(:send, nil, :foo), s(:args), body),
+        s(:block, s(:send, nil, :foo), s(:args, s(:arg, :unit)), body),
+        s(:block, s(:send, nil, :foo), s(:args, s(:arg, :length)), body)
+      )
+    end
+  end
+end
+
+RSpec.describe Mutant::Mutator::Node::Block do
+  describe '.call' do
+    it 'does not emit a standalone body that still uses block arguments' do
+      input  = parse('foo { |value| "#{value}" }')
+      body   = input.children.fetch(2)
+      result = described_class.call(input)
+
+      expect(result).not_to include(body)
+    end
+  end
+end
+
+RSpec.describe Mutant::Mutator::Node::Begin do
+  describe '.call' do
+    it 'does not emit standalone children from multi-statement begin nodes' do
+      input = s(
+        :begin,
+        s(:lvasgn, :value, s(:int, 1)),
+        s(:lvar, :value)
+      )
+
+      result = described_class.call(input)
+
+      expect(result).not_to include(s(:lvasgn, :value, s(:int, 1)), s(:lvar, :value))
+      expect(result).to include(
+        s(:begin, s(:lvasgn, :value, s(:int, 1)), s(:nil)),
+        s(:begin, s(:lvasgn, :value, s(:int, 1)), s(:self))
+      )
+    end
+  end
+end
+
+RSpec.describe Mutant::Mutator::Node::Literal::Regex do
+  describe '.call' do
+    it 'skips body mutations when regexp_parser cannot build an expression tree' do
+      input = parse('/foo/')
+      token = Struct.new(:token).new(:condition_open)
+      error = ::Regexp::Parser::UnknownTokenError.new(:conditional, token)
+
+      allow(Mutant::AST::Regexp)
+        .to receive(:parse)
+        .and_raise(error)
+
+      expect { described_class.call(input) }.not_to raise_error
+    end
+  end
+end
+
 RSpec.describe Mutant::Mutator::Node::ProcargZero do
   describe '.call' do
     context 'with a symbol argument' do
@@ -505,6 +583,44 @@ RSpec.describe Mutant::Mutator::Node::Numblock do
       subclass = Class.new(Parser::AST::Node)
       node = subclass.new(:lvar, [:_1])
       expect(mutator.__send__(:numbered_parameter_used?, node)).to be(true)
+    end
+  end
+end
+
+RSpec.describe Mutant::Mutator::Node::Literal::Hash::Pair do
+  describe '.call' do
+    let(:parent_class) do
+      Class.new(Mutant::Mutator::Node) do
+        def dispatch; end
+      end
+    end
+
+    it 'does not mutate label keys inside hash patterns' do
+      result = described_class.call(
+        s(:pair, s(:sym, :foo), s(:int, 1)),
+        parent_class.send(:new, s(:hash_pattern), nil)
+      )
+
+      expect(result).to include(s(:pair, s(:sym, :foo), s(:nil)))
+      expect(result).not_to include(s(:pair, s(:nil), s(:int, 1)))
+    end
+
+    it 'does not mutate keyword argument labels' do
+      result = described_class.call(
+        s(:pair, s(:sym, :foo), s(:int, 1)),
+        parent_class.send(:new, s(:kwargs), nil)
+      )
+
+      expect(result).to include(s(:pair, s(:sym, :foo), s(:nil)))
+      expect(result).not_to include(s(:pair, s(:nil), s(:int, 1)))
+    end
+  end
+end
+
+RSpec.describe Mutant::AST::Types do
+  describe 'NOT_STANDALONE' do
+    it 'treats kwargs as non-standalone' do
+      expect(described_class::NOT_STANDALONE).to include(:kwargs)
     end
   end
 end

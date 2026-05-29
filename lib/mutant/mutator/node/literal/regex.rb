@@ -55,6 +55,8 @@ module Mutant
           # @return [Parser::AST::Node, nil]
           def body_ast
             body_expression and AST::Regexp.to_ast(body_expression)
+          rescue Mutant::Registry::RegistryError
+            nil
           end
 
           # Expression representation of regexp body
@@ -62,6 +64,8 @@ module Mutant
           # @return [Regexp::Expression, nil]
           def body_expression
             AST::Regexp.parse(body.map(&:children).join)
+          rescue ::Regexp::Parser::UnknownTokenError
+            nil
           end
           memoize :body_expression
 
