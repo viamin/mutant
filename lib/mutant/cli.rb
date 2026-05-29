@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 module Mutant
+  LEGACY_USAGE_VALUES = %w[opensource commercial].freeze
   USAGE_WARNING = 'warning: --usage is a no-op in viamin/mutant '\
                   '(MIT-licensed); flag will be removed in a future release'
 
@@ -18,7 +19,7 @@ module Mutant
         warned = true
 
         next_argument = arguments[index + 1]
-        index += 1 if next_argument && !next_argument.start_with?('-')
+        index += 1 if LEGACY_USAGE_VALUES.include?(next_argument)
       else
         filtered << argument
       end

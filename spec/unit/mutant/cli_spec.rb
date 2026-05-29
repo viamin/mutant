@@ -188,6 +188,27 @@ RSpec.describe Mutant::CLI do
       context 'when passed with an unsupported value' do
         let(:flags) { %w[--usage proprietary] }
 
+        let(:expected_matcher_config) do
+          default_matcher_config.with(
+            match_expressions: [
+              parse_expression('proprietary'),
+              parse_expression('TestApp*')
+            ]
+          )
+        end
+
+        it_should_behave_like 'a cli parser'
+
+        it 'preserves the value as a match expression' do
+          expect(subject.config.matcher.match_expressions).to eql(
+            [parse_expression('proprietary'), parse_expression('TestApp*')]
+          )
+        end
+      end
+
+      context 'when passed without a value' do
+        let(:flags) { %w[--usage] }
+
         it_should_behave_like 'a cli parser'
       end
     end
