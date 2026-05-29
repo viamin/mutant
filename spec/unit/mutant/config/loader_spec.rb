@@ -30,6 +30,14 @@ RSpec.describe Mutant::Config::Loader do
       it { should eql(base_config) }
     end
 
+    context 'when config file is empty' do
+      before do
+        config_path.write('')
+      end
+
+      it { should eql(base_config) }
+    end
+
     context 'when config file is present' do
       before do
         expect(Kernel).to receive(:require)

@@ -49,11 +49,17 @@ module Mutant
       memoize :document
 
       def attributes
-        root = document&.root or return EMPTY_HASH
+        root = document_root or return EMPTY_HASH
 
         reader.mapping(root, [], ROOT_KEYS).each_with_object({}) do |(key, value_node), result|
           result[attribute_name(key)] = __send__(:"attribute_#{key}", value_node)
         end
+      end
+
+      def document_root
+        return unless document.instance_of?(Psych::Nodes::Document)
+
+        document.root
       end
 
       def attribute_name(key)
