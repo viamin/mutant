@@ -293,6 +293,16 @@ RSpec.describe Mutant::Mutator::Node::Argument do
         s(:block, s(:send, nil, :foo), s(:args, s(:arg, :_value)), body)
       )
     end
+
+    it 'renames outer block argument when shadowed by inner block argument' do
+      input  = parse('foo { |value| bar { |value| value } }')
+      body   = input.children.fetch(2)
+      result = Mutant::Mutator.mutate(input)
+
+      expect(result).to include(
+        s(:block, s(:send, nil, :foo), s(:args, s(:procarg0, s(:arg, :_value))), body)
+      )
+    end
   end
 end
 
@@ -309,6 +319,16 @@ RSpec.describe Mutant::Mutator::Node::Arguments do
         s(:block, s(:send, nil, :foo), s(:args, s(:arg, :length)), body)
       )
     end
+
+    it 'removes outer block argument when shadowed by inner block argument' do
+      input  = parse('foo { |value| bar { |value| value } }')
+      body   = input.children.fetch(2)
+      result = Mutant::Mutator.mutate(input)
+
+      expect(result).to include(
+        s(:block, s(:send, nil, :foo), s(:args), body)
+      )
+    end
   end
 end
 
@@ -320,6 +340,14 @@ RSpec.describe Mutant::Mutator::Node::Block do
       result = described_class.call(input)
 
       expect(result).not_to include(body)
+    end
+
+    it 'emits standalone body when block argument is only used in a shadowing inner block' do
+      input  = parse('foo { |value| bar { |value| value } }')
+      body   = input.children.fetch(2)
+      result = described_class.call(input)
+
+      expect(result).to include(body)
     end
   end
 end
