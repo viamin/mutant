@@ -3,6 +3,42 @@
 RSpec.describe Mutant::CLI do
   let(:object) { described_class }
 
+  describe '::filter_deprecated_usage' do
+    subject(:filter_deprecated_usage) { Mutant.filter_deprecated_usage(arguments) }
+
+    context 'when usage is passed as separate option and legacy value' do
+      let(:arguments) { %w[--usage opensource TestApp*] }
+
+      it 'removes both arguments and warns' do
+        expect(filter_deprecated_usage).to eql([%w[TestApp*], true])
+      end
+    end
+
+    context 'when usage is passed as inline assignment' do
+      let(:arguments) { %w[--usage=commercial TestApp*] }
+
+      it 'removes the option and warns' do
+        expect(filter_deprecated_usage).to eql([%w[TestApp*], true])
+      end
+    end
+
+    context 'when usage is passed with an unsupported value' do
+      let(:arguments) { %w[--usage proprietary TestApp*] }
+
+      it 'preserves the value as a match expression and warns' do
+        expect(filter_deprecated_usage).to eql([%w[proprietary TestApp*], true])
+      end
+    end
+
+    context 'when usage is absent' do
+      let(:arguments) { %w[TestApp*] }
+
+      it 'returns arguments unchanged without warning' do
+        expect(filter_deprecated_usage).to eql([%w[TestApp*], false])
+      end
+    end
+  end
+
   shared_examples_for 'an invalid cli run' do
     it 'raises error' do
       expect do

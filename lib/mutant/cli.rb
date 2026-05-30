@@ -6,28 +6,39 @@ module Mutant
                   '(MIT-licensed); flag will be removed in a future release'
 
   def self.filter_deprecated_usage(arguments)
-    warned = false
-    filtered = []
-    index = 0
+    filtered  = []
+    remaining = arguments.dup
+    warned    = false
 
-    while index < arguments.length
-      argument = arguments[index]
-
-      if argument.start_with?('--usage=')
-        warned = true
-      elsif argument == '--usage'
-        warned = true
-
-        next_argument = arguments[index + 1]
-        index += 1 if LEGACY_USAGE_VALUES.include?(next_argument)
-      else
-        filtered << argument
-      end
-
-      index += 1
-    end
+    warned ||= filter_argument(remaining, filtered) until remaining.empty?
 
     [filtered, warned]
+  end
+
+  def self.filter_argument(remaining, filtered)
+    return consume_usage_argument(remaining) if usage_argument?(remaining.first)
+
+    filtered << remaining.shift
+    false
+  end
+
+  def self.consume_usage_argument(remaining)
+    argument = remaining.shift
+
+    remaining.shift if argument == '--usage' && LEGACY_USAGE_VALUES.include?(remaining.first)
+    true
+  end
+
+  def self.usage_argument?(argument)
+    argument == '--usage' || argument.start_with?('--usage=')
+  end
+
+  def self.sanitize_arguments(arguments)
+    sanitized_arguments, warned = filter_deprecated_usage(arguments)
+
+    $stderr.puts(USAGE_WARNING) if warned
+
+    sanitized_arguments
   end
 
   # Commandline parser / runner
@@ -77,19 +88,23 @@ module Mutant
     #
     # @return [undefined]
     def parse(arguments)
-      sanitized_arguments, warned = Mutant.filter_deprecated_usage(arguments)
-
-      opts = OptionParser.new do |builder|
-        builder.banner = 'usage: mutant [options] MATCH_EXPRESSION ...'
-        %i[add_environment_options add_mutation_options add_filter_options add_debug_options].each do |name|
-          __send__(name, builder)
-        end
-      end
-
-      $stderr.puts(USAGE_WARNING) if warned
-      parse_match_expressions(opts.parse!(sanitized_arguments))
+      parse_match_expressions(option_parser.parse!(Mutant.sanitize_arguments(arguments)))
     rescue OptionParser::ParseError => error
       raise(Error, error)
+    end
+
+    def option_parser
+      OptionParser.new do |builder|
+        builder.banner = 'usage: mutant [options] MATCH_EXPRESSION ...'
+        add_options(builder)
+      end
+    end
+
+    def add_options(builder)
+      add_environment_options(builder)
+      add_mutation_options(builder)
+      add_filter_options(builder)
+      add_debug_options(builder)
     end
 
     # Parse matchers
