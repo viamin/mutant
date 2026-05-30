@@ -11,6 +11,8 @@ module Mutant
     def initialize(*)
       super
 
+      @result = nil
+
       reporter.start(env)
 
       run_mutation_analysis
@@ -27,13 +29,15 @@ module Mutant
     #
     # @return [undefined]
     def run_mutation_analysis
+      result = nil
       driver = Parallel.async(mutation_test_config)
 
-      @result = with_signal_handlers { run_driver(driver) }
+      result = with_signal_handlers { run_driver(driver) }
     rescue Interrupt
-      @result = driver&.stop&.payload
+      result = driver&.stop&.payload
       raise
     ensure
+      @result = result
       reporter.report(@result || mutation_sink.status)
     end
 
