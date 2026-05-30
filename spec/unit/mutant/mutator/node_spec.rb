@@ -303,6 +303,26 @@ RSpec.describe Mutant::Mutator::Node::Argument do
         s(:block, s(:send, nil, :foo), s(:args, s(:procarg0, s(:arg, :_value))), body)
       )
     end
+
+    it 'renames outer block argument when nested method body uses the same local name' do
+      input  = parse('foo { |value| def inner; value = 1; value; end }')
+      body   = input.children.fetch(2)
+      result = Mutant::Mutator.mutate(input)
+
+      expect(result).to include(
+        s(:block, s(:send, nil, :foo), s(:args, s(:procarg0, s(:arg, :_value))), body)
+      )
+    end
+
+    it 'renames outer block argument when nested singleton method body uses the same local name' do
+      input  = parse('foo { |value| def self.inner; value = 1; value; end }')
+      body   = input.children.fetch(2)
+      result = Mutant::Mutator.mutate(input)
+
+      expect(result).to include(
+        s(:block, s(:send, nil, :foo), s(:args, s(:procarg0, s(:arg, :_value))), body)
+      )
+    end
   end
 end
 
@@ -329,6 +349,26 @@ RSpec.describe Mutant::Mutator::Node::Arguments do
         s(:block, s(:send, nil, :foo), s(:args), body)
       )
     end
+
+    it 'removes outer block argument when nested method body uses the same local name' do
+      input  = parse('foo { |value| def inner; value = 1; value; end }')
+      body   = input.children.fetch(2)
+      result = Mutant::Mutator.mutate(input)
+
+      expect(result).to include(
+        s(:block, s(:send, nil, :foo), s(:args), body)
+      )
+    end
+
+    it 'removes outer block argument when nested singleton method body uses the same local name' do
+      input  = parse('foo { |value| def self.inner; value = 1; value; end }')
+      body   = input.children.fetch(2)
+      result = Mutant::Mutator.mutate(input)
+
+      expect(result).to include(
+        s(:block, s(:send, nil, :foo), s(:args), body)
+      )
+    end
   end
 end
 
@@ -344,6 +384,22 @@ RSpec.describe Mutant::Mutator::Node::Block do
 
     it 'emits standalone body when block argument is only used in a shadowing inner block' do
       input  = parse('foo { |value| bar { |value| value } }')
+      body   = input.children.fetch(2)
+      result = described_class.call(input)
+
+      expect(result).to include(body)
+    end
+
+    it 'emits standalone body when nested method body uses the same local name' do
+      input  = parse('foo { |value| def inner; value = 1; value; end }')
+      body   = input.children.fetch(2)
+      result = described_class.call(input)
+
+      expect(result).to include(body)
+    end
+
+    it 'emits standalone body when nested singleton method body uses the same local name' do
+      input  = parse('foo { |value| def self.inner; value = 1; value; end }')
       body   = input.children.fetch(2)
       result = described_class.call(input)
 

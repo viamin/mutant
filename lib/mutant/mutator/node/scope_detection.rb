@@ -16,10 +16,15 @@ module Mutant
 
       def local_variable_used_in_node?(candidate, name)
         return false unless candidate.is_a?(::Parser::AST::Node)
+        return false if hard_scope_boundary?(candidate)
         return false if scope_shadows_name?(candidate, name)
         return true if n_lvar?(candidate) && candidate.children.eql?([name])
 
         candidate.children.any? { |child| local_variable_used_in_node?(child, name) }
+      end
+
+      def hard_scope_boundary?(node)
+        n_def?(node) || n_defs?(node)
       end
 
       def scope_shadows_name?(node, name)
