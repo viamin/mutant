@@ -31,7 +31,7 @@ module Mutant
 
       @result = with_signal_handlers { run_driver(driver) }
     rescue Interrupt
-      @result = driver.stop.payload
+      @result = driver&.stop&.payload
       raise
     ensure
       reporter.report(@result || mutation_sink.status)

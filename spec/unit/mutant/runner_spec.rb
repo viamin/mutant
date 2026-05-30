@@ -183,5 +183,49 @@ RSpec.describe Mutant::Runner do
         verify_events { expect { apply }.to raise_error(Interrupt) }
       end
     end
+
+    context 'when interrupted before the driver is assigned' do
+      let(:raw_expectations) do
+        [
+          {
+            receiver:  reporter,
+            selector:  :start,
+            arguments: [env]
+          },
+          {
+            receiver:  env,
+            selector:  :method,
+            arguments: [:kill],
+            reaction:  { return: processor }
+          },
+          {
+            receiver:  Mutant::Runner::Sink,
+            selector:  :new,
+            arguments: [env],
+            reaction:  { return: sink }
+          },
+          {
+            receiver:  Mutant::Parallel,
+            selector:  :async,
+            arguments: [parallel_config],
+            reaction:  { exception: Interrupt.new }
+          },
+          {
+            receiver:  sink,
+            selector:  :status,
+            reaction:  { return: partial_env_result }
+          },
+          {
+            receiver:  reporter,
+            selector:  :report,
+            arguments: [partial_env_result]
+          }
+        ]
+      end
+
+      it 'reports sink status before re-raising' do
+        verify_events { expect { apply }.to raise_error(Interrupt) }
+      end
+    end
   end
 end

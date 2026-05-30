@@ -1,16 +1,6 @@
 # frozen_string_literal: true
 
 module Mutant
-  ParseJobs = lambda do |input, source|
-    jobs = Integer(input)
-
-    raise CLI::Error, "#{source} must be >= 1" if jobs < 1
-
-    jobs
-  rescue ArgumentError
-    raise CLI::Error, "#{source} must be an integer"
-  end
-
   # Commandline parser / runner
   class CLI
     include Adamantium::Flat, Equalizer.new(:config), Procto.call(:config)
@@ -33,7 +23,6 @@ module Mutant
     def initialize(arguments)
       @config = Config::DEFAULT
       @exit_requested = @jobs_explicit = false
-
       parse(arguments)
       apply_env_defaults unless @jobs_explicit || @exit_requested
     end
@@ -80,9 +69,6 @@ module Mutant
     # Add environmental options
     #
     # @param [Object] opts
-    #
-    # @return [undefined]
-    #
     # rubocop:disable MethodLength
     def add_environment_options(opts)
       opts.separator('Environment:')
@@ -198,4 +184,14 @@ module Mutant
     def add_matcher(attribute, value) = with(matcher: config.matcher.add(attribute, value))
 
   end # CLI
+
+  class CLI
+    ParseJobs = lambda do |input, source|
+      jobs = Integer(input)
+      raise Error, "#{source} must be >= 1" if jobs < 1
+      jobs
+    rescue ArgumentError
+      raise Error, "#{source} must be an integer"
+    end
+  end
 end # Mutant
