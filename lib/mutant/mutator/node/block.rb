@@ -70,20 +70,9 @@ module Mutant
 
         def body_uses_arguments?
           arguments.children.any? do |argument|
-            name = argument_name(argument)
+            name = extract_argument_name(argument)
 
             name && local_variable_used_in_node?(body, name)
-          end
-        end
-
-        def argument_name(argument)
-          return unless argument.is_a?(::Parser::AST::Node)
-
-          case argument.type
-          when :procarg0
-            argument_name(argument.children.first)
-          when :arg, :optarg, :kwarg, :kwoptarg, :restarg, :kwrestarg, :blockarg
-            argument.children.first
           end
         end
 

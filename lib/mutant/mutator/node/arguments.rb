@@ -71,24 +71,13 @@ module Mutant
         def removed_argument_names(mutated_children)
           removed_children = children - mutated_children
 
-          removed_children.filter_map(&method(:argument_name))
+          removed_children.filter_map(&method(:extract_argument_name))
         end
 
         def local_variable_used_argument?(child)
-          name = argument_name(child)
+          name = extract_argument_name(child)
 
           name && local_variable_used_in_scope?(name)
-        end
-
-        def argument_name(child)
-          return unless child.is_a?(::Parser::AST::Node)
-
-          case child.type
-          when :procarg0
-            argument_name(child.children.first)
-          when :arg, :optarg, :kwarg, :kwoptarg, :restarg, :kwrestarg, :blockarg
-            child.children.first
-          end
         end
 
         # Emit mlhs expansions
