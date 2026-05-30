@@ -1,0 +1,104 @@
+# frozen_string_literal: true
+
+module Mutant
+  class CLI
+    # Session subcommand helpers
+    module Session
+    private
+
+      RESULTS_DIR = '.mutant/results'
+
+      def print_session_list(arguments)
+        unless arguments.empty?
+          raise Error, "session list does not accept arguments: #{arguments.join(' ')}"
+        end
+
+        files = find_session_files
+
+        if files.empty?
+          puts 'No sessions found in .mutant/results/'
+          return
+        end
+
+        puts "Sessions (#{files.size}):"
+        files.each do |path|
+          data = load_session(path)
+          id = path.basename('.yml').to_s
+          status = session_success?(data) ? 'pass' : 'fail'
+          coverage = session_coverage(data) || '?'
+          puts "  #{id}  coverage: #{coverage}  status: #{status}"
+        end
+      end
+
+      def print_session_show(id, arguments)
+        unless arguments.empty?
+          raise Error, "session show does not accept arguments: #{arguments.join(' ')}"
+        end
+
+        path = resolve_session_path(id)
+        data = load_session(path)
+        puts "Session: #{id}"
+        puts "  Status:   #{session_success?(data) ? 'pass' : 'fail'}"
+        puts "  Coverage: #{session_coverage(data) || 'unknown'}"
+
+        subjects = session_subject_results(data)
+        puts "  Subjects: #{subjects.size}"
+        subjects.each do |subject|
+          puts "    #{session_expression(subject)}"
+        end
+      end
+
+      def session_results_dir
+        config.pathname.new(RESULTS_DIR)
+      end
+
+      def find_session_files
+        dir = session_results_dir
+        return EMPTY_ARRAY unless dir.directory?
+
+        dir.glob('*.yml').sort
+      end
+
+      def load_session(path)
+        require 'yaml'
+        YAML.safe_load(path.read, permitted_classes: [Symbol])
+      rescue Psych::Exception => exception
+        raise Error, "Could not load session '#{path.basename('.yml')}': #{exception.message}"
+      end
+
+      def resolve_session_path(id)
+        raise Error, 'session show requires a session ID argument' unless id
+        raise Error, "Invalid session ID '#{id}'" unless /\A[\w-]+\z/.match?(id)
+
+        path = session_results_dir.join("#{id}.yml")
+        unless path.file?
+          raise Error, "Session '#{id}' not found in .mutant/results/"
+        end
+
+        path
+      end
+
+      def session_success?(data)
+        session_value(data, :success)
+      end
+
+      def session_coverage(data)
+        session_value(data, :coverage)
+      end
+
+      def session_subject_results(data)
+        session_value(data, :subject_results) || EMPTY_ARRAY
+      end
+
+      def session_expression(data)
+        session_value(data, :expression)
+      end
+
+      def session_value(data, key)
+        return unless data
+
+        data[key.to_s] || data[key]
+      end
+    end
+  end
+end

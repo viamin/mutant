@@ -200,6 +200,7 @@ require 'mutant/config'
 require 'mutant/cli'
 require 'mutant/cli/help'
 require 'mutant/cli/options'
+require 'mutant/cli/session'
 require 'mutant/cli/subcommands'
 require 'mutant/color'
 require 'mutant/diff'
@@ -265,6 +266,6 @@ module Mutant
   end # Config
 
   class CLI
-    include CLI::Subcommands, CLI::Help, CLI::Options
+    include CLI::Subcommands, CLI::Help, CLI::Options, CLI::Session
   end
 end # Mutant

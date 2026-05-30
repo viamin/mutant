@@ -24,9 +24,9 @@ module Mutant
         sub = arguments.first
         case sub
         when 'list'
-          print_session_list
+          print_session_list(arguments[1..] || [])
         when 'show'
-          print_session_show(arguments[1])
+          print_session_show(arguments[1], arguments[2..] || [])
         else
           print_session_help
         end
@@ -57,67 +57,6 @@ module Mutant
         puts "  Fail fast:       #{config.fail_fast?}"
         puts "  Zombie:          #{config.zombie?}"
         puts "  Matcher:         #{config.matcher.inspect}"
-      end
-
-      RESULTS_DIR = '.mutant/results'
-
-      def session_results_dir
-        config.pathname.new(RESULTS_DIR)
-      end
-
-      def find_session_files
-        dir = session_results_dir
-        return EMPTY_ARRAY unless dir.directory?
-
-        dir.glob('*.yml').sort
-      end
-
-      def load_session(path)
-        require 'yaml'
-        YAML.safe_load(path.read, permitted_classes: [Symbol])
-      end
-
-      def print_session_list
-        files = find_session_files
-
-        if files.empty?
-          puts 'No sessions found in .mutant/results/'
-          return
-        end
-
-        puts "Sessions (#{files.size}):"
-        files.each do |path|
-          data = load_session(path)
-          id = path.basename('.yml').to_s
-          status = data&.dig('success') ? 'pass' : 'fail'
-          coverage = data&.dig('coverage') || '?'
-          puts "  #{id}  coverage: #{coverage}  status: #{status}"
-        end
-      end
-
-      def resolve_session_path(id)
-        raise Error, 'session show requires a session ID argument' unless id
-
-        path = session_results_dir.join("#{id}.yml")
-        unless path.file?
-          raise Error, "Session '#{id}' not found in .mutant/results/"
-        end
-
-        path
-      end
-
-      def print_session_show(id)
-        path = resolve_session_path(id)
-        data = load_session(path)
-        puts "Session: #{id}"
-        puts "  Status:   #{data&.dig('success') ? 'pass' : 'fail'}"
-        puts "  Coverage: #{data&.dig('coverage') || 'unknown'}"
-
-        subjects = data&.dig('subject_results') || []
-        puts "  Subjects: #{subjects.size}"
-        subjects.each do |subject|
-          puts "    #{subject['expression']}"
-        end
       end
     end
   end

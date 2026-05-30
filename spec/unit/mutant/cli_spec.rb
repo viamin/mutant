@@ -399,7 +399,7 @@ RSpec.describe Mutant::CLI do
         let(:arguments) { %w[session list] }
 
         before do
-          create_result_file('abc123', { 'success' => true, 'coverage' => '100%' })
+          create_result_file('abc123', { success: true, coverage: '100%' })
           create_result_file('def456', { 'success' => false, 'coverage' => '75%' })
           expect($stdout).to receive(:puts).with('Sessions (2):')
           expect($stdout).to receive(:puts).with('  abc123  coverage: 100%  status: pass')
@@ -417,12 +417,12 @@ RSpec.describe Mutant::CLI do
 
         before do
           create_result_file('abc123', {
-                               'success' => true,
-            'coverage' => '100%',
-            'subject_results' => [
-              { 'expression' => 'Foo#bar' },
-              { 'expression' => 'Foo#baz' }
-            ]
+                               success: true,
+                               coverage: '100%',
+                               subject_results: [
+                                 { expression: 'Foo#bar' },
+                                 { 'expression' => 'Foo#baz' }
+                               ]
                              })
           expect($stdout).to receive(:puts).with('Session: abc123')
           expect($stdout).to receive(:puts).with('  Status:   pass')
@@ -449,6 +449,17 @@ RSpec.describe Mutant::CLI do
         end
       end
 
+      context 'show with invalid id' do
+        let(:arguments) { %w[session show ../secrets] }
+
+        it 'raises invalid id error' do
+          expect { subject }.to raise_error(
+            Mutant::CLI::Error,
+            "Invalid session ID '../secrets'"
+          )
+        end
+      end
+
       context 'show without id' do
         let(:arguments) { %w[session show] }
 
@@ -456,6 +467,45 @@ RSpec.describe Mutant::CLI do
           expect { subject }.to raise_error(
             Mutant::CLI::Error,
             'session show requires a session ID argument'
+          )
+        end
+      end
+
+      context 'show with extra arguments' do
+        let(:arguments) { %w[session show abc123 extra] }
+
+        it 'raises error' do
+          expect { subject }.to raise_error(
+            Mutant::CLI::Error,
+            'session show does not accept arguments: extra'
+          )
+        end
+      end
+
+      context 'list with extra arguments' do
+        let(:arguments) { %w[session list extra] }
+
+        it 'raises error' do
+          expect { subject }.to raise_error(
+            Mutant::CLI::Error,
+            'session list does not accept arguments: extra'
+          )
+        end
+      end
+
+      context 'show with invalid yaml' do
+        let(:arguments) { %w[session show abc123] }
+
+        before do
+          results_dir = File.join(tmpdir, '.mutant', 'results')
+          FileUtils.mkdir_p(results_dir)
+          File.write(File.join(results_dir, 'abc123.yml'), ": foo\n")
+        end
+
+        it 'raises a session load error' do
+          expect { subject }.to raise_error(
+            Mutant::CLI::Error,
+            /Could not load session 'abc123':/
           )
         end
       end
