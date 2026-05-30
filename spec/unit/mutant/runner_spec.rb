@@ -12,14 +12,6 @@ RSpec.describe Mutant::Runner do
     let(:reporter)           { instance_double(Mutant::Reporter, delay: delay) }
     let(:thread)             { class_double(Thread)                            }
 
-    let(:env) do
-      instance_double(
-        Mutant::Env,
-        config:    config,
-        mutations: []
-      )
-    end
-
     let(:config) do
       instance_double(
         Mutant::Config,
@@ -47,68 +39,117 @@ RSpec.describe Mutant::Runner do
       )
     end
 
-    let(:parallel_config) do
-      Mutant::Parallel::Config.new(
-        condition_variable: condition_variable,
-        jobs:               1,
-        mutex:              mutex,
-        processor:          processor,
-        sink:               Mutant::Runner::Sink.new(env),
-        source:             Mutant::Parallel::Source::Array.new(env.mutations),
-        thread:             thread
-      )
-    end
-
     def apply
       described_class.call(env)
     end
 
-    let(:raw_expectations) do
-      [
-        {
-          receiver:  reporter,
-          selector:  :start,
-          arguments: [env]
-        },
-        {
-          receiver:  env,
-          selector:  :method,
-          arguments: [:kill],
-          reaction:  { return: processor }
-        },
-        {
-          receiver:  Mutant::Parallel,
-          selector:  :async,
-          arguments: [parallel_config],
-          reaction:  { return: driver }
-        },
-        {
-          receiver:  driver,
-          selector:  :wait_timeout,
-          arguments: [delay],
-          reaction:  { return: status_a }
-        },
-        {
-          receiver:  reporter,
-          selector:  :progress,
-          arguments: [status_a]
-        },
-        {
-          receiver:  driver,
-          selector:  :wait_timeout,
-          arguments: [delay],
-          reaction:  { return: status_b }
-        },
-        {
-          receiver:  reporter,
-          selector:  :report,
-          arguments: [env_result]
-        }
-      ]
+    context 'when env has mutations' do
+      let(:mutation) { instance_double(Mutant::Mutation) }
+
+      let(:env) do
+        instance_double(
+          Mutant::Env,
+          config:    config,
+          mutations: [mutation]
+        )
+      end
+
+      let(:parallel_config) do
+        Mutant::Parallel::Config.new(
+          condition_variable: condition_variable,
+          jobs:               1,
+          mutex:              mutex,
+          processor:          processor,
+          sink:               Mutant::Runner::Sink.new(env),
+          source:             Mutant::Parallel::Source::Array.new(env.mutations),
+          thread:             thread
+        )
+      end
+
+      let(:raw_expectations) do
+        [
+          {
+            receiver:  reporter,
+            selector:  :start,
+            arguments: [env]
+          },
+          {
+            receiver:  env,
+            selector:  :method,
+            arguments: [:kill],
+            reaction:  { return: processor }
+          },
+          {
+            receiver:  Mutant::Parallel,
+            selector:  :async,
+            arguments: [parallel_config],
+            reaction:  { return: driver }
+          },
+          {
+            receiver:  driver,
+            selector:  :wait_timeout,
+            arguments: [delay],
+            reaction:  { return: status_a }
+          },
+          {
+            receiver:  reporter,
+            selector:  :progress,
+            arguments: [status_a]
+          },
+          {
+            receiver:  driver,
+            selector:  :wait_timeout,
+            arguments: [delay],
+            reaction:  { return: status_b }
+          },
+          {
+            receiver:  reporter,
+            selector:  :report,
+            arguments: [env_result]
+          }
+        ]
+      end
+
+      it 'returns env result' do
+        verify_events { expect(apply).to eql(env_result) }
+      end
     end
 
-    it 'returns env result' do
-      verify_events { expect(apply).to eql(env_result) }
+    context 'when env has no mutations' do
+      let(:env) do
+        instance_double(
+          Mutant::Env,
+          config:    config,
+          mutations: []
+        )
+      end
+
+      let(:empty_result) do
+        Mutant::Result::Env.new(
+          env:             env,
+          runtime:         0.0,
+          subject_results: []
+        )
+      end
+
+      let(:raw_expectations) do
+        [
+          {
+            receiver:  reporter,
+            selector:  :start,
+            arguments: [env]
+          },
+          {
+            receiver:  reporter,
+            selector:  :report,
+            arguments: [empty_result]
+          }
+        ]
+      end
+
+      it 'returns empty result' do
+        verify_events { expect(apply).to eql(empty_result) }
+      end
     end
   end
 end

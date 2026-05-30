@@ -56,6 +56,11 @@ module Mutant
       #
       def env
         subjects = matched_subjects
+
+        if subjects.empty? && config.matcher.subject_filters.any?
+          warn('No subjects matched the configured diff filter. No mutations to test.')
+        end
+
         Env.new(
           config:           config,
           integration:      integration,

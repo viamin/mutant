@@ -27,8 +27,25 @@ module Mutant
     #
     # @return [undefined]
     def run_mutation_analysis
+      if env.mutations.empty?
+        @result = empty_result
+        reporter.report(result)
+        return
+      end
+
       @result = run_driver(Parallel.async(mutation_test_config))
       reporter.report(result)
+    end
+
+    # Build empty result for no-op runs
+    #
+    # @return [Result::Env]
+    def empty_result
+      Result::Env.new(
+        env:             env,
+        runtime:         0.0,
+        subject_results: []
+      )
     end
 
     # Run driver
