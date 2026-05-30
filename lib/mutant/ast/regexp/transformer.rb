@@ -141,13 +141,17 @@ module Mutant
 
           def traverse(expression)
             unless expression.terminal?
-              expression.expressions.each do |subexpression|
+              expression.each do |subexpression|
                 traverse(subexpression)
               end
             end
 
-            expression.quantifier&.freeze
+            freeze_quantifier(expression)
             expression.freeze
+          end
+
+          def freeze_quantifier(expression)
+            expression.quantifier&.freeze
           end
         end # ASTToExpression
 

@@ -36,6 +36,13 @@ module RegexpSpec
         "Expected #{root} to be deep frozen"
       )
 
+      if expression.quantified?
+        expect(expression.quantifier.frozen?).to(
+          be(true),
+          "Expected quantifier on #{root} to be frozen"
+        )
+      end
+
       return if expression.terminal?
 
       expression.expressions.each do |subexpression|
@@ -435,7 +442,7 @@ RegexpSpec.expect_mapping(/\p{L}/, :regexp_letter_property) do
     s(:regexp_letter_property))
 end
 
-RegexpSpec.expect_mapping(/\-/, :regexp_literal_escape) do
+RegexpSpec.expect_mapping(/-/, :regexp_literal_escape) do
   s(:regexp_root_expression,
     s(:regexp_literal_escape, '\\-'))
 end
@@ -450,12 +457,12 @@ RegexpSpec.expect_mapping(/\#/, :regexp_literal_escape) do
     s(:regexp_literal_escape, '\\#'))
 end
 
-RegexpSpec.expect_mapping(/\:/, :regexp_literal_escape) do
+RegexpSpec.expect_mapping(/:/, :regexp_literal_escape) do
   s(:regexp_root_expression,
     s(:regexp_literal_escape, '\\:'))
 end
 
-RegexpSpec.expect_mapping(/\</, :regexp_literal_escape) do
+RegexpSpec.expect_mapping(/</, :regexp_literal_escape) do
   s(:regexp_root_expression,
     s(:regexp_literal_escape, '\\<'))
 end
@@ -571,7 +578,8 @@ RegexpSpec.expect_mapping(/a(?i)b/, :regexp_options_switch_group) do
     s(:regexp_literal_literal, 'b'))
 end
 
-RegexpSpec.expect_mapping(/(?x: #{"\n"} )/, :regexp_whitespace_free_space) do
+RegexpSpec.expect_mapping(/(?x:
+ )/, :regexp_whitespace_free_space) do
   s(:regexp_root_expression,
     s(:regexp_options_group,
       {
