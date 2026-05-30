@@ -4,6 +4,8 @@ module Mutant
   class CLI
     # Option parsing methods
     module Options
+    private
+
       def add_environment_options(opts)
         opts.separator('Environment:')
         opts.on('--zombie', 'Run mutant zombified') do

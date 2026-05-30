@@ -38,6 +38,8 @@ module Mutant
         since they influence the resolved configuration.
       MESSAGE
 
+    private
+
       def print_main_help
         puts MAIN_HELP
       end
