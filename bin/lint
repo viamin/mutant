@@ -1,0 +1,64 @@
+#!/bin/sh
+set -eu
+
+if [ "${1:-}" = "--staged" ]; then
+  files=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '\.(rb|rake|gemspec)$' || true)
+
+  if [ -z "$files" ]; then
+    exit 0
+  fi
+
+  tmp_output=$(mktemp)
+  trap 'rm -f "$tmp_output"' EXIT INT TERM
+
+  # shellcheck disable=SC2086
+  if ! bundle exec rubocop --cache false --format json $files >"$tmp_output"; then
+    ruby - "$tmp_output" <<'RUBY'
+require 'json'
+
+output = JSON::Ext::Parser.new(File.read(ARGV.fetch(0))).parse
+relevant = []
+
+output.fetch('files').each do |file|
+  path = file.fetch('path')
+  diff = `git diff --cached --unified=0 -- "#{path}"`
+  lines = []
+
+  diff.each_line do |line|
+    next unless line.start_with?('@@')
+
+    match = line.match(/\+(\d+)(?:,(\d+))?/)
+    next unless match
+
+    start = Integer(match[1])
+    length = Integer(match[2] || '1')
+    lines.concat((start...(start + length)).to_a)
+  end
+
+  file.fetch('offenses').each do |offense|
+    start_line = offense.fetch('location').fetch('start_line')
+    relevant << [path, offense] if lines.include?(start_line)
+  end
+end
+
+if relevant.empty?
+  exit 0
+end
+
+relevant.each do |path, offense|
+  location = offense.fetch('location')
+  puts [
+    path,
+    location.fetch('start_line'),
+    location.fetch('start_column'),
+    offense.fetch('severity').upcase,
+    offense.fetch('message')
+  ].join(':')
+end
+
+exit 1
+RUBY
+  fi
+else
+  bundle exec rake metrics:rubocop
+fi

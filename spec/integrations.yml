@@ -1,0 +1,86 @@
+---
+- name: rubyspec
+  namespace: Rubyspec
+  repo_uri: 'https://github.com/ruby/rubyspec.git'
+  repo_ref: 'd6a79c0d7902e5252fbe3c3daf6a16636d1d5be2'
+  integration: mspec
+  ruby_glob_pattern: '**/*_spec.rb'
+  mutation_coverage: false
+  mutation_generation: true
+  expected_errors:
+    "#<Parser::SyntaxError: literal contains escape sequences incompatible with UTF-8>":
+    - core/file/stat_spec.rb
+    - core/io/set_encoding_by_bom_spec.rb
+    - core/kernel/backtick_spec.rb
+    - core/string/chomp_spec.rb
+    - core/string/delete_prefix_spec.rb
+    - core/string/delete_suffix_spec.rb
+    - core/string/encode_spec.rb
+    - core/string/inspect_spec.rb
+    - core/string/lstrip_spec.rb
+    - core/string/reverse_spec.rb
+    - core/string/rstrip_spec.rb
+    - core/string/scrub_spec.rb
+    - optional/capi/encoding_spec.rb
+    - core/string/split_spec.rb
+    - core/string/start_with_spec.rb
+    - core/string/valid_encoding_spec.rb
+    - library/base64/decode64_spec.rb
+    - library/cgi/escapeHTML_spec.rb
+    - library/cgi/unescapeHTML_spec.rb
+    "#<SystemStackError: stack level too deep>":
+    - language/regexp/back-references_spec.rb
+    - language/regexp/subexpression_call_spec.rb
+  exclude:
+    - core/string/casecmp_spec.rb
+    - core/symbol/casecmp_spec.rb
+    - language/source_encoding_spec.rb
+    - security/cve_2010_1330_spec.rb
+- name: regexp_parser
+  namespace: Regexp
+  repo_uri: 'https://github.com/ammar/regexp_parser.git'
+  repo_ref: 'v1.2.0'
+  integration: rspec
+  ruby_glob_pattern: '**/*.rb'
+  mutation_coverage: false
+  mutation_generation: true
+  expected_errors:
+    "#<Parser::SyntaxError: literal contains escape sequences incompatible with UTF-8>":
+    - test/parser/test_escapes.rb
+    - test/scanner/test_escapes.rb
+    "#<SystemStackError: stack level too deep>":
+    - test/expression/test_conditionals.rb
+    - test/lexer/test_conditionals.rb
+    - test/parser/test_conditionals.rb
+    - test/scanner/test_conditionals.rb
+  exclude: []
+- name: auom
+  namespace: AUOM
+  repo_uri: 'https://github.com/mbj/auom.git'
+  repo_ref: 'origin/master'
+  ruby_glob_pattern: '**/*.rb'
+  integration: rspec
+  mutation_coverage: true
+  mutation_generation: true
+  expected_errors: {}
+  exclude: []
+- name: auom
+  namespace: AUOM
+  repo_uri: 'https://github.com/mbj/auom.git'
+  repo_ref: 'origin/master'
+  ruby_glob_pattern: '**/*.rb'
+  integration: minitest
+  mutation_coverage: true
+  mutation_generation: true
+  expected_errors: {}
+  exclude: []
+- name: axiom
+  namespace: Axiom
+  repo_uri: 'https://github.com/dkubb/axiom.git'
+  repo_ref: 'origin/master'
+  ruby_glob_pattern: '**/*.rb'
+  integration: rspec
+  mutation_coverage: false
+  mutation_generation: true
+  expected_errors: {}
+  exclude: []
