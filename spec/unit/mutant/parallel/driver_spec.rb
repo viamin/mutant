@@ -142,6 +142,14 @@ RSpec.describe Mutant::Parallel::Driver do
           reaction: { return: nil }
         },
         {
+          receiver: thread_a,
+          selector: :join
+        },
+        {
+          receiver: thread_b,
+          selector: :join
+        },
+        {
           receiver: var_active_jobs,
           selector: :with,
           reaction: { yields: [active_jobs] }
@@ -150,14 +158,6 @@ RSpec.describe Mutant::Parallel::Driver do
           receiver: var_sink,
           selector: :with,
           reaction: { yields: [sink] }
-        },
-        {
-          receiver: thread_a,
-          selector: :join
-        },
-        {
-          receiver: thread_b,
-          selector: :join
         }
       ]
     end
@@ -167,7 +167,7 @@ RSpec.describe Mutant::Parallel::Driver do
       allow(thread_b).to receive_messages(alive?: false)
     end
 
-    it 'cancels remaining work and waits for workers to stop' do
+    it 'drains source, waits for workers to finish, then returns final status' do
       verify_events do
         expect(apply).to eql(
           Mutant::Parallel::Status.new(

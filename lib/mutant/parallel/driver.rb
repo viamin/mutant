@@ -32,7 +32,9 @@ module Mutant
       def stop
         var_source.modify { Source::Array.new(EMPTY_ARRAY) }
 
-        finalize(status)
+        threads.each(&:join)
+
+        status
       end
 
     private

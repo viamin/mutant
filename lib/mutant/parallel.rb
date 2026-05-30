@@ -9,6 +9,15 @@ module Mutant
     # @param [Config] config
     #
     # @return [Driver]
+    #
+    # Uses Ruby threads for scheduling parallelism. Each worker thread calls
+    # the processor (Env#kill) which uses Isolation::Fork to execute each
+    # mutation in a separate subprocess. This avoids the need for a pool of
+    # long-lived worker processes that would require their own integration
+    # boot lifecycle and process supervision, while still achieving process
+    # isolation per mutation. The shared variables (var_source, var_sink,
+    # var_active_jobs) are all thread-safe via mutex synchronization in
+    # Variable::IVar / Variable::MVar.
     def self.async(config)
       shared = {
         var_active_jobs: shared(Variable::IVar, config, value: Set.new),
