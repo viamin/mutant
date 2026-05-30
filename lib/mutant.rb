@@ -263,7 +263,6 @@ module Mutant
       pathname:           Pathname,
       reporter:           Reporter::CLI.build($stdout),
       requires:           EMPTY_ARRAY,
-      results_dir:        nil,
       thread:             Thread,
       zombie:             false
     )

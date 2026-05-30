@@ -63,7 +63,6 @@ RSpec.describe Mutant::Config::Loader do
               - "MyApp::Secrets#fetch"
             ignore:
               - "app/admin/**/*.rb"
-          results_dir: ".mutant/results"
         YAML
       end
 
@@ -95,7 +94,6 @@ RSpec.describe Mutant::Config::Loader do
             )
           ]
         )
-        expect(subject.results_dir).to eql('.mutant/results')
       end
     end
 

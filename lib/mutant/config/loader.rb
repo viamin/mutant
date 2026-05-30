@@ -16,7 +16,6 @@ module Mutant
         jobs
         matcher
         requires
-        results_dir
       ].freeze
       MATCHER_KEYS   = %w[ignore subjects].freeze
       COVERAGE_KEYS  = %w[process_abort test_result timeout].freeze
@@ -104,10 +103,6 @@ module Mutant
 
       def attribute_requires(node)
         reader.string_list(node, ['requires'])
-      end
-
-      def attribute_results_dir(node)
-        reader.string(node, ['results_dir'])
       end
 
       def matcher_ignore(matcher, node)

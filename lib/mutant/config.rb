@@ -24,7 +24,6 @@ module Mutant
       :pathname,
       :reporter,
       :requires,
-      :results_dir,
       :thread,
       :zombie
     )
