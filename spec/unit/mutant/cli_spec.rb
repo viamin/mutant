@@ -3,14 +3,14 @@
 RSpec.describe Mutant::CLI do
   let(:object) { described_class }
 
-  describe '::sanitize_arguments' do
-    subject(:sanitize_arguments) { Mutant.sanitize_arguments(arguments) }
+  describe Mutant::CLIArgumentSanitizer do
+    subject(:sanitize_arguments) { described_class.call($stderr, arguments) }
 
     context 'when usage is passed as separate option and legacy value' do
       let(:arguments) { %w[--usage opensource TestApp*] }
 
       it 'removes both arguments and warns' do
-        expect($stderr).to receive(:puts).with(Mutant::USAGE_WARNING)
+        expect($stderr).to receive(:puts).with(described_class::WARNING)
 
         expect(sanitize_arguments).to eql(%w[TestApp*])
       end
@@ -20,7 +20,7 @@ RSpec.describe Mutant::CLI do
       let(:arguments) { %w[--usage=commercial TestApp*] }
 
       it 'removes the option and warns' do
-        expect($stderr).to receive(:puts).with(Mutant::USAGE_WARNING)
+        expect($stderr).to receive(:puts).with(described_class::WARNING)
 
         expect(sanitize_arguments).to eql(%w[TestApp*])
       end
@@ -30,7 +30,7 @@ RSpec.describe Mutant::CLI do
       let(:arguments) { %w[--usage proprietary TestApp*] }
 
       it 'preserves the value as a match expression and warns' do
-        expect($stderr).to receive(:puts).with(Mutant::USAGE_WARNING)
+        expect($stderr).to receive(:puts).with(described_class::WARNING)
 
         expect(sanitize_arguments).to eql(%w[proprietary TestApp*])
       end
@@ -212,7 +212,7 @@ RSpec.describe Mutant::CLI do
 
     context 'with usage flag' do
       before do
-        expect($stderr).to receive(:puts).with(Mutant::USAGE_WARNING)
+        expect($stderr).to receive(:puts).with(Mutant::CLIArgumentSanitizer::WARNING)
       end
 
       context 'when passed as separate option and value' do

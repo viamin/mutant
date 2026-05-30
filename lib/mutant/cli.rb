@@ -1,31 +1,43 @@
 # frozen_string_literal: true
 
 module Mutant
-  LEGACY_USAGE_VALUES = %w[opensource commercial].freeze
-  USAGE_WARNING = '--usage is a no-op in viamin/mutant (MIT-licensed)'
+  class CLIArgumentSanitizer
+    include Adamantium::Flat, Procto.call(:call)
 
-  def self.usage_argument?(argument)
-    argument == '--usage' || argument&.start_with?('--usage=')
-  end
+    LEGACY_USAGE_VALUES = %w[opensource commercial].freeze
+    WARNING = '--usage is a no-op in viamin/mutant (MIT-licensed)'
 
-  def self.sanitize_arguments(arguments)
-    sanitized_arguments = []
-    remaining           = arguments.dup
-    warned              = false
-
-    until remaining.empty?
-      argument = remaining.shift
-
-      if usage_argument?(argument)
-        remaining.shift if argument == '--usage' && LEGACY_USAGE_VALUES.include?(remaining.first)
-        warned = true
-      else
-        sanitized_arguments << argument
-      end
+    def initialize(stderr, arguments)
+      @stderr    = stderr
+      @arguments = arguments.dup
     end
 
-    $stderr.puts(USAGE_WARNING) if warned
-    sanitized_arguments
+    def call
+      warned = false
+
+      while (index = usage_argument_index)
+        warned = true
+        delete_usage_argument(index)
+      end
+
+      stderr.puts(WARNING) if warned
+
+      arguments
+    end
+
+  private
+
+    attr_reader :arguments, :stderr
+
+    def delete_usage_argument(index)
+      argument = arguments.delete_at(index)
+
+      arguments.delete_at(index) if argument == '--usage' && LEGACY_USAGE_VALUES.include?(arguments[index])
+    end
+
+    def usage_argument_index
+      arguments.index { |argument| argument == '--usage' || argument.start_with?('--usage=') }
+    end
   end
 
   # Commandline parser / runner
@@ -75,7 +87,7 @@ module Mutant
     #
     # @return [undefined]
     def parse(arguments)
-      parse_match_expressions(option_parser.parse!(Mutant.sanitize_arguments(arguments)))
+      parse_match_expressions(option_parser.parse!(CLIArgumentSanitizer.call($stderr, arguments)))
     rescue OptionParser::ParseError => error
       raise(Error, error)
     end
