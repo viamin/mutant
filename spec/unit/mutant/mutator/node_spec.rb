@@ -150,6 +150,82 @@ RSpec.describe Mutant::Mutator::Node do
       end
     end
   end
+
+  describe 'scope detection' do
+    let(:klass) do
+      Class.new(described_class) do
+        def dispatch; end
+      end
+    end
+
+    let(:mutator) { klass.send(:new, s(:self), nil) }
+
+    describe '#hard_scope_boundary?' do
+      it 'returns true for instance method definitions' do
+        expect(mutator.send(:hard_scope_boundary?, parse('def test; value; end'))).to be(true)
+      end
+
+      it 'returns true for singleton method definitions' do
+        expect(mutator.send(:hard_scope_boundary?, parse('def self.test; value; end'))).to be(true)
+      end
+
+      it 'returns false for non-method nodes' do
+        expect(mutator.send(:hard_scope_boundary?, parse('foo { value }'))).to be(false)
+      end
+    end
+
+    describe '#local_variable_used_in_node?' do
+      it 'returns false for non-node candidates' do
+        expect(mutator.send(:local_variable_used_in_node?, :value, :value)).to be(false)
+      end
+
+      it 'returns true for matching local-variable reads' do
+        expect(mutator.send(:local_variable_used_in_node?, s(:lvar, :value), :value)).to be(true)
+      end
+
+      it 'accepts subclasses of Parser::AST::Node' do
+        subclass = Class.new(Parser::AST::Node)
+
+        expect(mutator.send(:local_variable_used_in_node?, subclass.new(:lvar, [:value]), :value)).to be(true)
+      end
+
+      it 'returns false for non-matching local-variable reads' do
+        expect(mutator.send(:local_variable_used_in_node?, s(:lvar, :other), :value)).to be(false)
+      end
+
+      it 'returns false for non-local-variable nodes with matching children' do
+        expect(mutator.send(:local_variable_used_in_node?, s(:sym, :value), :value)).to be(false)
+      end
+
+      it 'searches recursively through child nodes' do
+        candidate = s(:array, s(:send, nil, :foo), s(:lvar, :value))
+
+        expect(mutator.send(:local_variable_used_in_node?, candidate, :value)).to be(true)
+      end
+
+      it 'returns false when recursive children do not use the name' do
+        candidate = s(:array, s(:send, nil, :foo))
+
+        expect(mutator.send(:local_variable_used_in_node?, candidate, :value)).to be(false)
+      end
+
+      it 'stops at nested instance method boundaries' do
+        expect(mutator.send(:local_variable_used_in_node?, parse('def test; value; end'), :value)).to be(false)
+      end
+
+      it 'stops at nested singleton method boundaries' do
+        expect(mutator.send(:local_variable_used_in_node?, parse('def self.test; value; end'), :value)).to be(false)
+      end
+
+      it 'returns false when a block argument shadows the name' do
+        expect(mutator.send(:local_variable_used_in_node?, parse('foo { |value| value }'), :value)).to be(false)
+      end
+
+      it 'returns false when a numblock parameter shadows the name' do
+        expect(mutator.send(:local_variable_used_in_node?, parse('foo { _1 }'), :_1)).to be(false)
+      end
+    end
+  end
 end
 
 RSpec.describe Mutant::Mutator::Node::Dstr do

@@ -16,7 +16,7 @@ module Mutant
         # @return [undefined]
         def initialize(*)
           super
-          @recursion_pattern = Regexp.union(
+          @recursion_pattern = ::Regexp.union(
             /\A#{scope_name}\z/,
             /\A#{scope_name}::/,
             /\A#{scope_name}[.#]/

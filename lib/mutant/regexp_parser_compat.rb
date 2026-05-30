@@ -62,6 +62,6 @@ class Regexp
       end
     end
 
-    Quantifier.prepend(MutantQuantifierCompat)
+    ::Regexp::Expression::Quantifier.prepend(MutantQuantifierCompat)
   end
 end

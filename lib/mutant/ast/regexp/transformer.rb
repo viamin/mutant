@@ -118,15 +118,13 @@ module Mutant
           #
           # @return [Regexp::Expression]
           def call
-            deep_freeze_expression(expression)
+            expression.tap { |result| traverse(result) }
           end
 
         private
 
           def expression
-            transform.tap do |result|
-              materialize_quantifiers(result)
-            end
+            transform
           end
 
           # Transformation of ast into expression
@@ -141,29 +139,14 @@ module Mutant
             node.children.map(&Regexp.public_method(:to_expression_unfrozen))
           end
 
-          def materialize_quantifiers(expression)
-            if expression.quantified?
-              quantifier = expression.quantifier
-              quantifier.min
-              quantifier.max
-              quantifier.mode
-            end
-
-            return if expression.terminal?
-
-            expression.expressions.each do |subexpression|
-              materialize_quantifiers(subexpression)
-            end
-          end
-
-          def deep_freeze_expression(expression)
+          def traverse(expression)
             unless expression.terminal?
               expression.expressions.each do |subexpression|
-                deep_freeze_expression(subexpression)
+                traverse(subexpression)
               end
             end
 
-            expression.quantifier&.freeze if expression.quantified?
+            expression.quantifier&.freeze
             expression.freeze
           end
         end # ASTToExpression
