@@ -16,7 +16,13 @@ module Mutant
         # @return [undefined]
         def initialize(*)
           super
-          @recursion_pattern = build_recursion_pattern(scope_name)
+          root_pattern = '\\A' + scope_name.to_s
+
+          @recursion_pattern = ::Regexp.union(
+            ::Regexp.new(root_pattern + '\\z'),
+            ::Regexp.new(root_pattern + '::'),
+            ::Regexp.new(root_pattern + '[.#]')
+          )
         end
 
         # Syntax for expression
@@ -47,18 +53,6 @@ module Mutant
           else
             0
           end
-        end
-
-      private
-
-        def build_recursion_pattern(name)
-          root_pattern = '\\A' + name.to_s
-
-          ::Regexp.union(
-            ::Regexp.new(root_pattern + '\\z'),
-            ::Regexp.new(root_pattern + '::'),
-            ::Regexp.new(root_pattern + '[.#]')
-          )
         end
 
       end # Recursive

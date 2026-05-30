@@ -442,9 +442,9 @@ RegexpSpec.expect_mapping(/\p{L}/, :regexp_letter_property) do
     s(:regexp_letter_property))
 end
 
-RegexpSpec.expect_mapping(/-/, :regexp_literal_escape) do
+RegexpSpec.expect_mapping(/-/, :regexp_literal_literal) do
   s(:regexp_root_expression,
-    s(:regexp_literal_escape, '\\-'))
+    s(:regexp_literal_literal, '-'))
 end
 
 RegexpSpec.expect_mapping(/\ /, :regexp_literal_escape) do
@@ -457,14 +457,14 @@ RegexpSpec.expect_mapping(/\#/, :regexp_literal_escape) do
     s(:regexp_literal_escape, '\\#'))
 end
 
-RegexpSpec.expect_mapping(/:/, :regexp_literal_escape) do
+RegexpSpec.expect_mapping(/:/, :regexp_literal_literal) do
   s(:regexp_root_expression,
-    s(:regexp_literal_escape, '\\:'))
+    s(:regexp_literal_literal, ':'))
 end
 
-RegexpSpec.expect_mapping(/</, :regexp_literal_escape) do
+RegexpSpec.expect_mapping(/</, :regexp_literal_literal) do
   s(:regexp_root_expression,
-    s(:regexp_literal_escape, '\\<'))
+    s(:regexp_literal_literal, '<'))
 end
 
 RegexpSpec.expect_mapping(/foo/, :regexp_literal_literal) do
@@ -585,7 +585,7 @@ RegexpSpec.expect_mapping(/(?x:
       {
         x: true
       },
-      s(:regexp_whitespace_free_space, " \n ")))
+      s(:regexp_whitespace_free_space, "\n ")))
 end
 
 RegexpSpec.expect_mapping(/(?:a)/, :regexp_passive_group) do

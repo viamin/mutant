@@ -146,12 +146,8 @@ module Mutant
               end
             end
 
-            freeze_quantifier(expression)
-            expression.freeze
-          end
-
-          def freeze_quantifier(expression)
             expression.quantifier&.freeze
+            expression.freeze
           end
         end # ASTToExpression
 
