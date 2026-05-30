@@ -34,6 +34,10 @@ module Mutant
       end
 
       def handle_help(arguments)
+        unless arguments.length <= 1
+          raise Error, "help does not accept arguments: #{arguments[1..].join(' ')}"
+        end
+
         sub = arguments.first
         case sub
         when 'run'

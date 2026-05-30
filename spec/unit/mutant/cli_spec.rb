@@ -350,6 +350,17 @@ RSpec.describe Mutant::CLI do
           subject
         end
       end
+
+      context 'with extra arguments' do
+        let(:arguments) { %w[help run extra] }
+
+        it 'raises error' do
+          expect { subject }.to raise_error(
+            Mutant::CLI::Error,
+            'help does not accept arguments: extra'
+          )
+        end
+      end
     end
 
     context 'environment subcommand' do
@@ -506,6 +517,23 @@ RSpec.describe Mutant::CLI do
           expect { subject }.to raise_error(
             Mutant::CLI::Error,
             /Could not load session 'abc123':/
+          )
+        end
+      end
+
+      context 'show with non-hash yaml' do
+        let(:arguments) { %w[session show abc123] }
+
+        before do
+          results_dir = File.join(tmpdir, '.mutant', 'results')
+          FileUtils.mkdir_p(results_dir)
+          File.write(File.join(results_dir, 'abc123.yml'), YAML.dump(['not-a-hash']))
+        end
+
+        it 'raises a session load error' do
+          expect { subject }.to raise_error(
+            Mutant::CLI::Error,
+            "Could not load session 'abc123': expected a hash payload"
           )
         end
       end

@@ -61,7 +61,10 @@ module Mutant
 
       def load_session(path)
         require 'yaml'
-        YAML.safe_load(path.read, permitted_classes: [Symbol])
+        data = YAML.safe_load(path.read, permitted_classes: [Symbol])
+        return data if data.is_a?(Hash)
+
+        raise Error, "Could not load session '#{path.basename('.yml')}': expected a hash payload"
       rescue Psych::Exception => exception
         raise Error, "Could not load session '#{path.basename('.yml')}': #{exception.message}"
       end
@@ -91,13 +94,18 @@ module Mutant
       end
 
       def session_expression(data)
-        session_value(data, :expression)
+        session_value(data, :expression) || '<unknown>'
       end
 
       def session_value(data, key)
         return unless data
 
-        data[key.to_s] || data[key]
+        string_key = key.to_s
+
+        return data[string_key] if data.key?(string_key)
+        return data[key] if data.key?(key)
+
+        nil
       end
     end
   end
