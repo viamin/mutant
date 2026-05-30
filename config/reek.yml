@@ -32,6 +32,9 @@ detectors:
   FeatureEnvy:
     enabled: false
     exclude: []
+  IrresponsibleModule:
+    enabled: false
+    exclude: []
   LongParameterList:
     enabled: true
     exclude:
