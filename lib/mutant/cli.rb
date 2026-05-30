@@ -41,6 +41,9 @@ module Mutant
 
       if subcommand && respond_to?("handle_#{subcommand}", true)
         __send__("handle_#{subcommand}", arguments[1..] || [])
+      elsif arguments.one? && %w[--help -h].include?(subcommand)
+        print_main_help
+        config.kernel.exit
       else
         parse(arguments)
       end
@@ -53,12 +56,16 @@ module Mutant
 
   private
 
+    GLOBAL_FLAGS = %w[--help -h --version].freeze
+
     def normalize_arguments(arguments)
       return arguments if arguments.empty?
 
       first = arguments.first
 
       if SUBCOMMANDS.include?(first)
+        arguments
+      elsif arguments.one? && GLOBAL_FLAGS.include?(first)
         arguments
       else
         warn_deprecation

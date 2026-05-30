@@ -270,6 +270,34 @@ RSpec.describe Mutant::CLI do
       end
     end
 
+    context 'bare --help without subcommand' do
+      let(:arguments) { %w[--help] }
+
+      before do
+        expect($stdout).to receive(:puts).with(Mutant::CLI::Help::MAIN_HELP)
+        expect(Kernel).to receive(:exit)
+      end
+
+      it 'prints main help without deprecation warning' do
+        expect($stderr).not_to receive(:puts)
+        subject
+      end
+    end
+
+    context 'bare --version without subcommand' do
+      let(:arguments) { %w[--version] }
+
+      before do
+        expect(Kernel).to receive(:exit)
+        expect($stdout).to receive(:puts).with("mutant-#{Mutant::VERSION}")
+      end
+
+      it 'prints version without deprecation warning' do
+        expect($stderr).not_to receive(:puts)
+        subject
+      end
+    end
+
     context 'help subcommand' do
       context 'with no argument' do
         let(:arguments) { %w[help] }
@@ -338,29 +366,86 @@ RSpec.describe Mutant::CLI do
     end
 
     context 'session subcommand' do
-      context 'list' do
+      let(:tmpdir) { Dir.mktmpdir }
+
+      around do |example|
+        Dir.chdir(tmpdir) { example.run }
+      end
+
+      after do
+        FileUtils.rm_rf(tmpdir)
+      end
+
+      def create_result_file(name, data)
+        results_dir = File.join(tmpdir, '.mutant', 'results')
+        FileUtils.mkdir_p(results_dir)
+        File.write(File.join(results_dir, "#{name}.yml"), YAML.dump(data))
+      end
+
+      context 'list with no sessions' do
         let(:arguments) { %w[session list] }
 
         before do
-          expect($stdout).to receive(:puts)
+          expect($stdout).to receive(:puts).with('No sessions found in .mutant/results/')
           expect(Kernel).to receive(:exit)
         end
 
-        it 'runs session list' do
+        it 'reports no sessions' do
           subject
         end
       end
 
-      context 'show with id' do
-        let(:arguments) { %w[session show abc123] }
+      context 'list with sessions' do
+        let(:arguments) { %w[session list] }
 
         before do
-          expect($stdout).to receive(:puts)
+          create_result_file('abc123', { 'success' => true, 'coverage' => '100%' })
+          create_result_file('def456', { 'success' => false, 'coverage' => '75%' })
+          expect($stdout).to receive(:puts).with('Sessions (2):')
+          expect($stdout).to receive(:puts).with('  abc123  coverage: 100%  status: pass')
+          expect($stdout).to receive(:puts).with('  def456  coverage: 75%  status: fail')
           expect(Kernel).to receive(:exit)
         end
 
-        it 'runs session show' do
+        it 'lists sessions from .mutant/results' do
           subject
+        end
+      end
+
+      context 'show with existing id' do
+        let(:arguments) { %w[session show abc123] }
+
+        before do
+          create_result_file('abc123', {
+                               'success' => true,
+            'coverage' => '100%',
+            'subject_results' => [
+              { 'expression' => 'Foo#bar' },
+              { 'expression' => 'Foo#baz' }
+            ]
+                             })
+          expect($stdout).to receive(:puts).with('Session: abc123')
+          expect($stdout).to receive(:puts).with('  Status:   pass')
+          expect($stdout).to receive(:puts).with('  Coverage: 100%')
+          expect($stdout).to receive(:puts).with('  Subjects: 2')
+          expect($stdout).to receive(:puts).with('    Foo#bar')
+          expect($stdout).to receive(:puts).with('    Foo#baz')
+          expect(Kernel).to receive(:exit)
+        end
+
+        it 'shows session details from .mutant/results' do
+          subject
+        end
+      end
+
+      context 'show with missing id' do
+        let(:arguments) { %w[session show missing] }
+
+        it 'raises not found error' do
+          expect { subject }.to raise_error(
+            Mutant::CLI::Error,
+            "Session 'missing' not found in .mutant/results/"
+          )
         end
       end
 

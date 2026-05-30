@@ -55,24 +55,65 @@ module Mutant
         puts "  Matcher:         #{config.matcher.inspect}"
       end
 
+      RESULTS_DIR = '.mutant/results'
+
+      def session_results_dir
+        config.pathname.new(RESULTS_DIR)
+      end
+
+      def find_session_files
+        dir = session_results_dir
+        return EMPTY_ARRAY unless dir.directory?
+
+        dir.glob('*.yml').sort
+      end
+
+      def load_session(path)
+        require 'yaml'
+        YAML.safe_load(path.read, permitted_classes: [Symbol])
+      end
+
       def print_session_list
-        puts 'mutant session list - no sessions found'
+        files = find_session_files
+
+        if files.empty?
+          puts 'No sessions found in .mutant/results/'
+          return
+        end
+
+        puts "Sessions (#{files.size}):"
+        files.each do |path|
+          data = load_session(path)
+          id = path.basename('.yml').to_s
+          status = data&.dig('success') ? 'pass' : 'fail'
+          coverage = data&.dig('coverage') || '?'
+          puts "  #{id}  coverage: #{coverage}  status: #{status}"
+        end
+      end
+
+      def resolve_session_path(id)
+        raise Error, 'session show requires a session ID argument' unless id
+
+        path = session_results_dir.join("#{id}.yml")
+        unless path.file?
+          raise Error, "Session '#{id}' not found in .mutant/results/"
+        end
+
+        path
       end
 
       def print_session_show(id)
-        raise Error, 'session show requires a session ID argument' unless id
+        path = resolve_session_path(id)
+        data = load_session(path)
+        puts "Session: #{id}"
+        puts "  Status:   #{data&.dig('success') ? 'pass' : 'fail'}"
+        puts "  Coverage: #{data&.dig('coverage') || 'unknown'}"
 
-        puts "mutant session show #{id} - session not found"
-      end
-
-      def print_run_help
-        opts = OptionParser.new do |builder|
-          builder.banner = 'usage: mutant run [options] MATCH_EXPRESSION ...'
-          %i[add_environment_options add_mutation_options add_filter_options add_debug_options].each do |name|
-            __send__(name, builder)
-          end
+        subjects = data&.dig('subject_results') || []
+        puts "  Subjects: #{subjects.size}"
+        subjects.each do |subject|
+          puts "    #{subject['expression']}"
         end
-        puts opts.to_s
       end
     end
   end
