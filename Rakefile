@@ -26,7 +26,8 @@ namespace :metrics do
 
   task :mutant do
     mutant_jobs = ENV['MUTANT_JOBS']
-    mutant_since = ENV.fetch('MUTANT_SINCE', 'HEAD~1')
+    mutant_since = ENV.fetch('MUTANT_SINCE', nil)
+    mutant_since = 'HEAD~1' if mutant_since.to_s.empty?
     arguments = %w[
       bundle exec mutant
       --include lib
