@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 module Mutant
-  # Commandline parser / runner
   class CLI
     include Adamantium::Flat, Equalizer.new(:config), Procto.call(:config)
 
@@ -20,20 +19,11 @@ module Mutant
       false
     end
 
-    # Initialize object
-    #
-    # @param [Array<String>]
-    #
-    # @return [undefined]
     def initialize(arguments)
       @config = load_config
-
       parse(arguments)
     end
 
-    # Config parsed from CLI
-    #
-    # @return [Config]
     attr_reader :config
 
   private
@@ -91,9 +81,7 @@ module Mutant
     # rubocop:disable MethodLength
     def add_environment_options(opts)
       opts.separator('Environment:')
-      opts.on('--zombie', 'Run mutant zombified') do
-        with(zombie: true)
-      end
+      opts.on('--zombie', 'Run mutant zombified') { enable_zombie }
       opts.on('-I', '--include DIRECTORY', 'Add DIRECTORY to $LOAD_PATH') do |directory|
         add(:includes, directory)
       end
@@ -104,6 +92,8 @@ module Mutant
         with(jobs: Integer(number))
       end
     end
+
+    def enable_zombie(*) = with(zombie: true)
 
     # Use integration
     #

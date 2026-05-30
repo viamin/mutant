@@ -173,6 +173,44 @@ RSpec.describe Mutant::Env do
 
       include_examples 'mutation kill'
     end
+
+    context 'when environment variables override an existing value' do
+      let(:config) do
+        super().with(
+          environment_variables: {
+            'MUTANT_ENV_SPEC' => 'configured'
+          }
+        )
+      end
+
+      let(:test_result) { instance_double(Mutant::Result::Test) }
+
+      before do
+        ENV['MUTANT_ENV_SPEC'] = 'original'
+
+        expect(mutation).to receive(:insert)
+          .ordered
+          .with(config.kernel) do
+            expect(ENV.fetch('MUTANT_ENV_SPEC')).to eql('configured')
+          end
+
+        expect(integration).to receive(:call)
+          .ordered
+          .with(tests)
+          .and_return(test_result)
+      end
+
+      let(:isolation_result) do
+        Mutant::Isolation::Result::Success.new(test_result)
+      end
+
+      after do
+        expect(ENV.fetch('MUTANT_ENV_SPEC')).to eql('original')
+        ENV.delete('MUTANT_ENV_SPEC')
+      end
+
+      include_examples 'mutation kill'
+    end
   end
 
   describe '#selections' do

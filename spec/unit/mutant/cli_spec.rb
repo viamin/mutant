@@ -236,6 +236,21 @@ RSpec.describe Mutant::CLI do
       end
     end
 
+    context 'when config file is invalid' do
+      let(:arguments) { [] }
+      let(:error)     { Mutant::Config::Loader::Error.new('invalid yaml') }
+
+      before do
+        expect(Mutant::Config::Loader).to receive(:call)
+          .with(Mutant::Config::DEFAULT)
+          .and_raise(error)
+      end
+
+      it 'wraps the loader error as a cli error' do
+        expect { object.new(arguments) }.to raise_error(Mutant::CLI::Error, 'invalid yaml')
+      end
+    end
+
     context 'with require flags' do
       let(:flags) { %w[--require foo --require bar] }
 
@@ -294,6 +309,71 @@ RSpec.describe Mutant::CLI do
       it 'sets the zombie option' do
         expect(subject.config.zombie).to be(true)
       end
+    end
+  end
+
+  describe '#add_environment_options' do
+    subject { cli.__send__(:add_environment_options, options) }
+
+    let(:cli) do
+      object.allocate.tap do |instance|
+        instance.instance_variable_set(:@config, Mutant::Config::DEFAULT)
+      end
+    end
+    let(:options)   { instance_double(OptionParser) }
+    let(:handlers)  { {} }
+
+    before do
+      allow(options).to receive(:separator)
+      allow(options).to receive(:on) do |*arguments, &block|
+        handlers[arguments.fetch(0)] = [arguments, block]
+      end
+    end
+
+    it 'adds the environment section header' do
+      expect(options).to receive(:separator).with('Environment:')
+
+      subject
+    end
+
+    it 'registers a zombie handler that updates config' do
+      subject
+
+      arguments, handler = handlers.fetch('--zombie')
+
+      expect(arguments).to eql(['--zombie', 'Run mutant zombified'])
+
+      handler.call
+
+      expect(cli.config.zombie).to be(true)
+    end
+
+    it 'registers the remaining environment options with exact help text' do
+      subject
+
+      include_arguments, = handlers.fetch('-I')
+      require_arguments, = handlers.fetch('-r')
+      jobs_arguments,    = handlers.fetch('-j')
+
+      expect(include_arguments).to eql(['-I', '--include DIRECTORY', 'Add DIRECTORY to $LOAD_PATH'])
+      expect(require_arguments).to eql(['-r', '--require NAME', 'Require file with NAME'])
+      expect(jobs_arguments).to eql(['-j', '--jobs NUMBER', 'Number of kill jobs. Defaults to 1.'])
+    end
+  end
+
+  describe '#enable_zombie' do
+    subject { cli.__send__(:enable_zombie) }
+
+    let(:cli) do
+      object.allocate.tap do |instance|
+        instance.instance_variable_set(:@config, Mutant::Config::DEFAULT)
+      end
+    end
+
+    it 'updates config through with' do
+      expect(cli).to receive(:with).with(zombie: true)
+
+      subject
     end
   end
 end

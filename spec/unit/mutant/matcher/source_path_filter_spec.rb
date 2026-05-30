@@ -26,5 +26,11 @@ RSpec.describe Mutant::Matcher::SourcePathFilter do
 
       it { should be(true) }
     end
+
+    context 'when source path is outside the configured root' do
+      let(:source_path) { Pathname.new('/tmp/app/admin/users/show.rb') }
+
+      it { should be(true) }
+    end
   end
 end

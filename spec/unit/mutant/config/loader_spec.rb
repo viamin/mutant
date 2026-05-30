@@ -38,6 +38,19 @@ RSpec.describe Mutant::Config::Loader do
       it { should eql(base_config) }
     end
 
+    context 'when config file has invalid yaml syntax' do
+      before do
+        config_path.write("integration: [\n")
+      end
+
+      it 'raises a syntax error' do
+        expect { subject }.to raise_error(
+          Mutant::Config::Loader::Error,
+          /did not find expected node content/
+        )
+      end
+    end
+
     context 'when config file is present' do
       before do
         expect(Kernel).to receive(:require)
@@ -115,6 +128,19 @@ RSpec.describe Mutant::Config::Loader do
       end
     end
 
+    context 'when config contains an unknown top-level key' do
+      before do
+        config_path.write("unknown: true\n")
+      end
+
+      it 'raises a line-aware error' do
+        expect { subject }.to raise_error(
+          Mutant::Config::Loader::Error,
+          %r{\AUnknown config key "unknown" at .*/\.mutant\.yml:1\z}
+        )
+      end
+    end
+
     context 'when config contains an invalid value type' do
       before do
         config_path.write("jobs: nope\n")
@@ -124,6 +150,38 @@ RSpec.describe Mutant::Config::Loader do
         expect { subject }.to raise_error(
           Mutant::Config::Loader::Error,
           %r{\AInvalid value for jobs at .*/\.mutant\.yml:1: expected Integer\z}
+        )
+      end
+    end
+
+    context 'when config only overrides part of coverage criteria' do
+      before do
+        config_path.write(<<~YAML)
+          coverage_criteria:
+            process_abort: true
+        YAML
+      end
+
+      it 'merges with defaults' do
+        expect(subject.coverage_criteria).to eql(
+          Mutant::Config::CoverageCriteria.new(
+            process_abort: true,
+            test_result:   true,
+            timeout:       false
+          )
+        )
+      end
+    end
+
+    context 'when integration from config cannot be loaded' do
+      before do
+        config_path.write("integration: missing\n")
+      end
+
+      it 'raises a helpful error' do
+        expect { subject }.to raise_error(
+          Mutant::Config::Loader::Error,
+          'Could not load integration "missing" (you may want to try installing the gem mutant-missing)'
         )
       end
     end
