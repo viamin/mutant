@@ -39,6 +39,9 @@ module Mutant
 
     private
 
+      INSTANCE_MATCHER  = Matcher::Method::Instance
+      SINGLETON_MATCHER = Matcher::Method::Singleton
+
       def methods(env, scope)
         singleton_methods(env, scope).concat(instance_methods(env, scope))
       end
@@ -49,7 +52,7 @@ module Mutant
           scope,
           scope.singleton_class,
           SINGLETON_CANDIDATE_NAMES,
-          Matcher::Method::Singleton
+          SINGLETON_MATCHER
         ) { |method_name| scope.method(method_name) }
       end
 
@@ -59,7 +62,7 @@ module Mutant
           scope,
           scope,
           INSTANCE_CANDIDATE_NAMES,
-          Matcher::Method::Instance
+          INSTANCE_MATCHER
         ) { |method_name| scope.instance_method(method_name) }
       end
 

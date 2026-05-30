@@ -21,4 +21,32 @@ RSpec.describe Mutant::Expression::SourcePath do
 
     it { should eql(Mutant::Expression::SourcePath::Predicate.new('app/models/**/*.rb')) }
   end
+
+  describe Mutant::Expression::SourcePath::Predicate, '#call' do
+    let(:predicate) { described_class.new(glob) }
+
+    context 'when subject source path matches the glob' do
+      let(:glob) { 'lib/**/*.rb' }
+
+      let(:subject_instance) do
+        instance_double(Mutant::Subject, source_path: 'lib/foo.rb')
+      end
+
+      it 'returns true' do
+        expect(predicate.call(subject_instance)).to be(true)
+      end
+    end
+
+    context 'when subject source path does not match the glob' do
+      let(:glob) { 'lib/**/*.rb' }
+
+      let(:subject_instance) do
+        instance_double(Mutant::Subject, source_path: 'spec/foo_spec.rb')
+      end
+
+      it 'returns false' do
+        expect(predicate.call(subject_instance)).to be(false)
+      end
+    end
+  end
 end
