@@ -59,7 +59,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       MUTANT_JOBS: 4
-      MUTANT_SINCE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -68,4 +67,13 @@ jobs:
         with:
           ruby-version: '3.3'
           bundler-cache: true
-      - run: bundle exec rake metrics:mutant
+      - run: |
+          base_ref="${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}"
+
+          if [ -z "$base_ref" ] || [ "$base_ref" = "0000000000000000000000000000000000000000" ]; then
+            mutant_since="HEAD~1"
+          else
+            mutant_since="$(git merge-base HEAD "$base_ref" || printf '%s\n' "$base_ref")"
+          fi
+
+          MUTANT_SINCE="$mutant_since" bundle exec rake metrics:mutant
