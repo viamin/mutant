@@ -13,6 +13,27 @@ Rake.application.load_imports
 
 task default: :spec
 
+def valid_git_revision?(revision)
+  return false if revision.to_s.empty?
+
+  Kernel.system(
+    'git',
+    'rev-parse',
+    '--verify',
+    "#{revision}^{commit}",
+    out: File::NULL,
+    err: File::NULL
+  )
+end
+
+def mutant_since_revision
+  revision = ENV['MUTANT_SINCE']
+  return revision if valid_git_revision?(revision)
+
+  fallback = 'HEAD~1'
+  return fallback if valid_git_revision?(fallback)
+end
+
 task('metrics:mutant').clear
 namespace :metrics do
   task :rubocop do
@@ -26,8 +47,7 @@ namespace :metrics do
 
   task :mutant do
     mutant_jobs = ENV['MUTANT_JOBS']
-    mutant_since = ENV.fetch('MUTANT_SINCE', nil)
-    mutant_since = 'HEAD~1' if mutant_since.to_s.empty?
+    mutant_since = mutant_since_revision
     arguments = %w[
       bundle exec mutant
       --include lib
@@ -35,7 +55,7 @@ namespace :metrics do
       --use rspec
       --zombie
     ]
-    arguments.concat(['--since', mutant_since])
+    arguments.concat(['--since', mutant_since]) if mutant_since
     arguments.concat(['--jobs', mutant_jobs]) if mutant_jobs
 
     arguments.concat(%w[-- Mutant*])
