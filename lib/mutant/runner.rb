@@ -3,31 +3,31 @@
 module Mutant
   # Runner baseclass
   class Runner
-    include Adamantium::Flat, Concord.new(:env), Procto.call(:result)
+    include Adamantium::Flat, Concord.new(:env)
 
-    # Initialize object
-    #
-    # @return [undefined]
-    def initialize(*)
-      super
-
-      @result = nil
-
-      reporter.start(env)
-
-      run_mutation_analysis
+    # Run mutation analysis for an environment before freezing the runner
+    def self.call(env)
+      build(env).freeze.result
     end
 
-    # Final result
-    #
-    # @return [Result::Env]
+    def self.build(env)
+      runner = allocate
+      runner.__send__(:initialize, env)
+      runner.__send__(:run)
+    end
+    private_class_method :build
+
     attr_reader :result
 
   private
 
-    # Run mutation analysis
-    #
-    # @return [undefined]
+    # Execute analysis and cache the final result before freezing the runner
+    def run
+      reporter.start(env)
+      @result = run_mutation_analysis
+      self
+    end
+
     def run_mutation_analysis
       result = nil
       driver = Parallel.async(mutation_test_config)
@@ -37,13 +37,10 @@ module Mutant
       result = driver&.stop&.payload
       raise
     ensure
-      @result = result
-      reporter.report(@result || mutation_sink.status)
+      final_result = result || mutation_sink.status
+      reporter.report(final_result)
     end
 
-    # Run with signal handlers for graceful shutdown
-    #
-    # @return [Object]
     def with_signal_handlers
       old_int  = Signal.trap('INT')  { raise Interrupt }
       old_term = Signal.trap('TERM') { raise Interrupt }
@@ -53,12 +50,6 @@ module Mutant
       Signal.trap('TERM', old_term) if old_term
     end
 
-    # Run driver
-    #
-    # @param [Driver] driver
-    #
-    # @return [Object]
-    #   the last returned status payload
     def run_driver(driver)
       loop do
         status = driver.wait_timeout(reporter.delay)
@@ -67,9 +58,6 @@ module Mutant
       end
     end
 
-    # Configuration for parallel execution engine
-    #
-    # @return [Parallel::Config]
     def mutation_test_config
       Parallel::Config.new(
         condition_variable: config.condition_variable,
@@ -82,23 +70,14 @@ module Mutant
       )
     end
 
-    # Sink used to collect intermediate and final results
-    #
-    # @return [Sink]
     def mutation_sink
       @mutation_sink ||= Sink.new(env)
     end
 
-    # Reporter to use
-    #
-    # @return [Reporter]
     def reporter
       env.config.reporter
     end
 
-    # Config for this mutant execution
-    #
-    # @return [Config]
     def config
       env.config
     end
