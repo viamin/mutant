@@ -6,14 +6,38 @@ RSpec.describe Mutant::Integration::Rspec do
   let(:object) { described_class.new(Mutant::Config::DEFAULT) }
 
   let(:rspec_options) { instance_double(RSpec::Core::ConfigurationOptions) }
-  let(:rspec_runner)  { instance_double(RSpec::Core::Runner)               }
+  let(:rspec_runner)  { instance_double(RSpec::Core::Runner) }
+
+  let(:source_lines) do
+    [
+      "RSpec.describe Example::Root do\n",
+      "  it('example-a-full-description') do\n",
+      "  end\n",
+      "\n",
+      "  it { is_expected.to cover('Example::CoveredByString') }\n",
+      "end\n",
+      "\n",
+      "RSpec.describe Example::CoveredByConstant do\n",
+      "  it { is_expected.to cover(described_class) }\n",
+      "end\n"
+    ]
+  end
+
+  let(:source_path) do
+    file = Tempfile.new(['mutant-rspec', '.rb'])
+    file.write(source_lines.join)
+    file.close
+    file.path
+  end
 
   let(:example_a) do
     double(
       'Example A',
       metadata: {
-        location:         'example-a-location',
-        full_description: 'example-a-full-description'
+        absolute_file_path: source_path,
+        line_number:        2,
+        location:           "#{source_path}:2",
+        full_description:   'example-a-full-description'
       }
     )
   end
@@ -22,9 +46,11 @@ RSpec.describe Mutant::Integration::Rspec do
     double(
       'Example B',
       metadata: {
-        location:         'example-b-location',
-        full_description: 'example-b-full-description',
-        mutant:           false
+        absolute_file_path: source_path,
+        line_number:        5,
+        location:           "#{source_path}:5",
+        full_description:   'ignored by cover matcher',
+        mutant:             false
       }
     )
   end
@@ -33,8 +59,10 @@ RSpec.describe Mutant::Integration::Rspec do
     double(
       'Example C',
       metadata: {
-        location:         'example-c-location',
-        full_description: 'Example::C blah'
+        absolute_file_path: source_path,
+        line_number:        5,
+        location:           "#{source_path}:5",
+        full_description:   'ignored by cover matcher'
       }
     )
   end
@@ -43,8 +71,11 @@ RSpec.describe Mutant::Integration::Rspec do
     double(
       'Example D',
       metadata: {
-        location:         'example-d-location',
-        full_description: "Example::D\nblah"
+        absolute_file_path: source_path,
+        line_number:        9,
+        location:           "#{source_path}:9",
+        full_description:   'ignored by cover matcher',
+        described_class:    Example::CoveredByConstant
       }
     )
   end
@@ -53,44 +84,40 @@ RSpec.describe Mutant::Integration::Rspec do
     double(
       'Example E',
       metadata: {
-        location:          'example-e-location',
-        full_description:  'Example::E',
-        mutant_expression: 'Foo'
+        absolute_file_path: source_path,
+        line_number:        9,
+        location:           "#{source_path}:9",
+        full_description:   'Example::ExplicitConstant',
+        mutant_expression:  Example::ExplicitConstant
       }
     )
   end
 
-  let(:examples) do
-    [
-      example_a,
-      example_b,
-      example_c,
-      example_d,
-      example_e
-    ]
+  let(:root_group) do
+    double(
+      'root example group',
+      examples:     [example_a, example_b, example_c],
+      descendants:  [nested_group]
+    )
   end
 
-  let(:example_groups) do
-    [
-      double(
-        'root example group',
-        descendants: [
-          double('example group', examples: examples)
-        ]
-      )
-    ]
+  let(:nested_group) do
+    double(
+      'nested example group',
+      examples: [example_d, example_e]
+    )
   end
 
   let(:filtered_examples) do
     {
-      double('Key') => examples.dup
+      double('Key') => [example_a, example_b, example_c, example_d, example_e]
     }
   end
 
   let(:world) do
     double(
       'world',
-      example_groups:    example_groups,
+      example_groups:    [root_group],
       filtered_examples: filtered_examples
     )
   end
@@ -98,25 +125,28 @@ RSpec.describe Mutant::Integration::Rspec do
   let(:all_tests) do
     [
       Mutant::Test.new(
-        id:         'rspec:0:example-a-location/example-a-full-description',
+        id:         "rspec:0:#{source_path}:2/example-a-full-description",
         expression: parse_expression('*')
       ),
       Mutant::Test.new(
-        id:         'rspec:1:example-c-location/Example::C blah',
-        expression: parse_expression('Example::C')
+        id:         "rspec:1:#{source_path}:5/ignored by cover matcher",
+        expression: parse_expression('Example::CoveredByString')
       ),
       Mutant::Test.new(
-        id:         "rspec:2:example-d-location/Example::D\nblah",
-        expression: parse_expression('*')
+        id:         "rspec:2:#{source_path}:9/ignored by cover matcher",
+        expression: parse_expression('Example::CoveredByConstant')
       ),
       Mutant::Test.new(
-        id:         'rspec:3:example-e-location/Example::E',
-        expression: parse_expression('Foo')
+        id:         "rspec:3:#{source_path}:9/Example::ExplicitConstant",
+        expression: parse_expression('Example::ExplicitConstant')
       )
     ]
   end
 
   before do
+    stub_const('Example::CoveredByConstant', Class.new)
+    stub_const('Example::ExplicitConstant', Class.new)
+
     expect(RSpec::Core::ConfigurationOptions).to receive(:new)
       .with(%w[spec --fail-fast])
       .and_return(rspec_options)
@@ -127,6 +157,10 @@ RSpec.describe Mutant::Integration::Rspec do
 
     expect(RSpec).to receive_messages(world: world)
     allow(Mutant::Timer).to receive_messages(now: Mutant::Timer.now)
+  end
+
+  after do
+    File.unlink(source_path) if File.exist?(source_path)
   end
 
   describe '#all_tests' do
