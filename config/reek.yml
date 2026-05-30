@@ -15,7 +15,8 @@ detectors:
     - Mutant::Expression#match_length
   DataClump:
     enabled: true
-    exclude: []
+    exclude:
+    - Mutant::Config::Loader::NodeReader
     max_copies: 2
     min_clump_size: 2
   DuplicateMethodCall:
@@ -34,6 +35,11 @@ detectors:
     exclude:
     - Mutant::Matcher::Method::Instance#self.build
     - Mutant::Meta::Example::DSL # 3 vars
+    - Mutant::Config::Loader::NodeReader#fail_invalid_scalar
+    - Mutant::Config::Loader::NodeReader#fail_invalid_type
+    - Mutant::Config::Loader::NodeReader#fail_unknown_key
+    - Mutant::Config::Loader::NodeReader#mapping
+    - Mutant::Config::Loader::NodeReader#scalar
     max_params: 2
   LongYieldList:
     enabled: true
@@ -59,6 +65,7 @@ detectors:
     exclude:
     - Mutant::Mutator
     - Mutant::Meta::Example::DSL
+    - Mutant::Config::Loader::NodeReader
     max_ifs: 1
   TooManyInstanceVariables:
     enabled: true
@@ -73,6 +80,8 @@ detectors:
     - Mutant::CLI
     - Mutant::Mutator::Node
     - Mutant::Parallel::Master
+    - Mutant::Config::Loader
+    - Mutant::Config::Loader::NodeReader
     max_methods: 10
   TooManyStatements:
     enabled: true
@@ -83,6 +92,7 @@ detectors:
     - Mutant::Reporter::CLI::Printer::EnvProgress#run
     - Mutant::Runner#run_driver
     - Mutant::Zombifier::File#self.find
+    - Mutant::Env#with_environment_variables
     max_statements: 7
   UncommunicativeMethodName:
     enabled: true
@@ -125,6 +135,7 @@ detectors:
     exclude:
     - Mutant::AST::Sexp#s
     - Mutant::CLI#reporter
+    - Mutant::Config::Loader#attribute_name # intentional, private helper
     - Mutant::Integration::Null#call
     - Mutant::Integration::Rspec#parse_example
     - Mutant::Integration::Rspec#parse_expression # intentional, private
@@ -133,3 +144,5 @@ detectors:
     - Mutant::Reporter::CLI::Printer::StatusProgressive#object # False positive calls super
     - Mutant::Repository::Diff#tracks? # intentional, private
     - Mutant::Repository::Diff#within_working_directory? # intentional, private
+    - Mutant::Config::CoverageCriteria#timeout_status? # intentional, private
+    - Mutant::Config::Loader::NodeReader#to_ruby # intentional, private
