@@ -75,6 +75,8 @@ module Mutant
     #
     # @return [undefined]
     def parse_match_expressions(expressions)
+      with(matcher: config.matcher.with(match_expressions: [])) if expressions.any?
+
       expressions.each do |expression|
         add_matcher(:match_expressions, config.expression_parser.(expression))
       end

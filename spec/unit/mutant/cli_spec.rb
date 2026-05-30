@@ -190,29 +190,48 @@ RSpec.describe Mutant::CLI do
       around do |example|
         Dir.mktmpdir do |directory|
           Dir.chdir(directory) do
-            Pathname.new(directory).join('.mutant.yml').write(<<~YAML)
-              jobs: 4
-            YAML
+            Pathname.new(directory).join('.mutant.yml').write(yaml_content)
             example.run
           end
         end
       end
 
-      context 'without overriding flags' do
-        it_should_behave_like 'a cli parser'
+      context 'with jobs only' do
+        let(:yaml_content) { "jobs: 4\n" }
 
-        it 'loads jobs from config file' do
-          expect(subject.config.jobs).to eql(4)
+        context 'without overriding flags' do
+          it_should_behave_like 'a cli parser'
+
+          it 'loads jobs from config file' do
+            expect(subject.config.jobs).to eql(4)
+          end
+        end
+
+        context 'with overriding jobs flag' do
+          let(:flags) { %w[--jobs 0] }
+
+          it_should_behave_like 'a cli parser'
+
+          it 'prefers cli flags over config file values' do
+            expect(subject.config.jobs).to eql(0)
+          end
         end
       end
 
-      context 'with overriding jobs flag' do
-        let(:flags) { %w[--jobs 0] }
+      context 'with matcher subjects' do
+        let(:yaml_content) { "matcher:\n  subjects:\n    - YAMLApp*\n" }
+        let(:expressions) { [] }
 
-        it_should_behave_like 'a cli parser'
+        it 'uses yaml matcher subjects when no cli expressions' do
+          expect(subject.config.matcher.match_expressions.map(&:syntax)).to eql(%w[YAMLApp*])
+        end
 
-        it 'prefers cli flags over config file values' do
-          expect(subject.config.jobs).to eql(0)
+        context 'with cli positional expressions' do
+          let(:expressions) { %w[CLIApp*] }
+
+          it 'overrides yaml matcher subjects with cli expressions' do
+            expect(subject.config.matcher.match_expressions.map(&:syntax)).to eql(%w[CLIApp*])
+          end
         end
       end
     end
