@@ -18,28 +18,32 @@ module Mutant
 
       def initialize(*)
         super
-        @output = StringIO.new
-        @runner = RSpec::Core::Runner.new(RSpec::Core::ConfigurationOptions.new(CLI_OPTIONS))
-        @world  = RSpec.world
-        @source_index = RspecSupport::SourceIndex.new(RspecSupport::ExpressionParser.new(expression_parser))
+        @state = {
+          output:   StringIO.new,
+          runner:   RSpec::Core::Runner.new(RSpec::Core::ConfigurationOptions.new(CLI_OPTIONS)),
+          examples: RspecSupport::Examples.build(
+            expression_parser: expression_parser,
+            world:             RSpec.world
+          )
+        }
       end
 
       def setup
         RSpec::Matchers.prepend(RspecSupport::Matchers)
-        @runner.setup($stderr, @output)
+        runner.setup($stderr, output)
         self
       end
       memoize :setup
 
       # rubocop:disable MethodLength
       def call(tests)
-        examples = tests.map(&all_tests_index.method(:fetch))
-        filter_examples(&examples.method(:include?))
+        selected_examples = tests.map(&examples.method(:fetch))
+        examples.filter(selected_examples)
         start = Timer.now
-        passed = @runner.run_specs(@world.ordered_example_groups).equal?(EXIT_SUCCESS)
-        @output.rewind
-        Result::Test.new(
-          output:  @output.read,
+        passed = runner.run_specs(examples.ordered_groups).equal?(EXIT_SUCCESS)
+        output.rewind
+        Result::Test.method(:new).call(
+          output:  output.read,
           passed:  passed,
           runtime: Timer.now - start,
           tests:   tests
@@ -47,90 +51,44 @@ module Mutant
       end
 
       def all_tests
-        all_tests_index.keys
+        examples.all_tests
       end
       memoize :all_tests
 
     private
 
-      def all_tests_index
-        all_examples.each_with_index.each_with_object({}) do |(example, example_index), index|
-          index[parse_example(example, example_index)] = example
+      def output
+        @state[:output] = StringIO.new unless @state[:output].is_a?(StringIO)
+        @state.fetch(:output)
+      end
+
+      def runner
+        unless @state[:runner].is_a?(RSpec::Core::Runner)
+          @state[:runner] = RSpec::Core::Runner.new(RSpec::Core::ConfigurationOptions.new(CLI_OPTIONS))
         end
-      end
-      memoize :all_tests_index
 
-      def parse_example(example, index)
-        metadata = example.metadata
-
-        id = TEST_ID_FORMAT % {
-          index:       index,
-          location:    metadata.fetch(:location),
-          description: metadata.fetch(:full_description)
-        }
-
-        Test.new(
-          expression: parse_expression(metadata),
-          id:         id
-        )
+        @state.fetch(:runner)
       end
 
-      def parse_expression(metadata)
-        if metadata.key?(:mutant_expression)
-          parse_annotation(metadata.fetch(:mutant_expression))
-        else
-          source_expression(metadata) || description_expression(metadata) || ALL_EXPRESSION
+      def examples
+        unless @state[:examples].is_a?(RspecSupport::Examples)
+          @state[:examples] = RspecSupport::Examples.build(
+            expression_parser: expression_parser,
+            world:             RSpec.world
+          )
         end
-      end
 
-      def all_examples
-        @world
-          .example_groups
-          .flat_map { |example_group| [example_group, *example_group.descendants] }
-          .flat_map(&:examples)
-          .select do |example|
-          example.metadata.fetch(:mutant, true)
-        end
-      end
-
-      def filter_examples(&predicate)
-        @world.filtered_examples.each_value do |examples|
-          examples.keep_if(&predicate)
-        end
-      end
-
-      def description_expression(metadata)
-        match = EXPRESSION_CANDIDATE.match(metadata.fetch(:full_description))
-
-        expression_parser.try_parse(match.captures.first) if match
-      end
-
-      def parse_annotation(annotation)
-        case annotation
-        when Module
-          return expression_parser.(annotation.name) if annotation.name
-
-          fail ArgumentError, 'Unsupported anonymous module/class mutant annotation'
-        when String
-          expression_parser.(annotation)
-        else
-          fail ArgumentError, "Unsupported RSpec mutant annotation: #{annotation.inspect}"
-        end
-      end
-
-      def source_expression(metadata)
-        expressions = @source_index.expressions(metadata)
-        return if expressions.empty?
-        return expressions.first if expressions.one?
-
-        fail ArgumentError, "Multiple cover annotations found for RSpec example at #{metadata.fetch(:location)}"
+        @state.fetch(:examples)
       end
 
     end # Rspec
 
     module RspecSupport
+      DEFAULT_EXPRESSION = Expression::Namespace::Recursive.new(scope_name: nil)
+      DESCRIPTION_CANDIDATE = /\A([^ ]+)(?: )?/.freeze
       EXAMPLE_METHODS     = IceNine.deep_freeze(%i[example it scenario specify])
       EXPECTATION_METHODS = IceNine.deep_freeze(%i[not_to to to_not])
+      TEST_ID_FORMAT      = 'rspec:%<index>d:%<location>s/%<description>s'
 
       def self.cover_annotation?(expected)
         case expected
@@ -175,85 +133,203 @@ module Mutant
         end
       end
 
-      class SourceIndex
-        include Concord.new(:parser)
+      class Examples
+        include Concord.new(:resolver, :world)
 
-        EMPTY_MAP = {}.freeze
+        def self.build(expression_parser:, world:)
+          new(ExpressionResolver.build(expression_parser), world)
+        end
 
-        def expressions(metadata)
-          fetch(source_path(metadata)).fetch(metadata.fetch(:line_number), EMPTY_ARRAY).map do |argument|
-            parser.(argument, metadata.fetch(:described_class, nil))
+        def all_tests
+          index.keys
+        end
+
+        def fetch(test)
+          index.fetch(test)
+        end
+
+        def filter(selected_examples)
+          world.filtered_examples.each_value do |examples|
+            examples.keep_if(&selected_examples.method(:include?))
           end
+        end
+
+        def ordered_groups
+          world.ordered_example_groups
         end
 
       private
 
-        def fetch(path)
-          return EMPTY_MAP unless path && File.file?(path)
-
-          @cache ||= {}
-          @cache.fetch(path) { @cache[path] = index(path) }
+        def available_examples
+          world
+            .example_groups
+            .flat_map { |example_group| [example_group, *example_group.descendants] }
+            .flat_map(&:examples)
+            .select { |example| example.metadata.fetch(:mutant, true) }
         end
 
-        def source_path(metadata)
-          metadata.fetch(:absolute_file_path) do
-            metadata.fetch(:file_path, nil)
+        def index
+          @index ||= available_examples.each_with_index.each_with_object({}) do |(example, example_index), tests|
+            tests[parse_test(example, example_index)] = example
           end
         end
 
-        def index(path)
-          buffer        = ::Parser::Source::Buffer.new(path)
-          buffer.source = File.read(path)
-          root          = ruby_parser.parse(buffer)
-          return EMPTY_MAP unless root
+        def parse_test(example, example_index)
+          metadata = example.metadata
 
-          each_node(root).with_object(Hash.new { |hash, key| hash[key] = [] }) do |node, index|
-            next unless example_block?(node)
+          Test.new(
+            expression: resolver.(metadata),
+            id:         TEST_ID_FORMAT % {
+              index:       example_index,
+              location:    metadata.fetch(:location),
+              description: metadata.fetch(:full_description)
+            }
+          )
+        end
+      end
 
-            index[node.loc.expression.line].concat(cover_arguments(node.children.fetch(2, nil)))
-          end
+      class ExpressionResolver
+        include Concord.new(:annotation_parser, :expression_parser, :source_index)
+
+        def self.build(expression_parser)
+          new(
+            AnnotationParser.new(expression_parser),
+            expression_parser,
+            SourceIndex.new(ExpressionParser.new(expression_parser))
+          )
         end
 
-        def each_node(node, &block)
+        def call(metadata)
+          return annotation_parser.call(metadata.fetch(:mutant_expression)) if metadata.key?(:mutant_expression)
+
+          source_expression(metadata) || description_expression(metadata) || DEFAULT_EXPRESSION
+        end
+
+      private
+
+        def description_expression(metadata)
+          match = DESCRIPTION_CANDIDATE.match(metadata.fetch(:full_description))
+
+          expression_parser.try_parse(match.captures.first) if match
+        end
+
+        def source_expression(metadata)
+          expressions = source_index.expressions(metadata)
+          return if expressions.empty?
+          return expressions.first if expressions.one?
+
+          fail ArgumentError, "Multiple cover annotations found for RSpec example at #{metadata.fetch(:location)}"
+        end
+      end
+
+      class AnnotationParser
+        include Concord.new(:expression_parser)
+
+        def call(annotation)
+          case annotation
+          when Module
+            return expression_parser.(annotation.name) if annotation.name
+
+            fail ArgumentError, 'Unsupported anonymous module/class mutant annotation'
+          when String
+            expression_parser.(annotation)
+          else
+            fail ArgumentError, "Unsupported RSpec mutant annotation: #{annotation.inspect}"
+          end
+        end
+      end
+
+      module Node
+        def self.cover_argument(node)
+          return unless node.type.equal?(:send)
+
+          _receiver, method_name, matcher = *node
+          return unless EXPECTATION_METHODS.include?(method_name)
+          return unless cover_matcher?(matcher)
+
+          matcher.children.fetch(2)
+        end
+
+        def self.cover_arguments(node)
+          return EMPTY_ARRAY unless node.is_a?(::Parser::AST::Node)
+
+          each(node).filter_map { |child| cover_argument(child) }
+        end
+
+        def self.each(node, &block)
           return enum_for(__method__, node) unless block
 
           yield node
 
           node.children.grep(::Parser::AST::Node) do |child|
-            each_node(child, &block)
+            each(child, &block)
           end
         end
 
-        def cover_arguments(node)
-          return EMPTY_ARRAY unless node.is_a?(::Parser::AST::Node)
-
-          each_node(node).each_with_object([]) do |child, arguments|
-            argument = cover_argument(child)
-            next unless argument
-
-            arguments << argument
-          end
-        end
-
-        def cover_argument(node)
-          return unless node.type.equal?(:send)
-
-          _receiver, method_name, matcher = *node
-          return unless EXPECTATION_METHODS.include?(method_name)
-          return unless matcher.is_a?(::Parser::AST::Node)
-          return unless matcher.type.equal?(:send)
-          return unless matcher.children.fetch(0).nil?
-          return unless matcher.children.fetch(1).equal?(:cover)
-
-          matcher.children.fetch(2)
-        end
-
-        def example_block?(node)
+        def self.example_block?(node)
           return false unless node.type.equal?(:block)
 
           send_node = node.children.fetch(0)
 
           send_node.type.equal?(:send) && EXAMPLE_METHODS.include?(send_node.children.fetch(1))
+        end
+
+        def self.cover_matcher?(matcher)
+          matcher.is_a?(::Parser::AST::Node) &&
+            matcher.type.equal?(:send) &&
+            matcher.children.fetch(0).nil? &&
+            matcher.children.fetch(1).equal?(:cover)
+        end
+      end
+
+      module Source
+        def self.path(metadata)
+          metadata.fetch(:absolute_file_path) do
+            metadata.fetch(:file_path, nil)
+          end
+        end
+      end
+
+      class SourceIndex
+        EMPTY_MAP = {}.freeze
+
+        def initialize(parser)
+          @cache  = {}
+          @parser = parser
+        end
+
+        def expressions(metadata)
+          path = Source.path(metadata)
+          return EMPTY_ARRAY unless path && File.file?(path)
+
+          cached_expressions(path).fetch(metadata.fetch(:line_number), EMPTY_ARRAY).map do |argument|
+            @parser.(argument, metadata.fetch(:described_class, nil))
+          end
+        end
+
+      private
+
+        def cached_expressions(path)
+          @cache.fetch(path) { @cache[path] = index(path) }
+        end
+
+        def index(path)
+          root = parse(path)
+          return EMPTY_MAP unless root
+
+          Node.each(root).with_object(Hash.new { |hash, key| hash[key] = [] }) do |node, indexed_nodes|
+            next unless Node.example_block?(node)
+
+            indexed_nodes[node.loc.expression.line].concat(Node.cover_arguments(node.children.fetch(2, nil)))
+          end
+        end
+
+        def parse(path)
+          buffer        = ::Parser::Source::Buffer.new(path)
+          buffer.source = File.read(path)
+          ruby_parser.parse(buffer)
+        rescue ::Parser::SyntaxError
+          nil
         end
 
         def ruby_parser
