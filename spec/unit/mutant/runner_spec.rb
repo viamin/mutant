@@ -73,18 +73,6 @@ RSpec.describe Mutant::Runner do
           arguments: [env]
         },
         {
-          receiver:  Signal,
-          selector:  :trap,
-          arguments: ['INT'],
-          reaction:  { return: 'DEFAULT' }
-        },
-        {
-          receiver:  Signal,
-          selector:  :trap,
-          arguments: ['TERM'],
-          reaction:  { return: 'DEFAULT' }
-        },
-        {
           receiver:  env,
           selector:  :method,
           arguments: [:kill],
@@ -101,6 +89,18 @@ RSpec.describe Mutant::Runner do
           selector:  :async,
           arguments: [parallel_config],
           reaction:  { return: driver }
+        },
+        {
+          receiver:  Signal,
+          selector:  :trap,
+          arguments: ['INT'],
+          reaction:  { return: 'DEFAULT' }
+        },
+        {
+          receiver:  Signal,
+          selector:  :trap,
+          arguments: ['TERM'],
+          reaction:  { return: 'DEFAULT' }
         },
         {
           receiver:  driver,
@@ -162,9 +162,14 @@ RSpec.describe Mutant::Runner do
             arguments: ['TERM', 'DEFAULT']
           },
           {
-            receiver:  sink,
-            selector:  :status,
-            reaction:  { return: partial_env_result }
+            receiver:  driver,
+            selector:  :stop,
+            reaction:  {
+              return: instance_double(
+                Mutant::Parallel::Status,
+                payload: partial_env_result
+              )
+            }
           },
           {
             receiver:  reporter,

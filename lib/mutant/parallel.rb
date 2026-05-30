@@ -13,7 +13,8 @@ module Mutant
       shared = {
         var_active_jobs: shared(Variable::IVar, config, value: Set.new),
         var_final:       shared(Variable::IVar, config),
-        var_sink:        shared(Variable::IVar, config, value: config.sink)
+        var_sink:        shared(Variable::IVar, config, value: config.sink),
+        var_source:      shared(Variable::MVar, config, value: config.source)
       }
 
       Driver.new(
@@ -31,7 +32,6 @@ module Mutant
       Worker.new(
         processor:   config.processor,
         var_running: shared(Variable::MVar, config, value: config.jobs),
-        var_source:  shared(Variable::IVar, config, value: config.source),
         **shared
       )
     end

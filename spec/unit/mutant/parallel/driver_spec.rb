@@ -27,12 +27,17 @@ RSpec.describe Mutant::Parallel::Driver do
     instance_double(Mutant::Variable::IVar, 'sink')
   end
 
+  let(:var_source) do
+    instance_double(Mutant::Variable::MVar, 'source')
+  end
+
   subject do
     described_class.new(
       threads:         threads,
       var_active_jobs: var_active_jobs,
       var_final:       var_final,
-      var_sink:        var_sink
+      var_sink:        var_sink,
+      var_source:      var_source
     )
   end
 
@@ -121,6 +126,57 @@ RSpec.describe Mutant::Parallel::Driver do
       end
 
       include_examples 'returns expected status'
+    end
+  end
+
+  describe '#stop' do
+    def apply
+      subject.stop
+    end
+
+    let(:raw_expectations) do
+      [
+        {
+          receiver: var_source,
+          selector: :modify,
+          reaction: { return: nil }
+        },
+        {
+          receiver: var_active_jobs,
+          selector: :with,
+          reaction: { yields: [active_jobs] }
+        },
+        {
+          receiver: var_sink,
+          selector: :with,
+          reaction: { yields: [sink] }
+        },
+        {
+          receiver: thread_a,
+          selector: :join
+        },
+        {
+          receiver: thread_b,
+          selector: :join
+        }
+      ]
+    end
+
+    before do
+      allow(thread_a).to receive_messages(alive?: false)
+      allow(thread_b).to receive_messages(alive?: false)
+    end
+
+    it 'cancels remaining work and waits for workers to stop' do
+      verify_events do
+        expect(apply).to eql(
+          Mutant::Parallel::Status.new(
+            active_jobs: active_jobs,
+            done:        true,
+            payload:     sink_status
+          )
+        )
+      end
     end
   end
 end

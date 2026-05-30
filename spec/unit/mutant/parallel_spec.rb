@@ -46,7 +46,7 @@ RSpec.describe Mutant::Parallel do
     end
 
     let(:var_source) do
-      instance_double(Mutant::Variable::IVar, 'source')
+      instance_double(Mutant::Variable::MVar, 'source')
     end
 
     def ivar(value, **attributes)
@@ -73,8 +73,8 @@ RSpec.describe Mutant::Parallel do
         ivar(var_active_jobs, value: Set.new),
         ivar(var_final),
         ivar(var_sink, value: sink),
+        mvar(var_source, value: source),
         mvar(var_running, value: 2),
-        ivar(var_source, value: source),
         {
           receiver:  Mutant::Parallel::Worker,
           selector:  :new,
@@ -110,7 +110,8 @@ RSpec.describe Mutant::Parallel do
             threads:         [thread_a, thread_b],
             var_active_jobs: var_active_jobs,
             var_final:       var_final,
-            var_sink:        var_sink
+            var_sink:        var_sink,
+            var_source:      var_source
           )
         )
       end

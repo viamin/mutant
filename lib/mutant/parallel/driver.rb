@@ -8,7 +8,8 @@ module Mutant
         :threads,
         :var_active_jobs,
         :var_final,
-        :var_sink
+        :var_sink,
+        :var_source
       )
 
       private(*anima.attribute_names)
@@ -21,6 +22,15 @@ module Mutant
       #   current status
       def wait_timeout(timeout)
         var_final.take_timeout(timeout)
+
+        finalize(status)
+      end
+
+      # Stop taking new jobs and wait for workers to finish in-flight work
+      #
+      # @return [Status]
+      def stop
+        var_source.modify { Source::Array.new(EMPTY_ARRAY) }
 
         finalize(status)
       end
