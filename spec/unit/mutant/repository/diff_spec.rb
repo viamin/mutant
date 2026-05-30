@@ -167,7 +167,47 @@ describe Mutant::Repository::Diff do
       it { should be(false) }
     end
 
+    context 'when file range ends immediately before diff hunk starts' do
+      let(:line_range) { 1..9 }
+
+      let(:diff_output) do
+        <<~DIFF
+          diff --git a/lib/bar.rb b/lib/bar.rb
+          --- a/lib/bar.rb
+          +++ b/lib/bar.rb
+          @@ -10,3 +10,4 @@
+          context
+          +new line
+        DIFF
+      end
+
+      include_context 'setup diff command'
+
+      it { should be(false) }
+    end
+
+    context 'when file range touches the diff hunk boundary' do
+      let(:line_range) { 13..20 }
+
+      let(:diff_output) do
+        <<~DIFF
+          diff --git a/lib/bar.rb b/lib/bar.rb
+          --- a/lib/bar.rb
+          +++ b/lib/bar.rb
+          @@ -10,3 +10,4 @@
+          context
+          +new line
+        DIFF
+      end
+
+      include_context 'setup diff command'
+
+      it { should be(true) }
+    end
+
     context 'when file is newly added' do
+      let(:line_range) { 100..200 }
+
       let(:diff_output) do
         <<~DIFF
           diff --git a/lib/bar.rb b/lib/bar.rb
@@ -177,6 +217,24 @@ describe Mutant::Repository::Diff do
           @@ -0,0 +1,5 @@
           +line 1
           +line 2
+        DIFF
+      end
+
+      include_context 'setup diff command'
+
+      it { should be(true) }
+    end
+
+    context 'when hunk has an implicit one-line count' do
+      let(:line_range) { 20..20 }
+
+      let(:diff_output) do
+        <<~DIFF
+          diff --git a/lib/bar.rb b/lib/bar.rb
+          --- a/lib/bar.rb
+          +++ b/lib/bar.rb
+          @@ -10 +20 @@
+          +new line
         DIFF
       end
 

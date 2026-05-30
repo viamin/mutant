@@ -1,6 +1,31 @@
 # frozen_string_literal: true
 
 RSpec.describe Mutant::Runner do
+  describe '#empty_result' do
+    let(:env) do
+      instance_double(
+        Mutant::Env,
+        mutations: [],
+        subjects:  []
+      )
+    end
+
+    let(:object) do
+      described_class.allocate.tap do |runner|
+        runner.instance_variable_set(:@env, env)
+      end
+    end
+
+    subject { object.send(:empty_result) }
+
+    it 'returns an env result with zero runtime and no subject results' do
+      expect(subject).to be_instance_of(Mutant::Result::Env)
+      expect(subject.env).to eql(env)
+      expect(subject.runtime).to eql(0.0)
+      expect(subject.subject_results).to eql([])
+    end
+  end
+
   describe '.call' do
     let(:condition_variable) { class_double(ConditionVariable)                 }
     let(:delay)              { instance_double(Float)                          }
@@ -149,6 +174,17 @@ RSpec.describe Mutant::Runner do
 
       it 'returns empty result' do
         verify_events { expect(apply).to eql(empty_result) }
+      end
+
+      it 'returns an env result object with no subject results' do
+        verify_events do
+          result = apply
+
+          expect(result).to be_instance_of(Mutant::Result::Env)
+          expect(result.env).to eql(env)
+          expect(result.subject_results).to eql([])
+          expect(result.runtime).to eql(0.0)
+        end
       end
     end
   end

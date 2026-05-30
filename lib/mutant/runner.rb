@@ -5,6 +5,15 @@ module Mutant
   class Runner
     include Adamantium::Flat, Concord.new(:env), Procto.call(:result)
 
+    EMPTY_RESULT_BUILDER = lambda do |env|
+      Result::Env.new(
+        env:             env,
+        runtime:         0.0,
+        subject_results: []
+      )
+    end
+    private_constant :EMPTY_RESULT_BUILDER
+
     # Initialize object
     #
     # @return [undefined]
@@ -41,11 +50,7 @@ module Mutant
     #
     # @return [Result::Env]
     def empty_result
-      Result::Env.new(
-        env:             env,
-        runtime:         0.0,
-        subject_results: []
-      )
+      EMPTY_RESULT_BUILDER.call(env)
     end
 
     # Run driver

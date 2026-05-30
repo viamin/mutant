@@ -39,7 +39,10 @@ RSpec.describe Mutant::Env::Bootstrap do
   end
 
   shared_examples_for 'bootstrap call' do
-    it { should eql(expected_env) }
+    it 'returns the expected env' do
+      expect(subject).to eql(expected_env)
+      expect(subject).to be_instance_of(Mutant::Env)
+    end
   end
 
   def expect_warning
@@ -178,6 +181,35 @@ RSpec.describe Mutant::Env::Bootstrap do
           mutations:        subjects.flat_map(&:mutations),
           subjects:         subjects
         )
+      end
+
+      include_examples 'bootstrap call'
+    end
+
+    context 'when subjects match and subject_filters are configured' do
+      let(:subject_filter) { instance_double(Mutant::Repository::SubjectFilter, call: true) }
+      let(:object_space_modules) { [TestApp::Literal] }
+      let(:match_expressions)    { object_space_modules.map(&:name).map(&method(:parse_expression)) }
+
+      let(:matcher_config) do
+        super().with(
+          match_expressions: match_expressions,
+          subject_filters:   [subject_filter]
+        )
+      end
+
+      let(:expected_env) do
+        subjects = Mutant::Matcher::Scope.new(TestApp::Literal).call(Fixtures::TEST_ENV)
+
+        super().with(
+          matchable_scopes: [Mutant::Scope.new(TestApp::Literal, match_expressions.first)],
+          mutations:        subjects.flat_map(&:mutations),
+          subjects:         subjects
+        )
+      end
+
+      before do
+        expect(config.reporter).to_not receive(:warn)
       end
 
       include_examples 'bootstrap call'
