@@ -4,11 +4,17 @@ module Mutant
   class CLI
     # Subcommand handler methods
     module Subcommands
+    private
+
       def handle_run(arguments)
         parse(arguments)
       end
 
       def handle_environment(arguments)
+        if arguments.intersect?(%w[--help -h])
+          print_environment_help
+          config.kernel.exit
+        end
         parse(arguments)
         print_environment
         config.kernel.exit
@@ -41,8 +47,6 @@ module Mutant
         end
         config.kernel.exit
       end
-
-    private
 
       def print_environment
         puts 'Mutant environment:'
