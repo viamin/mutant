@@ -75,6 +75,16 @@ RSpec.describe Mutant::Isolation::Fork do
         selector: :close
       },
       {
+        receiver:  Signal,
+        selector:  :trap,
+        arguments: ['INT', 'DEFAULT']
+      },
+      {
+        receiver:  Signal,
+        selector:  :trap,
+        arguments: ['TERM', 'DEFAULT']
+      },
+      {
         receiver: devnull,
         selector: :call,
         reaction: {

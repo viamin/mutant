@@ -62,16 +62,17 @@ describe Mutant::Repository::Diff do
     context 'when file is tracked in repository' do
       let(:git_ls_success?) { true                                                 }
       let(:status)          { instance_double(Process::Status, success?: success?) }
+      let(:stderr)          { 'fatal: git log failed'                              }
       let(:stdout)          { instance_double(String, empty?: stdout_empty?)       }
       let(:stdout_empty?)   { false                                                }
 
       include_context 'test if git tracks the file'
 
       before do
-        expect(config.open3).to receive(:capture2)
+        expect(config.open3).to receive(:capture3)
           .ordered
           .with(*expected_git_log_command, binmode: true)
-          .and_return([stdout, status])
+          .and_return([stdout, stderr, status])
       end
 
       let(:expected_git_log_command) do
@@ -86,6 +87,23 @@ describe Mutant::Repository::Diff do
             Mutant::Repository::RepositoryError,
             "Command #{expected_git_log_command} failed!"
           )
+        end
+
+        context 'when git rejects a line range that only exists in the new revision' do
+          let(:stdout)                { instance_double(String, empty?: true)               }
+          let(:stderr)                { 'fatal: file /foo/bar.rb has only 1 lines'          }
+          let(:diff_status)           { instance_double(Process::Status, success?: true)    }
+          let(:diff_stdout)           { "@@ -1,0 +1,2 @@\n+foo\n+bar\n"                     }
+          let(:expected_git_diff_command) { %W[git diff --unified=0 to_rev..from_rev -- #{path}] }
+
+          before do
+            expect(config.open3).to receive(:capture3)
+              .ordered
+              .with(*expected_git_diff_command, binmode: true)
+              .and_return([diff_stdout, instance_double(String), diff_status])
+          end
+
+          it { should be(true) }
         end
       end
 

@@ -97,11 +97,21 @@ module Mutant
         # @return [undefined]
         def call
           reader.close
-          writer.write(marshal.dump(result(&block)))
+          writer.write(marshal.dump(with_default_signal_handlers { result(&block) }))
           writer.close
         end
 
       private
+
+        # Child processes should not inherit the coordinator's temporary
+        # interrupt handlers. They should terminate with the platform defaults.
+        #
+        # @return [Object]
+        def with_default_signal_handlers
+          Signal.trap('INT', 'DEFAULT')
+          Signal.trap('TERM', 'DEFAULT')
+          yield
+        end
 
         # The block result computed under silencing
         #

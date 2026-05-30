@@ -25,6 +25,7 @@ module Mutant
       include Adamantium, Anima.new(:config, :from, :to)
 
       HEAD = 'HEAD'
+      INVALID_LINE_RANGE_PATTERN = /has only \d+ lines/.freeze
 
       # Test if diff changes file at line range
       #
@@ -38,21 +39,51 @@ module Mutant
       def touches?(path, line_range)
         return false unless within_working_directory?(path) && tracks?(path)
 
-        command = %W[
+        stdout, stderr, status = config.open3.capture3(*log_command(path, line_range), binmode: true)
+
+        return !stdout.empty? if status.success?
+        return diff_touches?(path, line_range) if invalid_line_range?(stderr)
+
+        fail RepositoryError, "Command #{log_command(path, line_range)} failed!"
+      end
+
+    private
+
+      def log_command(path, line_range)
+        %W[
           git log
           #{to}..#{from}
           --ignore-all-space
           -L #{line_range.begin},#{line_range.end}:#{path}
         ]
+      end
 
-        stdout, status = config.open3.capture2(*command, binmode: true)
+      def diff_touches?(path, line_range)
+        command = %W[git diff --unified=0 #{to}..#{from} -- #{path}]
+        stdout, _stderr, status = config.open3.capture3(*command, binmode: true)
 
         fail RepositoryError, "Command #{command} failed!" unless status.success?
 
-        !stdout.empty?
+        stdout.each_line.grep(/\A@@/).any? do |line|
+          start_line, line_count = parse_hunk(line)
+          next false if line_count.zero?
+
+          hunk_end = start_line + line_count - 1
+
+          line_range.begin <= hunk_end && start_line <= line_range.end
+        end
       end
 
-    private
+      def invalid_line_range?(stderr)
+        INVALID_LINE_RANGE_PATTERN.match?(stderr)
+      end
+
+      def parse_hunk(line)
+        match = /\A@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/.match(line) or
+          fail RepositoryError, "Cannot parse diff hunk: #{line.inspect}"
+
+        [Integer(match[1]), Integer(match[2] || 1)]
+      end
 
       # Test if path is tracked in repository
       #
