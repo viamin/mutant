@@ -262,6 +262,7 @@ module Mutant
       open3:              Open3,
       pathname:           Pathname,
       reporter:           Reporter::CLI.build($stdout),
+      results_dir:        nil,
       requires:           EMPTY_ARRAY,
       thread:             Thread,
       zombie:             false

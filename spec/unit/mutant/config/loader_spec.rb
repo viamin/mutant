@@ -76,6 +76,7 @@ RSpec.describe Mutant::Config::Loader do
               - "MyApp::Secrets#fetch"
             ignore:
               - "app/admin/**/*.rb"
+          results_dir: tmp/mutant
         YAML
       end
 
@@ -107,6 +108,7 @@ RSpec.describe Mutant::Config::Loader do
             )
           ]
         )
+        expect(subject.results_dir).to eql('tmp/mutant')
       end
     end
 
@@ -150,6 +152,19 @@ RSpec.describe Mutant::Config::Loader do
         expect { subject }.to raise_error(
           Mutant::Config::Loader::Error,
           %r{\AInvalid value for jobs at .*/\.mutant\.yml:1: expected Integer\z}
+        )
+      end
+    end
+
+    context 'when results_dir has an invalid value type' do
+      before do
+        config_path.write("results_dir: 1\n")
+      end
+
+      it 'raises a validation error' do
+        expect { subject }.to raise_error(
+          Mutant::Config::Loader::Error,
+          %r{\AInvalid value for results_dir at .*/\.mutant\.yml:1: expected String\z}
         )
       end
     end

@@ -23,6 +23,7 @@ module Mutant
       :open3,
       :pathname,
       :reporter,
+      :results_dir,
       :requires,
       :thread,
       :zombie

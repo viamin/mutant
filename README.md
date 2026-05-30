@@ -85,6 +85,7 @@ matcher:
     - "MyApp::Secrets#fetch"
   ignore:
     - "app/admin/**/*.rb"
+results_dir: tmp/mutant
 ```
 
 Defaults:

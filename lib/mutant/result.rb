@@ -218,7 +218,7 @@ module Mutant
       #
       # @return [Boolean]
       def success?
-        coverage_criteria.success?(mutation: mutation, isolation_result: isolation_result)
+        coverage_criteria.success?(mutation, isolation_result)
       end
       memoize :success?
 

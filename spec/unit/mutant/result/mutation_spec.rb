@@ -1,6 +1,20 @@
 # frozen_string_literal: true
 
 RSpec.describe Mutant::Result::Mutation do
+  class CoverageCriteriaSpy
+    def initialize(expected_isolation_result, expected_mutation, result)
+      @expected_isolation_result = expected_isolation_result
+      @expected_mutation         = expected_mutation
+      @result                    = result
+    end
+
+    def success?(mutation, isolation_result)
+      mutation.equal?(@expected_mutation) &&
+        isolation_result.equal?(@expected_isolation_result) &&
+        @result
+    end
+  end
+
   let(:object) do
     described_class.new(
       coverage_criteria: coverage_criteria,
@@ -11,7 +25,10 @@ RSpec.describe Mutant::Result::Mutation do
   end
 
   let(:mutation) { instance_double(Mutant::Mutation) }
-  let(:coverage_criteria) { instance_double(Mutant::Config::CoverageCriteria) }
+  let(:success) { true }
+  let(:coverage_criteria) do
+    CoverageCriteriaSpy.new(isolation_result, mutation, success)
+  end
 
   let(:test_result) do
     instance_double(
@@ -54,25 +71,17 @@ RSpec.describe Mutant::Result::Mutation do
     subject { object.success? }
 
     context 'if isolation is successful' do
-      before do
-        expect(coverage_criteria).to receive(:success?)
-          .with(mutation: mutation, isolation_result: isolation_result)
-          .and_return(true)
-      end
+      let(:success) { true }
 
-      it { should be(true) }
+      it { should eql(true) }
     end
 
     context 'if isolation is not successful' do
       include_context 'unsuccessful isolation'
 
-      before do
-        expect(coverage_criteria).to receive(:success?)
-          .with(mutation: mutation, isolation_result: isolation_result)
-          .and_return(false)
-      end
+      let(:success) { false }
 
-      it { should be(false) }
+      it { should eql(false) }
     end
   end
 end

@@ -15,6 +15,7 @@ module Mutant
         integration
         jobs
         matcher
+        results_dir
         requires
       ].freeze
       MATCHER_KEYS   = %w[ignore subjects].freeze
@@ -99,6 +100,10 @@ module Mutant
         reader.mapping(node, ['matcher'], MATCHER_KEYS).reduce(config.matcher) do |matcher, (key, value_node)|
           __send__(:"matcher_#{key}", matcher, value_node)
         end
+      end
+
+      def attribute_results_dir(node)
+        reader.string(node, ['results_dir'])
       end
 
       def attribute_requires(node)

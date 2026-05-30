@@ -24,7 +24,7 @@ module Mutant
       # @param [Isolation::Result] isolation_result
       #
       # @return [Boolean]
-      def success?(mutation:, isolation_result:)
+      def success?(mutation, isolation_result)
         if isolation_result.success?
           test_result && mutation.class.success?(isolation_result.value)
         elsif timeout_result?(isolation_result)
