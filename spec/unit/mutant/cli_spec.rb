@@ -67,6 +67,10 @@ RSpec.describe Mutant::CLI do
 
     subject { object.new(arguments) }
 
+    before do
+      allow(Kernel).to receive(:exit)
+    end
+
     # Defaults
     let(:expected_integration)    { Mutant::Integration::Null        }
     let(:expected_reporter)       { Mutant::Config::DEFAULT.reporter }
@@ -384,12 +388,12 @@ RSpec.describe Mutant::CLI do
       end
 
       context 'with extra arguments' do
-        let(:arguments) { %w[help run extra] }
+        let(:arguments) { %w[help run extra another] }
 
         it 'raises error' do
           expect { subject }.to raise_error(
             Mutant::CLI::Error,
-            'help does not accept arguments: extra'
+            'help does not accept arguments: extra another'
           )
         end
       end
@@ -626,6 +630,10 @@ RSpec.describe Mutant::CLI do
   describe 'dispatch internals' do
     let(:config) { Mutant::Config::DEFAULT }
 
+    before do
+      allow(Kernel).to receive(:exit)
+    end
+
     def build_cli
       described_class.allocate.tap do |cli|
         cli.instance_variable_set(:@config, config)
@@ -712,6 +720,56 @@ RSpec.describe Mutant::CLI do
       end
     end
 
+    describe '#exit' do
+      let(:cli) { build_cli }
+
+      it 'delegates to the configured kernel' do
+        expect(Kernel).to receive(:exit)
+
+        cli.send(:exit)
+      end
+    end
+
+    describe '#dispatch' do
+      subject(:dispatch) { cli.send(:dispatch, arguments) }
+
+      let(:cli) { build_cli }
+
+      context 'with a bare help flag' do
+        let(:arguments) { %w[--help] }
+
+        it 'prints main help and exits' do
+          expect(cli).to receive(:print_main_help)
+          expect(cli).not_to receive(:parse)
+          expect(Kernel).to receive(:exit)
+
+          dispatch
+        end
+      end
+
+      context 'without a subcommand' do
+        let(:arguments) { %w[TestApp*] }
+
+        it 'falls back to parse' do
+          expect(cli).to receive(:parse).with(%w[TestApp*])
+
+          dispatch
+        end
+      end
+
+      context 'with a help flag and additional arguments' do
+        let(:arguments) { %w[--help extra] }
+
+        it 'parses instead of printing main help' do
+          expect(cli).to receive(:parse).with(%w[--help extra])
+          expect(cli).not_to receive(:print_main_help)
+          expect(cli).not_to receive(:exit)
+
+          dispatch
+        end
+      end
+    end
+
     describe '#handle_session' do
       subject(:handle_session) { cli.send(:handle_session, arguments) }
 
@@ -736,6 +794,47 @@ RSpec.describe Mutant::CLI do
         it 'forwards an empty array to the show handler' do
           expect(cli).to receive(:print_session_show).with('abc123', [])
           handle_session
+        end
+      end
+
+      context 'for list with extra arguments' do
+        let(:arguments) { %w[list first second] }
+
+        it 'forwards all extra arguments to the list handler' do
+          expect(cli).to receive(:print_session_list).with(%w[first second])
+          handle_session
+        end
+      end
+    end
+
+    describe '#handle_environment' do
+      subject(:handle_environment) { cli.send(:handle_environment, arguments) }
+
+      let(:cli) { build_cli }
+
+      context 'when help appears after other arguments' do
+        let(:arguments) { %w[TestApp* --help] }
+
+        it 'prints environment help and skips parsing' do
+          expect(cli).to receive(:print_environment_help)
+          expect(cli).not_to receive(:parse)
+          expect(cli).not_to receive(:print_environment)
+          expect(Kernel).to receive(:exit)
+
+          handle_environment
+        end
+      end
+
+      context 'when short help flag is used' do
+        let(:arguments) { %w[-h] }
+
+        it 'prints environment help and skips parsing' do
+          expect(cli).to receive(:print_environment_help)
+          expect(cli).not_to receive(:parse)
+          expect(cli).not_to receive(:print_environment)
+          expect(Kernel).to receive(:exit)
+
+          handle_environment
         end
       end
     end

@@ -35,18 +35,7 @@ module Mutant
     # @return [undefined]
     def initialize(arguments)
       @config = Config::DEFAULT
-
-      arguments = normalize_arguments(arguments)
-      subcommand = arguments.first
-
-      if subcommand && respond_to?("handle_#{subcommand}", true)
-        __send__("handle_#{subcommand}", subcommand_arguments(arguments))
-      elsif arguments.one? && %w[--help -h].include?(subcommand)
-        print_main_help
-        exit
-      else
-        parse(arguments)
-      end
+      dispatch(normalize_arguments(arguments))
     end
 
     # Config parsed from CLI
@@ -57,6 +46,7 @@ module Mutant
   private
 
     GLOBAL_FLAGS = %w[--help -h --version].freeze
+    HELP_FLAGS   = %w[--help -h].freeze
 
     def normalize_arguments(arguments)
       return arguments if arguments.empty?
@@ -85,8 +75,17 @@ module Mutant
       config.kernel.exit
     end
 
-    def subcommand_arguments(arguments)
-      arguments.drop(1)
+    def dispatch(arguments)
+      subcommand, *subcommand_arguments = arguments
+
+      if SUBCOMMANDS.include?(subcommand)
+        __send__("handle_#{subcommand}", subcommand_arguments)
+      elsif arguments.one? && HELP_FLAGS.include?(subcommand)
+        print_main_help
+        exit
+      else
+        parse(arguments)
+      end
     end
 
     def parse(arguments)

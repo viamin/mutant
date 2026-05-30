@@ -21,12 +21,12 @@ module Mutant
       end
 
       def handle_session(arguments)
-        sub = arguments.first
-        case sub
+        subcommand, session_id, *rest = arguments
+        case subcommand
         when 'list'
-          print_session_list(arguments.drop(1))
+          print_session_list([session_id, *rest].compact)
         when 'show'
-          print_session_show(arguments[1], arguments.drop(2))
+          print_session_show(session_id, rest)
         else
           print_session_help
         end
@@ -34,12 +34,13 @@ module Mutant
       end
 
       def handle_help(arguments)
-        unless arguments.length <= 1
-          raise Error, "help does not accept arguments: #{arguments[1..].join(' ')}"
+        subcommand, *rest = arguments
+
+        unless rest.empty?
+          raise Error, "help does not accept arguments: #{rest.join(' ')}"
         end
 
-        sub = arguments.first
-        case sub
+        case subcommand
         when 'run'
           print_run_help
         when 'environment'
