@@ -13,24 +13,24 @@ module Mutant
       def handle_environment(arguments)
         if arguments.intersect?(%w[--help -h])
           print_environment_help
-          config.kernel.exit
+          return exit
         end
         parse(arguments)
         print_environment
-        config.kernel.exit
+        exit
       end
 
       def handle_session(arguments)
         sub = arguments.first
         case sub
         when 'list'
-          print_session_list(arguments[1..] || [])
+          print_session_list(arguments.drop(1))
         when 'show'
-          print_session_show(arguments[1], arguments[2..] || [])
+          print_session_show(arguments[1], arguments.drop(2))
         else
           print_session_help
         end
-        config.kernel.exit
+        exit
       end
 
       def handle_help(arguments)
@@ -49,7 +49,7 @@ module Mutant
         else
           print_main_help
         end
-        config.kernel.exit
+        exit
       end
 
       def print_environment

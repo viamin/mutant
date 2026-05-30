@@ -40,10 +40,10 @@ module Mutant
       subcommand = arguments.first
 
       if subcommand && respond_to?("handle_#{subcommand}", true)
-        __send__("handle_#{subcommand}", arguments[1..] || [])
+        __send__("handle_#{subcommand}", subcommand_arguments(arguments))
       elsif arguments.one? && %w[--help -h].include?(subcommand)
         print_main_help
-        config.kernel.exit
+        exit
       else
         parse(arguments)
       end
@@ -79,6 +79,14 @@ module Mutant
 
     def puts(message = nil)
       $stdout.puts(message)
+    end
+
+    def exit
+      config.kernel.exit
+    end
+
+    def subcommand_arguments(arguments)
+      arguments.drop(1)
     end
 
     def parse(arguments)

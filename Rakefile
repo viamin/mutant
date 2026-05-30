@@ -28,7 +28,7 @@ namespace :metrics do
     mutant_jobs = ENV['MUTANT_JOBS']
     mutant_since = ENV.fetch('MUTANT_SINCE', 'HEAD~1')
     arguments = %w[
-      bundle exec mutant
+      bundle exec mutant run
       --include lib
       --require mutant
       --use rspec

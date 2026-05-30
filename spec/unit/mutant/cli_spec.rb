@@ -303,7 +303,7 @@ RSpec.describe Mutant::CLI do
         let(:arguments) { %w[help] }
 
         before do
-          expect($stdout).to receive(:puts)
+          expect($stdout).to receive(:puts).with(Mutant::CLI::Help::MAIN_HELP)
           expect(Kernel).to receive(:exit)
         end
 
@@ -316,12 +316,31 @@ RSpec.describe Mutant::CLI do
         let(:arguments) { %w[help run] }
 
         before do
-          expect($stdout).to receive(:puts)
+          expect($stdout).to receive(:puts).with(expected_message)
           expect(Kernel).to receive(:exit)
         end
 
         it 'prints run help' do
           subject
+        end
+
+        let(:expected_message) do
+          <<~MESSAGE
+            usage: mutant run [options] MATCH_EXPRESSION ...
+            Environment:
+                    --zombie                     Run mutant zombified
+                -I, --include DIRECTORY          Add DIRECTORY to $LOAD_PATH
+                -r, --require NAME               Require file with NAME
+                -j, --jobs NUMBER                Number of kill jobs. Defaults to number of processors.
+
+            Options:
+                    --use INTEGRATION            Use INTEGRATION to kill mutations
+                    --ignore-subject EXPRESSION  Ignore subjects that match EXPRESSION as prefix
+                    --since REVISION             Only select subjects touched since REVISION
+                    --fail-fast                  Fail fast
+                    --version                    Print mutants version
+                -h, --help                       Show this message
+          MESSAGE
         end
       end
 
@@ -329,7 +348,7 @@ RSpec.describe Mutant::CLI do
         let(:arguments) { %w[help environment] }
 
         before do
-          expect($stdout).to receive(:puts)
+          expect($stdout).to receive(:puts).with(Mutant::CLI::Help::ENVIRONMENT_HELP)
           expect(Kernel).to receive(:exit)
         end
 
@@ -342,11 +361,24 @@ RSpec.describe Mutant::CLI do
         let(:arguments) { %w[help session] }
 
         before do
-          expect($stdout).to receive(:puts)
+          expect($stdout).to receive(:puts).with(Mutant::CLI::Help::SESSION_HELP)
           expect(Kernel).to receive(:exit)
         end
 
         it 'prints session help' do
+          subject
+        end
+      end
+
+      context 'with unknown subcommand' do
+        let(:arguments) { %w[help unknown] }
+
+        before do
+          expect($stdout).to receive(:puts).with(Mutant::CLI::Help::MAIN_HELP)
+          expect(Kernel).to receive(:exit)
+        end
+
+        it 'falls back to main help' do
           subject
         end
       end
@@ -365,13 +397,38 @@ RSpec.describe Mutant::CLI do
 
     context 'environment subcommand' do
       let(:arguments) { %w[environment --zombie TestApp*] }
+      let(:expected_matcher) do
+        Mutant::Matcher::Config::DEFAULT.with(
+          match_expressions: [parse_expression('TestApp*')]
+        )
+      end
 
       before do
-        expect($stdout).to receive(:puts).at_least(:once)
+        expect($stdout).to receive(:puts).with('Mutant environment:')
+        expect($stdout).to receive(:puts).with("  Integration:     #{Mutant::Integration::Null}")
+        expect($stdout).to receive(:puts).with("  Jobs:            #{Mutant::Config::DEFAULT.jobs}")
+        expect($stdout).to receive(:puts).with('  Includes:        []')
+        expect($stdout).to receive(:puts).with('  Requires:        []')
+        expect($stdout).to receive(:puts).with('  Fail fast:       false')
+        expect($stdout).to receive(:puts).with('  Zombie:          true')
+        expect($stdout).to receive(:puts).with("  Matcher:         #{expected_matcher.inspect}")
         expect(Kernel).to receive(:exit)
       end
 
       it 'parses config options' do
+        subject
+      end
+    end
+
+    context 'environment subcommand with help flag' do
+      let(:arguments) { %w[environment --help] }
+
+      before do
+        expect($stdout).to receive(:puts).with(Mutant::CLI::Help::ENVIRONMENT_HELP)
+        expect(Kernel).to receive(:exit)
+      end
+
+      it 'prints environment help' do
         subject
       end
     end
@@ -542,12 +599,143 @@ RSpec.describe Mutant::CLI do
         let(:arguments) { %w[session] }
 
         before do
-          expect($stdout).to receive(:puts)
+          expect($stdout).to receive(:puts).with(Mutant::CLI::Help::SESSION_HELP)
           expect(Kernel).to receive(:exit)
         end
 
         it 'prints session help' do
           subject
+        end
+      end
+
+      context 'with unknown sub-subcommand' do
+        let(:arguments) { %w[session unknown] }
+
+        before do
+          expect($stdout).to receive(:puts).with(Mutant::CLI::Help::SESSION_HELP)
+          expect(Kernel).to receive(:exit)
+        end
+
+        it 'prints session help' do
+          subject
+        end
+      end
+    end
+  end
+
+  describe 'dispatch internals' do
+    let(:config) { Mutant::Config::DEFAULT }
+
+    def build_cli
+      described_class.allocate.tap do |cli|
+        cli.instance_variable_set(:@config, config)
+      end
+    end
+
+    describe 'subcommand dispatch from initialize' do
+      def build_dispatch_probe
+        Class.new(described_class) do
+          attr_reader :dispatched
+
+        private
+
+          def handle_run(arguments)
+            @dispatched = [:run, arguments]
+          end
+
+          def handle_environment(arguments)
+            @dispatched = [:environment, arguments]
+          end
+
+          def handle_session(arguments)
+            @dispatched = [:session, arguments]
+          end
+
+          def handle_help(arguments)
+            @dispatched = [:help, arguments]
+          end
+        end
+      end
+
+      it 'dispatches run with an empty argument array' do
+        cli = build_dispatch_probe.allocate
+
+        cli.send(:initialize, %w[run])
+
+        expect(cli.dispatched).to eql([:run, []])
+      end
+
+      it 'dispatches environment with an empty argument array' do
+        cli = build_dispatch_probe.allocate
+
+        cli.send(:initialize, %w[environment])
+
+        expect(cli.dispatched).to eql([:environment, []])
+      end
+
+      it 'dispatches session with an empty argument array' do
+        cli = build_dispatch_probe.allocate
+
+        cli.send(:initialize, %w[session])
+
+        expect(cli.dispatched).to eql([:session, []])
+      end
+
+      it 'dispatches help with an empty argument array' do
+        cli = build_dispatch_probe.allocate
+
+        cli.send(:initialize, %w[help])
+
+        expect(cli.dispatched).to eql([:help, []])
+      end
+    end
+
+    describe '#normalize_arguments' do
+      subject(:normalized_arguments) { cli.send(:normalize_arguments, arguments) }
+
+      let(:cli) { build_cli }
+
+      context 'with no arguments' do
+        let(:arguments) { [] }
+
+        it 'returns the same empty array' do
+          expect(normalized_arguments).to eql([])
+        end
+      end
+
+      context 'with an explicit subcommand' do
+        let(:arguments) { %w[session list] }
+
+        it 'does not add the run alias' do
+          expect(normalized_arguments).to eql(%w[session list])
+        end
+      end
+    end
+
+    describe '#handle_session' do
+      subject(:handle_session) { cli.send(:handle_session, arguments) }
+
+      let(:cli) { build_cli }
+
+      before do
+        expect(Kernel).to receive(:exit)
+      end
+
+      context 'for list without extra arguments' do
+        let(:arguments) { ['list'] }
+
+        it 'forwards an empty array to the list handler' do
+          expect(cli).to receive(:print_session_list).with([])
+          handle_session
+        end
+      end
+
+      context 'for show without extra arguments' do
+        let(:arguments) { %w[show abc123] }
+
+        it 'forwards an empty array to the show handler' do
+          expect(cli).to receive(:print_session_show).with('abc123', [])
+          handle_session
         end
       end
     end
