@@ -41,11 +41,11 @@ module Mutant
 
         def section(types, example)
           [
-            "## #{type_label(types)}",
-            "Representative source from `#{relative_meta_path(example)}`:",
-            fenced('ruby', example.source),
+            "## #{self.class.type_label(types)}",
+            "Representative source from `#{self.class.relative_meta_path(example)}`:",
+            self.class.fenced('ruby', example.source),
             'Representative diff:',
-            fenced('diff', representative_diff(example))
+            self.class.fenced('diff', representative_diff(example))
           ].join("\n\n")
         end
 
@@ -57,27 +57,27 @@ module Mutant
 
         def representative_mutation(example)
           example.expected.find do |node|
-            !singleton_mutation?(node)
+            !self.class.singleton_mutation?(node)
           end || example.expected.first
         end
 
-        def type_label(types)
+        def self.type_label(types)
           return 'special forms' if types.empty?
 
           types.map(&:to_s).join(' / ')
         end
 
-        def relative_meta_path(example)
+        def self.relative_meta_path(example)
           _before, after = example.file.split('/meta/', 2)
 
           "meta/#{after || File.basename(example.file)}"
         end
 
-        def singleton_mutation?(node)
+        def self.singleton_mutation?(node)
           [[:nil, []], [:self, []]].include?([node.type, node.children])
         end
 
-        def fenced(language, source)
+        def self.fenced(language, source)
           ["```#{language}", source, '```'].join("\n")
         end
       end

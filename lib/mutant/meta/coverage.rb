@@ -45,15 +45,15 @@ module Mutant
 
           [
             '|',
-            escape(entry.title),
+            self.class.escape(entry.title),
             "| `#{entry.status}` |",
-            "`#{escape(smoke)}` |",
-            "#{escape(entry.notes)} |"
+            "`#{self.class.escape(smoke)}` |",
+            "#{self.class.escape(entry.notes)} |"
           ].join(' ')
         end
       end
 
-      def escape(value)
+      def self.escape(value)
         value.gsub('|', '\\|')
       end
     end
