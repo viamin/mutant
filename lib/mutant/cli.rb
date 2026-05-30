@@ -2,42 +2,29 @@
 
 module Mutant
   LEGACY_USAGE_VALUES = %w[opensource commercial].freeze
-  USAGE_WARNING = 'warning: --usage is a no-op in viamin/mutant '\
-                  '(MIT-licensed); flag will be removed in a future release'
-
-  def self.filter_deprecated_usage(arguments)
-    filtered  = []
-    remaining = arguments.dup
-    warned    = false
-
-    warned ||= filter_argument(remaining, filtered) until remaining.empty?
-
-    [filtered, warned]
-  end
-
-  def self.filter_argument(remaining, filtered)
-    return consume_usage_argument(remaining) if usage_argument?(remaining.first)
-
-    filtered << remaining.shift
-    false
-  end
-
-  def self.consume_usage_argument(remaining)
-    argument = remaining.shift
-
-    remaining.shift if argument == '--usage' && LEGACY_USAGE_VALUES.include?(remaining.first)
-    true
-  end
+  USAGE_WARNING = '--usage is a no-op in viamin/mutant (MIT-licensed)'
 
   def self.usage_argument?(argument)
-    argument == '--usage' || argument.start_with?('--usage=')
+    argument == '--usage' || argument&.start_with?('--usage=')
   end
 
   def self.sanitize_arguments(arguments)
-    sanitized_arguments, warned = filter_deprecated_usage(arguments)
+    sanitized_arguments = []
+    remaining           = arguments.dup
+    warned              = false
+
+    until remaining.empty?
+      argument = remaining.shift
+
+      if usage_argument?(argument)
+        remaining.shift if argument == '--usage' && LEGACY_USAGE_VALUES.include?(remaining.first)
+        warned = true
+      else
+        sanitized_arguments << argument
+      end
+    end
 
     $stderr.puts(USAGE_WARNING) if warned
-
     sanitized_arguments
   end
 

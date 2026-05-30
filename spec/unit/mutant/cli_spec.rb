@@ -3,14 +3,16 @@
 RSpec.describe Mutant::CLI do
   let(:object) { described_class }
 
-  describe '::filter_deprecated_usage' do
-    subject(:filter_deprecated_usage) { Mutant.filter_deprecated_usage(arguments) }
+  describe '::sanitize_arguments' do
+    subject(:sanitize_arguments) { Mutant.sanitize_arguments(arguments) }
 
     context 'when usage is passed as separate option and legacy value' do
       let(:arguments) { %w[--usage opensource TestApp*] }
 
       it 'removes both arguments and warns' do
-        expect(filter_deprecated_usage).to eql([%w[TestApp*], true])
+        expect($stderr).to receive(:puts).with(Mutant::USAGE_WARNING)
+
+        expect(sanitize_arguments).to eql(%w[TestApp*])
       end
     end
 
@@ -18,7 +20,9 @@ RSpec.describe Mutant::CLI do
       let(:arguments) { %w[--usage=commercial TestApp*] }
 
       it 'removes the option and warns' do
-        expect(filter_deprecated_usage).to eql([%w[TestApp*], true])
+        expect($stderr).to receive(:puts).with(Mutant::USAGE_WARNING)
+
+        expect(sanitize_arguments).to eql(%w[TestApp*])
       end
     end
 
@@ -26,7 +30,9 @@ RSpec.describe Mutant::CLI do
       let(:arguments) { %w[--usage proprietary TestApp*] }
 
       it 'preserves the value as a match expression and warns' do
-        expect(filter_deprecated_usage).to eql([%w[proprietary TestApp*], true])
+        expect($stderr).to receive(:puts).with(Mutant::USAGE_WARNING)
+
+        expect(sanitize_arguments).to eql(%w[proprietary TestApp*])
       end
     end
 
@@ -34,7 +40,9 @@ RSpec.describe Mutant::CLI do
       let(:arguments) { %w[TestApp*] }
 
       it 'returns arguments unchanged without warning' do
-        expect(filter_deprecated_usage).to eql([%w[TestApp*], false])
+        expect($stderr).not_to receive(:puts)
+
+        expect(sanitize_arguments).to eql(%w[TestApp*])
       end
     end
   end
@@ -204,9 +212,7 @@ RSpec.describe Mutant::CLI do
 
     context 'with usage flag' do
       before do
-        expect($stderr).to receive(:puts).with(
-          'warning: --usage is a no-op in viamin/mutant (MIT-licensed); flag will be removed in a future release'
-        )
+        expect($stderr).to receive(:puts).with(Mutant::USAGE_WARNING)
       end
 
       context 'when passed as separate option and value' do
