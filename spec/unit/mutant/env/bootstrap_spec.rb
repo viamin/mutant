@@ -207,7 +207,8 @@ RSpec.describe Mutant::Env::Bootstrap do
     end
 
     context 'when subjects match and subject_filters are configured' do
-      let(:subject_filter)       { instance_double(Mutant::Repository::SubjectFilter, call: true) }
+      let(:diff)                 { instance_double(Mutant::Repository::Diff, touches?: true) }
+      let(:subject_filter)       { Mutant::Repository::SubjectFilter.new(diff) }
       let(:object_space_modules) { [TestApp::Literal] }
       let(:match_expressions)    { object_space_modules.map(&:name).map(&method(:parse_expression)) }
 
