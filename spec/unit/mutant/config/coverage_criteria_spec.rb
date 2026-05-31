@@ -143,10 +143,26 @@ RSpec.describe Mutant::Config::CoverageCriteria do
         it { should be(true) }
       end
 
+      context 'and the mutation test result is unsuccessful' do
+        let(:mutation_success) { false }
+
+        before do
+          expect(mutation.class).to receive(:success?)
+            .with(test_result_object)
+            .and_return(mutation_success)
+        end
+
+        it { should be(false) }
+      end
+
       context 'and test_result criteria is disabled' do
         let(:test_result)      { false }
 
-        it { should be(false) }
+        it 'does not consult mutation success and returns false' do
+          expect(mutation.class).not_to receive(:success?)
+
+          expect(subject).to be(false)
+        end
       end
     end
 

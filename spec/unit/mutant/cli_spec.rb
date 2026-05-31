@@ -380,6 +380,19 @@ RSpec.describe Mutant::CLI do
             expect(subject.config.jobs).to eql(4)
           end
         end
+
+        context 'with invalid MUTANT_JOBS env variable' do
+          around do |example|
+            ENV.store('MUTANT_JOBS', 'nope')
+            example.run
+          ensure
+            ENV.delete('MUTANT_JOBS')
+          end
+
+          it 'still uses the config file jobs value' do
+            expect(subject.config.jobs).to eql(4)
+          end
+        end
       end
 
       context 'with matcher subjects' do
@@ -756,6 +769,16 @@ RSpec.describe Mutant::CLI do
         end
 
         it { should be(false) }
+      end
+
+      context 'when yaml parsing raises a syntax error' do
+        before do
+          config_path.write("jobs: [\n")
+        end
+
+        it 'propagates the parser failure' do
+          expect { config_file_sets_jobs? }.to raise_error(Psych::SyntaxError)
+        end
       end
 
       context 'when the config file contains jobs among other keys' do
