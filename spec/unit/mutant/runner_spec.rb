@@ -64,23 +64,6 @@ RSpec.describe Mutant::Runner do
     described_class.call(env)
   end
 
-  describe '#empty_result' do
-    let(:object) do
-      described_class.allocate.tap do |runner|
-        runner.instance_variable_set(:@env, env)
-      end
-    end
-
-    subject { object.send(:empty_result) }
-
-    it 'returns an env result with zero runtime and no subject results' do
-      expect(subject).to be_instance_of(Mutant::Result::Env)
-      expect(subject.env).to eql(env)
-      expect(subject.runtime).to eql(0.0)
-      expect(subject.subject_results).to eql([])
-    end
-  end
-
   describe '.call' do
     let(:raw_expectations) do
       [

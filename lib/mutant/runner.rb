@@ -47,26 +47,19 @@ module Mutant
     end
 
     def run_mutation_analysis
-      result = nil
+      return EMPTY_RESULT_BUILDER.call(env).tap { |result| reporter.report(result) } if env.mutations.empty?
 
-      return result = empty_result if env.mutations.empty?
+      run_parallel_analysis
+    end
 
+    def run_parallel_analysis
       driver = Parallel.async(mutation_test_config)
-
       result = with_signal_handlers { run_driver(driver) }
     rescue Interrupt
       result = driver&.stop&.payload
       raise
     ensure
-      final_result = result || mutation_sink.status
-      reporter.report(final_result)
-    end
-
-    # Build empty result for no-op runs
-    #
-    # @return [Result::Env]
-    def empty_result
-      EMPTY_RESULT_BUILDER.call(env)
+      reporter.report(result || mutation_sink.status)
     end
 
     def run_driver(driver)
