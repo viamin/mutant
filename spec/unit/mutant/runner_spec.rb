@@ -180,17 +180,6 @@ RSpec.describe Mutant::Runner do
       it 'returns empty result' do
         verify_events { expect(apply).to eql(empty_result) }
       end
-
-      it 'returns an env result object with no subject results' do
-        verify_events do
-          result = apply
-
-          expect(result).to be_instance_of(Mutant::Result::Env)
-          expect(result.env).to eql(env)
-          expect(result.subject_results).to eql([])
-          expect(result.runtime).to eql(0.0)
-        end
-      end
     end
 
     context 'when interrupted before first result is returned' do
@@ -299,7 +288,9 @@ RSpec.describe Mutant::Runner do
         verify_events { expect { apply }.to raise_error(Interrupt) }
       end
     end
+  end
 
+  describe '.call' do
     it 'freezes the runner before reading the final result' do
       runner = instance_double(described_class, result: env_result)
 

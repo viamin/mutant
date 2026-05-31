@@ -87,6 +87,7 @@ RSpec.describe Mutant::CLI do
 
         Options:
                 --use INTEGRATION            Use INTEGRATION to kill mutations
+                --include-subject EXPRESSION Add EXPRESSION to the configured subject matcher list
                 --ignore-subject EXPRESSION  Ignore subjects that match EXPRESSION as prefix
                 --since REVISION             Only select subjects touched since REVISION
                 --fail-fast                  Fail fast
@@ -380,6 +381,45 @@ RSpec.describe Mutant::CLI do
 
       let(:expected_matcher_config) do
         default_matcher_config.with(ignore_expressions: [parse_expression('Foo::Bar')])
+      end
+
+      it_should_behave_like 'a cli parser'
+    end
+
+    context 'with include-subject flag' do
+      let(:flags) { %w[--include-subject Foo::Bar] }
+      let(:expressions) { [] }
+
+      let(:expected_matcher_config) do
+        Mutant::Matcher::Config::DEFAULT.with(match_expressions: [parse_expression('Foo::Bar')])
+      end
+
+      it_should_behave_like 'a cli parser'
+    end
+
+    context 'with include-subject flag and preconfigured matcher expressions' do
+      let(:flags) { %w[--include-subject Foo::Bar] }
+      let(:expressions) { [] }
+
+      let(:configured_default) do
+        Mutant::Config::DEFAULT.with(
+          matcher: Mutant::Matcher::Config::DEFAULT.with(
+            match_expressions: [parse_expression('Configured::Subject')]
+          )
+        )
+      end
+
+      let(:expected_matcher_config) do
+        Mutant::Matcher::Config::DEFAULT.with(
+          match_expressions: [
+            parse_expression('Configured::Subject'),
+            parse_expression('Foo::Bar')
+          ]
+        )
+      end
+
+      before do
+        stub_const('Mutant::Config::DEFAULT', configured_default)
       end
 
       it_should_behave_like 'a cli parser'

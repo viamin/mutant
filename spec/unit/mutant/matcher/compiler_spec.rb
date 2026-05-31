@@ -55,7 +55,7 @@ RSpec.describe Mutant::Matcher::Compiler, '#call' do
       end
 
       let(:ignore_expression_predicates) do
-        [Mutant::Matcher::Compiler::SubjectPrefix.new(expression_b)]
+        [expression_b.subject_predicate]
       end
 
       it { should eql(expected_matcher) }

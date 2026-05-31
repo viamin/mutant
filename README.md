@@ -66,7 +66,7 @@ Running mutant for the first time on an existing codebase can be a rather dishea
 
 ### How it works
 
-`--since <git-ref>` computes the diff from the merge-base of `<git-ref>` and `HEAD` via `git diff <git-ref>...HEAD`. Any subject (method, singleton method, class/module body) whose source range overlaps a changed hunk is included in the mutation set. Newly added files include all their subjects. Deleted files are skipped. The result is intersected with the configured subject matchers — `--since` never expands beyond what the match expressions would have matched.
+`--since <git-ref>` computes the diff from the merge-base of `<git-ref>` and `HEAD` via `git diff <git-ref>...HEAD`. Any subject (method, singleton method, class/module body) whose source range overlaps a changed hunk is included in the mutation set. Newly added files include all their subjects. Deleted files are skipped. The result is intersected with the configured subject matchers, so `--since` never expands beyond what the match expressions would have matched.
 
 ### Example: standalone gem
 
@@ -91,9 +91,24 @@ bundle exec mutant \
   "MyApp*"
 ```
 
-When the intersection of diff-touched subjects and matched subjects is empty, mutant exits 0 with an informational message.
+When the intersection of diff-touched subjects and matched subjects is empty, mutant exits `0` with an informational message.
 
 Note that this feature requires at least git `2.13.0`.
+
+Subject Matchers
+----------------
+
+Mutant accepts subject matcher expressions as CLI positional arguments and through matcher configuration.
+
+| Syntax | Meaning |
+| --- | --- |
+| `MyApp::Foo` | All methods on `MyApp::Foo` and its nested constants. |
+| `MyApp::Foo*` | `MyApp::Foo` and all constants under that namespace. |
+| `MyApp::Foo#bar` | Instance method `MyApp::Foo#bar` only. |
+| `MyApp::Foo.bar` | Singleton method `MyApp::Foo.bar` only. |
+| `source:app/models/**/*.rb` | All subjects defined in files matching the glob. |
+
+Use `--include-subject EXPRESSION` to append additional subject matchers from the CLI without replacing any configured matcher list.
 
 Presentations
 -------------

@@ -62,11 +62,11 @@ describe Mutant::Repository::Diff do
     let(:line_range) { 1..2 }
 
     context 'when file is in a different subdirectory' do
-      let(:path)        { Pathname.new('/baz/bar.rb') }
-      let(:diff_output) { '' }
+      let(:path) { Pathname.new('/baz/bar.rb') }
 
       it 'does not run git commands' do
         expect(config.open3).to_not receive(:capture2)
+
         expect(subject).to be(false)
       end
     end

@@ -113,6 +113,9 @@ module Mutant
     #
     # @return [undefined]
     def add_filter_options(opts)
+      opts.on('--include-subject EXPRESSION', 'Add EXPRESSION to the configured subject matcher list') do |pattern|
+        add_matcher(:match_expressions, config.expression_parser.(pattern))
+      end
       opts.on('--ignore-subject EXPRESSION', 'Ignore subjects that match EXPRESSION as prefix') do |pattern|
         add_matcher(:ignore_expressions, config.expression_parser.(pattern))
       end

@@ -37,15 +37,6 @@ module Mutant
       self
     end
 
-    def with_signal_handlers
-      old_int  = Signal.trap('INT')  { raise Interrupt }
-      old_term = Signal.trap('TERM') { raise Interrupt }
-      yield
-    ensure
-      Signal.trap('INT', old_int) if old_int
-      Signal.trap('TERM', old_term) if old_term
-    end
-
     def run_mutation_analysis
       return EMPTY_RESULT_BUILDER.call(env).tap { |result| reporter.report(result) } if env.mutations.empty?
 
@@ -53,13 +44,25 @@ module Mutant
     end
 
     def run_parallel_analysis
+      result = nil
       driver = Parallel.async(mutation_test_config)
+
       result = with_signal_handlers { run_driver(driver) }
     rescue Interrupt
       result = driver&.stop&.payload
       raise
     ensure
-      reporter.report(result || mutation_sink.status)
+      final_result = result || mutation_sink.status
+      reporter.report(final_result)
+    end
+
+    def with_signal_handlers
+      old_int  = Signal.trap('INT')  { raise Interrupt }
+      old_term = Signal.trap('TERM') { raise Interrupt }
+      yield
+    ensure
+      Signal.trap('INT', old_int) if old_int
+      Signal.trap('TERM', old_term) if old_term
     end
 
     def run_driver(driver)

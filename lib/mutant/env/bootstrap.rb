@@ -16,18 +16,6 @@ module Mutant
       CLASS_NAME_TYPE_MISMATCH_FORMAT =
         '%<scope_class>s#name from: %<scope>s returned %<name>s'
 
-      ENV_BUILDER = lambda do |bootstrap, subjects|
-        Env.new(
-          config:           bootstrap.config,
-          integration:      bootstrap.send(:integration),
-          matchable_scopes: bootstrap.matchable_scopes,
-          mutations:        subjects.flat_map(&:mutations),
-          parser:           bootstrap.parser,
-          selector:         Selector::Expression.new(bootstrap.send(:integration)),
-          subjects:         subjects
-        )
-      end
-
       private_constant(*constants(false))
 
       # Scopes that are eligible for matching
@@ -73,7 +61,15 @@ module Mutant
           warn('No subjects matched the configured diff filter. No mutations to test.')
         end
 
-        ENV_BUILDER.call(self, subjects)
+        Env.new(
+          config:           config,
+          integration:      integration,
+          matchable_scopes: matchable_scopes,
+          mutations:        subjects.flat_map(&:mutations),
+          parser:           parser,
+          selector:         Selector::Expression.new(integration),
+          subjects:         subjects
+        )
       end
 
     private

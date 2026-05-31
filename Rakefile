@@ -3,6 +3,7 @@
 require 'bundler/gem_helper'
 require 'rspec/core/rake_task'
 require 'rubocop/rake_task'
+require_relative 'lib/mutant/since_revision_resolver'
 
 Bundler::GemHelper.install_tasks name: 'mutant'
 
@@ -12,6 +13,10 @@ RuboCop::RakeTask.new(:rubocop)
 Rake.application.load_imports
 
 task default: :spec
+
+def mutant_since_revision
+  Mutant::SinceRevisionResolver.new(Open3, Kernel).call(ENV['MUTANT_SINCE'])
+end
 
 task('metrics:mutant').clear
 namespace :metrics do
@@ -26,7 +31,7 @@ namespace :metrics do
 
   task :mutant do
     mutant_jobs = ENV['MUTANT_JOBS']
-    mutant_since = ENV.fetch('MUTANT_SINCE', 'HEAD~1')
+    mutant_since = mutant_since_revision
     head_revision = `git rev-parse HEAD`.chomp
     arguments = %w[
       bundle exec mutant
@@ -35,7 +40,7 @@ namespace :metrics do
       --use rspec
       --zombie
     ]
-    arguments.concat(['--since', mutant_since]) unless mutant_since.empty? || mutant_since == head_revision
+    arguments.concat(['--since', mutant_since]) if mutant_since && mutant_since != head_revision
     arguments.concat(['--jobs', mutant_jobs]) if mutant_jobs
 
     arguments.concat(%w[-- Mutant*])
