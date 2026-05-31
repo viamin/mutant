@@ -15,10 +15,108 @@ module Mutant
       #
       # @return [Boolean]
       def call(subject)
-        diff.touches?(subject.source_path, subject.source_lines)
+        source_path, source_lines = SubjectLocation.from_subject(subject).to_a
+
+        diff.touches?(source_path, source_lines)
       end
 
     end # SubjectFilter
+
+    # Source location of a subject within the repository.
+    SubjectLocation = Struct.new(:path, :line_range) do
+      def self.from_subject(subject)
+        new(subject.source_path, subject.source_lines)
+      end
+    end
+
+    # Changed line ranges for a file, or an all-lines match for new files.
+    ChangedLineRanges = Struct.new(:all, :ranges) do
+      def self.empty
+        new(false, [])
+      end
+
+      def add(range)
+        ranges << range
+      end
+
+      def touches?(line_range)
+        all || ranges.any? { |range| range.begin <= line_range.end && line_range.begin <= range.end }
+      end
+
+      def touches_location?(location)
+        touches?(location.line_range)
+      end
+    end
+    ChangedLineRanges::ALL = ChangedLineRanges.new(true, EMPTY_ARRAY).freeze
+
+    # Parser for unified diff output that groups changed line ranges by file path.
+    class DiffHunkParser
+      HUNK_HEADER = /\A@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/
+
+      def self.call(output)
+        State.new({}, nil, :normal).tap do |state|
+          output.each_line { |line| state.parse_line(line) }
+        end.files
+      end
+
+      # Mutable parse state while walking unified diff output.
+      State = Struct.new(:files, :current_file, :file_type) do
+        def parse_line(line)
+          handle_new_file(line) ||
+            handle_existing_file(line) ||
+            handle_deleted_file(line) ||
+            handle_current_file(line) ||
+            register_hunk(line)
+        end
+
+        def register_hunk(line)
+          match = HUNK_HEADER.match(line)
+          return unless match && current_file && !all_subjects_file?
+
+          range = hunk_range(match)
+          file_ranges << range if range
+        end
+
+        def handle_new_file(line)
+          self.file_type = :new if line.start_with?('--- /dev/null')
+        end
+
+        def handle_existing_file(line)
+          self.file_type = :normal if line.start_with?('--- a/')
+        end
+
+        def handle_deleted_file(line)
+          return unless line.start_with?('+++ /dev/null')
+
+          self.current_file = nil
+          self.file_type    = :deleted
+        end
+
+        def handle_current_file(line)
+          return unless %r{\A\+\+\+ b/(.*)}.match(line)
+
+          self.current_file = Regexp.last_match(1).strip
+          files[current_file] = Repository::ChangedLineRanges::ALL if file_type.equal?(:new)
+          self.file_type = :normal
+        end
+
+        def all_subjects_file?
+          files[current_file].equal?(Repository::ChangedLineRanges::ALL)
+        end
+
+        def hunk_range(match)
+          count = Integer(match[2] || 1)
+          return if count.zero?
+
+          start_line = Integer(match[1])
+          start_line..(start_line + count - 1)
+        end
+
+        def file_ranges
+          (files[current_file] ||= Repository::ChangedLineRanges.empty).ranges
+        end
+      end
+    end
 
     # Diff between two objects in repository
     class Diff
@@ -36,22 +134,23 @@ module Mutant
       # @raise [RepositoryError]
       #   when git command failed
       def touches?(path, line_range)
-        return false unless within_working_directory?(path)
+        location = SubjectLocation.new(path, line_range)
 
-        ranges = diff_hunks.fetch(path.relative_path_from(config.pathname.pwd).to_s, nil)
+        touched_ranges(path)&.touches_location?(location) || false
+      end
 
-        return false unless ranges
-        return true if ranges.equal?(ParseState::ALL)
+      def diff_hunks
+        DiffHunkParser.call(command_output(%W[git diff #{resolved_from}...#{resolved_to}]))
+      end
+      memoize :diff_hunks
 
-        ranges.any? { |range| ranges_overlap?(range, line_range) }
+      def touched_ranges(path)
+        return unless within_working_directory?(path)
+
+        diff_hunks.fetch(path.relative_path_from(config.pathname.pwd).to_s, nil)
       end
 
     private
-
-      def diff_hunks
-        ParseState.parse(command_output(%W[git diff #{resolved_from}...#{resolved_to}]))
-      end
-      memoize :diff_hunks
 
       def resolved_from
         resolve_ref(from)
@@ -74,54 +173,6 @@ module Mutant
 
         stdout
       end
-
-      def ranges_overlap?(left, right)
-        left.begin <= right.end && right.begin <= left.end
-      end
-
-      ParseState = Struct.new(:files, :current_file, :file_type) do
-        HUNK_HEADER = /\A@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/
-
-        def self.parse(output)
-          new({}, nil, :normal).tap do |state|
-            output.each_line { |line| state.parse_diff_line(line) }
-          end.files
-        end
-
-        def parse_diff_line(line)
-          case line
-          when %r{\A--- /dev/null}
-            self.file_type = :new
-          when %r{\A--- a/}
-            self.file_type = :normal
-          when %r{\A\+\+\+ /dev/null}
-            self.current_file = nil
-            self.file_type    = :deleted
-          when %r{\A\+\+\+ b/(.*)}
-            self.current_file = Regexp.last_match(1).strip
-            files[current_file] = self.class::ALL if file_type.equal?(:new)
-            self.file_type = :normal
-          else
-            register_hunk(line)
-          end
-        end
-
-        def register_hunk(line)
-          return unless current_file
-          return if files[current_file].equal?(self.class::ALL)
-
-          match = HUNK_HEADER.match(line)
-          return unless match
-
-          count = Integer(match[2] || 1)
-          return if count.zero?
-
-          start_line = Integer(match[1])
-          (files[current_file] ||= []) << (start_line..(start_line + count - 1))
-        end
-      end
-      ParseState::ALL = :all
-      private_constant :ParseState
 
       # Test if the path is within the current working directory
       #
