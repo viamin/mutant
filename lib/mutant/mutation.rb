@@ -57,6 +57,31 @@ module Mutant
       self::TEST_PASS_SUCCESS.equal?(test_result.passed)
     end
 
+    def self.exception_success?(exception)
+      !self::TEST_PASS_SUCCESS && mutation_exception?(exception)
+    end
+
+    def self.mutation_exception?(exception)
+      case exception
+      when Isolation::Result::SerializedException
+        %w[
+          Interrupt
+          NameError
+          NoMethodError
+          ScriptError
+          SignalException
+          SyntaxError
+          SystemExit
+        ].include?(exception.exception_class_name)
+      else
+        exception.is_a?(NameError) ||
+          exception.is_a?(ScriptError) ||
+          exception.is_a?(SignalException) ||
+          exception.is_a?(SystemExit)
+      end
+    end
+    private_class_method :mutation_exception?
+
     # Insert mutated node
     #
     # @param kernel [Kernel]

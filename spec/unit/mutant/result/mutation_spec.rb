@@ -54,6 +54,12 @@ RSpec.describe Mutant::Result::Mutation do
     end
   end
 
+  shared_examples_for 'mutation exception isolation' do
+    let(:isolation_result) do
+      Mutant::Isolation::Result::Exception.new(exception)
+    end
+  end
+
   describe '#killtime' do
     subject { object.killtime }
 
@@ -89,6 +95,67 @@ RSpec.describe Mutant::Result::Mutation do
       let(:success) { false }
 
       it { should eql(false) }
+    end
+
+    context 'if isolation is a non-exception failure' do
+      let(:status) { instance_double(Process::Status) }
+      let(:isolation_result) { Mutant::Isolation::Fork::ChildError.new(status) }
+      let(:success) { false }
+
+      it { should be(false) }
+    end
+
+    context 'if isolation raises a mutation-induced exception on evil mutations' do
+      let(:mutation) do
+        instance_double(
+          Class.new(Mutant::Mutation::Evil),
+          class: Mutant::Mutation::Evil
+        )
+      end
+      let(:exception) { SyntaxError.new('broken mutation') }
+
+      include_context 'mutation exception isolation'
+
+      let(:success) { false }
+
+      it { should be(false) }
+    end
+
+    context 'if isolation raises a serialized mutation-induced exception on evil mutations' do
+      let(:mutation) do
+        instance_double(
+          Class.new(Mutant::Mutation::Evil),
+          class: Mutant::Mutation::Evil
+        )
+      end
+      let(:exception) do
+        Mutant::Isolation::Result::SerializedException.new(
+          Mutant::EMPTY_ARRAY,
+          'SyntaxError',
+          '#<SyntaxError: broken mutation>'
+        )
+      end
+
+      include_context 'mutation exception isolation'
+
+      let(:success) { false }
+
+      it { should be(false) }
+    end
+
+    context 'if process_abort criteria is enabled for a mutation exception' do
+      let(:success) { true }
+      let(:mutation) do
+        instance_double(
+          Class.new(Mutant::Mutation::Evil),
+          class: Mutant::Mutation::Evil
+        )
+      end
+      let(:exception) { SyntaxError.new('broken mutation') }
+
+      include_context 'mutation exception isolation'
+
+      it { should be(true) }
     end
   end
 

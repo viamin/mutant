@@ -22,6 +22,12 @@ RSpec.describe Mutant::Expression::Parser do
 
       it { should eql(Mutant::Expression::Namespace::Exact.new(scope_name: 'Foo')) }
     end
+
+    context 'on a valid source path expression' do
+      let(:input) { 'source:app/models/**/*.rb' }
+
+      it { should eql(Mutant::Expression::SourcePath.new(glob: 'app/models/**/*.rb')) }
+    end
   end
 
   describe '.try_parse' do
@@ -37,6 +43,12 @@ RSpec.describe Mutant::Expression::Parser do
       let(:input) { 'Foo' }
 
       it { should eql(Mutant::Expression::Namespace::Exact.new(scope_name: 'Foo')) }
+    end
+
+    context 'on a valid source path expression' do
+      let(:input) { 'source:app/models/**/*.rb' }
+
+      it { should eql(Mutant::Expression::SourcePath.new(glob: 'app/models/**/*.rb')) }
     end
 
     context 'on ambiguous expression' do

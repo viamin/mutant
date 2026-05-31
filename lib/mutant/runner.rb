@@ -3,40 +3,53 @@
 module Mutant
   # Runner baseclass
   class Runner
-    include Adamantium::Flat, Concord.new(:env), Procto.call(:result)
+    include Adamantium::Flat, Concord.new(:env)
 
-    # Initialize object
-    #
-    # @return [undefined]
-    def initialize(*)
-      super
-
-      reporter.start(env)
-
-      run_mutation_analysis
+    # Run mutation analysis for an environment before freezing the runner
+    def self.call(env)
+      build(env).freeze.result
     end
 
-    # Final result
-    #
-    # @return [Result::Env]
+    def self.build(env)
+      runner = allocate
+      runner.__send__(:initialize, env)
+      runner.__send__(:run)
+    end
+    private_class_method :build
+
     attr_reader :result
 
   private
 
-    # Run mutation analysis
-    #
-    # @return [undefined]
-    def run_mutation_analysis
-      @result = run_driver(Parallel.async(mutation_test_config))
-      reporter.report(result)
+    # Execute analysis and cache the final result before freezing the runner
+    def run
+      reporter.start(env)
+      @result = run_mutation_analysis
+      self
     end
 
-    # Run driver
-    #
-    # @param [Driver] driver
-    #
-    # @return [Object]
-    #   the last returned status payload
+    def run_mutation_analysis
+      result = nil
+      driver = Parallel.async(mutation_test_config)
+
+      result = with_signal_handlers { run_driver(driver) }
+    rescue Interrupt
+      result = driver&.stop&.payload
+      raise
+    ensure
+      final_result = result || mutation_sink.status
+      reporter.report(final_result)
+    end
+
+    def with_signal_handlers
+      old_int  = Signal.trap('INT')  { raise Interrupt }
+      old_term = Signal.trap('TERM') { raise Interrupt }
+      yield
+    ensure
+      Signal.trap('INT', old_int) if old_int
+      Signal.trap('TERM', old_term) if old_term
+    end
+
     def run_driver(driver)
       loop do
         status = driver.wait_timeout(reporter.delay)
@@ -45,31 +58,26 @@ module Mutant
       end
     end
 
-    # Configuration for parallel execution engine
-    #
-    # @return [Parallel::Config]
     def mutation_test_config
       Parallel::Config.new(
         condition_variable: config.condition_variable,
         jobs:               config.jobs,
         mutex:              config.mutex,
         processor:          env.method(:kill),
-        sink:               Sink.new(env),
+        sink:               mutation_sink,
         source:             Parallel::Source::Array.new(env.mutations),
         thread:             config.thread
       )
     end
 
-    # Reporter to use
-    #
-    # @return [Reporter]
+    def mutation_sink
+      @mutation_sink ||= Sink.new(env)
+    end
+
     def reporter
       env.config.reporter
     end
 
-    # Config for this mutant execution
-    #
-    # @return [Config]
     def config
       env.config
     end

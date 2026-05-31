@@ -17,6 +17,7 @@ detectors:
     enabled: true
     exclude:
     - Mutant::Config::Loader::NodeReader
+    - Mutant::Matcher::SourcePath
     max_copies: 2
     min_clump_size: 2
   DuplicateMethodCall:
@@ -34,6 +35,7 @@ detectors:
     enabled: true
     exclude:
     - Mutant::Matcher::Method::Instance#self.build
+    - Mutant::Matcher::SourcePath#subject_methods
     - Mutant::Meta::Example::DSL # 3 vars
     - Mutant::Config::Loader::NodeReader#fail_invalid_scalar
     - Mutant::Config::Loader::NodeReader#fail_invalid_type
@@ -67,6 +69,7 @@ detectors:
     - Mutant::Meta::Example::DSL
     - Mutant::Config::Loader::NodeReader
     - Mutant::Repository::Diff
+    - Mutant::SinceRevisionResolver
     max_ifs: 1
   TooManyInstanceVariables:
     enabled: true
@@ -141,6 +144,7 @@ detectors:
     - Mutant::Integration::Null#call
     - Mutant::Integration::Rspec#parse_example
     - Mutant::Integration::Rspec#parse_expression # intentional, private
+    - Mutant::Matcher::SourcePath#candidate_method_names # intentional
     - Mutant::Meta::Example::Verification#format_mutations # intentional, private
     - Mutant::Reporter::CLI::Format::Progressive#new_buffer
     - Mutant::Reporter::CLI::Printer::StatusProgressive#object # False positive calls super
@@ -148,4 +152,3 @@ detectors:
     - Mutant::Repository::Diff#within_working_directory? # intentional, private
     - Mutant::Config::CoverageCriteria#timeout_status? # intentional, private
     - Mutant::Config::Loader::NodeReader#to_ruby # intentional, private
-    - Mutant::Repository::Diff#fallback_touches? # intentional, private

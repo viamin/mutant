@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 module Mutant
+  # Commandline parser / runner
   class CLI
     include Adamantium::Flat, Equalizer.new(:config), Procto.call(:config)
 
@@ -19,23 +20,13 @@ module Mutant
       false
     end
 
-    def initialize(arguments)
-      @config = load_config
-      parse(arguments)
-    end
-
     attr_reader :config
 
   private
 
-    # Load file config
-    #
-    # @return [Config]
-    def load_config
-      Config::Loader.call(Config::DEFAULT)
-    rescue Config::Loader::Error => exception
-      raise Error, exception.message
-    end
+    attr_reader :state
+
+    def apply_env_defaults = (env_jobs = ENV['MUTANT_JOBS']) && with(jobs: ParseJobs.(env_jobs, 'MUTANT_JOBS'))
 
     # Parse the command-line options
     #
@@ -47,16 +38,23 @@ module Mutant
     #
     # @return [undefined]
     def parse(arguments)
-      opts = OptionParser.new do |builder|
-        builder.banner = 'usage: mutant [options] MATCH_EXPRESSION ...'
-        %i[add_environment_options add_mutation_options add_filter_options add_debug_options].each do |name|
-          __send__(name, builder)
-        end
-      end
-
-      parse_match_expressions(opts.parse!(arguments))
+      parse_match_expressions(option_parser.parse!(arguments))
+      apply_env_defaults if apply_jobs_env_defaults?
     rescue OptionParser::ParseError => error
       raise(Error, error)
+    end
+
+    def option_parser = OptionParser.new(&method(:configure_option_parser))
+
+    def apply_jobs_env_defaults?
+      !state.fetch(:jobs_configured) && !state.fetch(:jobs_explicit) && !state.fetch(:exit_requested)
+    end
+
+    def configure_option_parser(builder)
+      builder.banner = 'usage: mutant [options] MATCH_EXPRESSION ...'
+      %i[add_environment_options add_mutation_options add_filter_options add_debug_options].each do |name|
+        __send__(name, builder)
+      end
     end
 
     # Parse matchers
@@ -75,9 +73,6 @@ module Mutant
     # Add environmental options
     #
     # @param [Object] opts
-    #
-    # @return [undefined]
-    #
     # rubocop:disable MethodLength
     def add_environment_options(opts)
       opts.separator('Environment:')
@@ -88,8 +83,9 @@ module Mutant
       opts.on('-r', '--require NAME', 'Require file with NAME') do |name|
         add(:requires, name)
       end
-      opts.on('-j', '--jobs NUMBER', 'Number of kill jobs. Defaults to 1.') do |number|
-        with(jobs: Integer(number))
+      opts.on('-j', '--jobs NUMBER', 'Number of kill jobs. Defaults to MUTANT_JOBS or 1.') do |number|
+        state[:jobs_explicit] = true
+        with(jobs: ParseJobs.(number, '--jobs'))
       end
     end
 
@@ -124,6 +120,9 @@ module Mutant
     #
     # @return [undefined]
     def add_filter_options(opts)
+      opts.on('--include-subject EXPRESSION', 'Add EXPRESSION to the configured subject matcher list') do |pattern|
+        add_matcher(:match_expressions, config.expression_parser.(pattern))
+      end
       opts.on('--ignore-subject EXPRESSION', 'Ignore subjects that match EXPRESSION as prefix') do |pattern|
         add_matcher(:ignore_expressions, config.expression_parser.(pattern))
       end
@@ -133,8 +132,8 @@ module Mutant
           Repository::SubjectFilter.new(
             Repository::Diff.new(
               config: config,
-              from:   Repository::Diff::HEAD,
-              to:     revision
+              from:   revision,
+              to:     Repository::Diff::HEAD
             )
           )
         )
@@ -151,10 +150,12 @@ module Mutant
         with(fail_fast: true)
       end
       opts.on('--version', 'Print mutants version') do
+        state[:exit_requested] = true
         puts("mutant-#{VERSION}")
         config.kernel.exit
       end
       opts.on_tail('-h', '--help', 'Show this message') do
+        state[:exit_requested] = true
         puts(opts.to_s)
         config.kernel.exit
       end
@@ -165,9 +166,7 @@ module Mutant
     # @param [Hash<Symbol, Object>] attributes
     #
     # @return [undefined]
-    def with(attributes)
-      @config = config.with(attributes)
-    end
+    def with(attributes) = @config = config.with(attributes)
 
     # Add configuration
     #
@@ -178,9 +177,7 @@ module Mutant
     #   the value to add
     #
     # @return [undefined]
-    def add(attribute, value)
-      with(attribute => config.public_send(attribute) + [value])
-    end
+    def add(attribute, value) = with(attribute => config.public_send(attribute) + [value])
 
     # Add matcher configuration
     #
@@ -191,9 +188,58 @@ module Mutant
     #   the value to add
     #
     # @return [undefined]
-    def add_matcher(attribute, value)
-      with(matcher: config.matcher.add(attribute, value))
-    end
+    def add_matcher(attribute, value) = with(matcher: config.matcher.add(attribute, value))
 
   end # CLI
+
+  class CLI
+  private
+
+    def setup(arguments)
+      @state = {
+        exit_requested: false,
+        jobs_configured: false,
+        jobs_explicit: false
+      }
+      @config = load_config
+      parse(arguments)
+    end
+
+    def load_config
+      loader = Config::Loader.new(Config::DEFAULT)
+      config = loader.load
+      state[:jobs_configured] = config_file_sets_jobs?
+      config
+    rescue Config::Loader::Error => exception
+      raise Error, exception.message
+    end
+
+    def config_file_sets_jobs?
+      path = Config::DEFAULT.pathname.pwd.join('.mutant.yml')
+      return false unless path.file?
+
+      document = Psych.parse_file(path.to_s)
+      return false unless document.instance_of?(Psych::Nodes::Document)
+
+      root = document.root
+      return false unless root.instance_of?(Psych::Nodes::Mapping)
+
+      root.children.each_slice(2).any? do |key_node, _value_node|
+        Psych::Visitors::ToRuby.create.accept(key_node) == 'jobs'
+      end
+    end
+
+    alias_method :initialize, :setup
+    private :initialize, :setup
+  end
+
+  class CLI
+    ParseJobs = lambda do |input, source|
+      jobs = Integer(input)
+      raise Error, "#{source} must be >= 1" if jobs < 1
+      jobs
+    rescue ArgumentError
+      raise Error, "#{source} must be an integer"
+    end
+  end
 end # Mutant

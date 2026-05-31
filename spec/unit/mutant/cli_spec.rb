@@ -63,11 +63,8 @@ RSpec.describe Mutant::CLI do
   end
 
   describe '.new' do
-    let(:object) { described_class }
-
     subject { object.new(arguments) }
 
-    # Defaults
     let(:expected_integration)    { Mutant::Integration::Null        }
     let(:expected_reporter)       { Mutant::Config::DEFAULT.reporter }
     let(:expected_matcher_config) { default_matcher_config           }
@@ -76,15 +73,32 @@ RSpec.describe Mutant::CLI do
       Mutant::Matcher::Config::DEFAULT
         .with(match_expressions: expressions.map(&method(:parse_expression)))
     end
+    let(:help_message) do
+      <<~MESSAGE
+        usage: mutant [options] MATCH_EXPRESSION ...
+        Environment:
+                --zombie                     Run mutant zombified
+            -I, --include DIRECTORY          Add DIRECTORY to $LOAD_PATH
+            -r, --require NAME               Require file with NAME
+            -j, --jobs NUMBER                Number of kill jobs. Defaults to MUTANT_JOBS or 1.
+
+        Options:
+                --use INTEGRATION            Use INTEGRATION to kill mutations
+                --include-subject EXPRESSION Add EXPRESSION to the configured subject matcher list
+                --ignore-subject EXPRESSION  Ignore subjects that match EXPRESSION as prefix
+                --since REVISION             Only select subjects touched since REVISION
+                --fail-fast                  Fail fast
+                --version                    Print mutants version
+            -h, --help                       Show this message
+      MESSAGE
+    end
 
     let(:flags)       { []           }
     let(:expressions) { %w[TestApp*] }
-
-    let(:arguments) { flags + expressions }
+    let(:arguments)   { flags + expressions }
 
     context 'with unknown flag' do
       let(:flags) { %w[--invalid] }
-
       let(:expected_message) { 'invalid option: --invalid' }
 
       it_should_behave_like 'an invalid cli run'
@@ -92,7 +106,6 @@ RSpec.describe Mutant::CLI do
 
     context 'with unknown option' do
       let(:flags) { %w[--invalid Foo] }
-
       let(:expected_message) { 'invalid option: --invalid' }
 
       it_should_behave_like 'an invalid cli run'
@@ -108,24 +121,27 @@ RSpec.describe Mutant::CLI do
 
       it_should_behave_like 'a cli parser'
 
-      let(:expected_message) do
-        <<~MESSAGE
-          usage: mutant [options] MATCH_EXPRESSION ...
-          Environment:
-                  --zombie                     Run mutant zombified
-              -I, --include DIRECTORY          Add DIRECTORY to $LOAD_PATH
-              -r, --require NAME               Require file with NAME
-              -j, --jobs NUMBER                Number of kill jobs. Defaults to 1.
+      let(:expected_message) { help_message }
+    end
 
-          Options:
-                  --use INTEGRATION            Use INTEGRATION to kill mutations
-                  --ignore-subject EXPRESSION  Ignore subjects that match EXPRESSION as prefix
-                  --since REVISION             Only select subjects touched since REVISION
-                  --fail-fast                  Fail fast
-                  --version                    Print mutants version
-              -h, --help                       Show this message
-        MESSAGE
+    context 'with invalid MUTANT_JOBS env variable and help flag' do
+      let(:flags) { %w[--help] }
+
+      around do |example|
+        ENV.store('MUTANT_JOBS', 'nope')
+        example.run
+      ensure
+        ENV.delete('MUTANT_JOBS')
       end
+
+      before do
+        expect($stdout).to receive(:puts).with(expected_message)
+        expect(Kernel).to receive(:exit)
+      end
+
+      it_should_behave_like 'a cli parser'
+
+      let(:expected_message) { help_message }
     end
 
     context 'with include flag' do
@@ -176,14 +192,149 @@ RSpec.describe Mutant::CLI do
       it_should_behave_like 'a cli parser'
     end
 
+    context 'with invalid MUTANT_JOBS env variable and version flag' do
+      let(:flags) { %w[--version] }
+
+      around do |example|
+        ENV.store('MUTANT_JOBS', 'nope')
+        example.run
+      ensure
+        ENV.delete('MUTANT_JOBS')
+      end
+
+      before do
+        expect(Kernel).to receive(:exit)
+        expect($stdout).to receive(:puts).with("mutant-#{Mutant::VERSION}")
+      end
+
+      it_should_behave_like 'a cli parser'
+    end
+
+    context 'without jobs flag or env variable' do
+      it 'defaults to 1 job' do
+        expect(subject.config.jobs).to eql(1)
+      end
+
+      it_should_behave_like 'a cli parser'
+    end
+
     context 'with jobs flag' do
-      let(:flags) { %w[--jobs 0] }
+      let(:flags) { %w[--jobs 2] }
 
       it_should_behave_like 'a cli parser'
 
       it 'configures expected coverage' do
-        expect(subject.config.jobs).to eql(0)
+        expect(subject.config.jobs).to eql(2)
       end
+    end
+
+    context 'with invalid jobs flag' do
+      let(:flags) { %w[--jobs nope] }
+      let(:expected_message) { '--jobs must be an integer' }
+
+      it_should_behave_like 'an invalid cli run'
+    end
+
+    context 'with jobs flag below minimum' do
+      let(:flags) { %w[--jobs 0] }
+      let(:expected_message) { '--jobs must be >= 1' }
+
+      it_should_behave_like 'an invalid cli run'
+    end
+
+    context 'with negative jobs flag' do
+      let(:flags) { %w[--jobs -1] }
+      let(:expected_message) { '--jobs must be >= 1' }
+
+      it_should_behave_like 'an invalid cli run'
+    end
+
+    context 'with invalid MUTANT_JOBS env variable' do
+      around do |example|
+        ENV.store('MUTANT_JOBS', 'nope')
+        example.run
+      ensure
+        ENV.delete('MUTANT_JOBS')
+      end
+
+      let(:expected_message) { 'MUTANT_JOBS must be an integer' }
+
+      it_should_behave_like 'an invalid cli run'
+    end
+
+    context 'with MUTANT_JOBS env variable below minimum' do
+      around do |example|
+        ENV.store('MUTANT_JOBS', '0')
+        example.run
+      ensure
+        ENV.delete('MUTANT_JOBS')
+      end
+
+      let(:expected_message) { 'MUTANT_JOBS must be >= 1' }
+
+      it_should_behave_like 'an invalid cli run'
+    end
+
+    context 'with negative MUTANT_JOBS env variable' do
+      around do |example|
+        ENV.store('MUTANT_JOBS', '-1')
+        example.run
+      ensure
+        ENV.delete('MUTANT_JOBS')
+      end
+
+      let(:expected_message) { 'MUTANT_JOBS must be >= 1' }
+
+      it_should_behave_like 'an invalid cli run'
+    end
+
+    context 'with MUTANT_JOBS env variable' do
+      around do |example|
+        ENV.store('MUTANT_JOBS', '4')
+        example.run
+      ensure
+        ENV.delete('MUTANT_JOBS')
+      end
+
+      it 'uses MUTANT_JOBS as default jobs value' do
+        expect(subject.config.jobs).to eql(4)
+      end
+
+      it_should_behave_like 'a cli parser'
+    end
+
+    context 'with MUTANT_JOBS env variable and --jobs flag' do
+      let(:flags) { %w[--jobs 2] }
+
+      around do |example|
+        ENV.store('MUTANT_JOBS', '4')
+        example.run
+      ensure
+        ENV.delete('MUTANT_JOBS')
+      end
+
+      it 'CLI --jobs overrides MUTANT_JOBS' do
+        expect(subject.config.jobs).to eql(2)
+      end
+
+      it_should_behave_like 'a cli parser'
+    end
+
+    context 'with invalid MUTANT_JOBS env variable and --jobs flag' do
+      let(:flags) { %w[--jobs 2] }
+
+      around do |example|
+        ENV.store('MUTANT_JOBS', 'nope')
+        example.run
+      ensure
+        ENV.delete('MUTANT_JOBS')
+      end
+
+      it 'CLI --jobs ignores invalid MUTANT_JOBS defaults' do
+        expect(subject.config.jobs).to eql(2)
+      end
+
+      it_should_behave_like 'a cli parser'
     end
 
     context 'with config file' do
@@ -208,12 +359,25 @@ RSpec.describe Mutant::CLI do
         end
 
         context 'with overriding jobs flag' do
-          let(:flags) { %w[--jobs 0] }
+          let(:flags) { %w[--jobs 2] }
 
           it_should_behave_like 'a cli parser'
 
           it 'prefers cli flags over config file values' do
-            expect(subject.config.jobs).to eql(0)
+            expect(subject.config.jobs).to eql(2)
+          end
+        end
+
+        context 'with MUTANT_JOBS env variable' do
+          around do |example|
+            ENV.store('MUTANT_JOBS', '6')
+            example.run
+          ensure
+            ENV.delete('MUTANT_JOBS')
+          end
+
+          it 'prefers config file values over MUTANT_JOBS' do
+            expect(subject.config.jobs).to eql(4)
           end
         end
       end
@@ -239,11 +403,13 @@ RSpec.describe Mutant::CLI do
     context 'when config file is invalid' do
       let(:arguments) { [] }
       let(:error)     { Mutant::Config::Loader::Error.new('invalid yaml') }
+      let(:loader)    { instance_double(Mutant::Config::Loader) }
 
       before do
-        expect(Mutant::Config::Loader).to receive(:call)
+        expect(Mutant::Config::Loader).to receive(:new)
           .with(Mutant::Config::DEFAULT)
-          .and_raise(error)
+          .and_return(loader)
+        expect(loader).to receive(:load).and_raise(error)
       end
 
       it 'wraps the loader error as a cli error' do
@@ -270,8 +436,8 @@ RSpec.describe Mutant::CLI do
             Mutant::Repository::SubjectFilter.new(
               Mutant::Repository::Diff.new(
                 config: Mutant::Config::DEFAULT,
-                from:   'HEAD',
-                to:     'master'
+                from:   'master',
+                to:     'HEAD'
               )
             )
           ]
@@ -286,6 +452,45 @@ RSpec.describe Mutant::CLI do
 
       let(:expected_matcher_config) do
         default_matcher_config.with(ignore_expressions: [parse_expression('Foo::Bar')])
+      end
+
+      it_should_behave_like 'a cli parser'
+    end
+
+    context 'with include-subject flag' do
+      let(:flags) { %w[--include-subject Foo::Bar] }
+      let(:expressions) { [] }
+
+      let(:expected_matcher_config) do
+        Mutant::Matcher::Config::DEFAULT.with(match_expressions: [parse_expression('Foo::Bar')])
+      end
+
+      it_should_behave_like 'a cli parser'
+    end
+
+    context 'with include-subject flag and preconfigured matcher expressions' do
+      let(:flags) { %w[--include-subject Foo::Bar] }
+      let(:expressions) { [] }
+
+      let(:configured_default) do
+        Mutant::Config::DEFAULT.with(
+          matcher: Mutant::Matcher::Config::DEFAULT.with(
+            match_expressions: [parse_expression('Configured::Subject')]
+          )
+        )
+      end
+
+      let(:expected_matcher_config) do
+        Mutant::Matcher::Config::DEFAULT.with(
+          match_expressions: [
+            parse_expression('Configured::Subject'),
+            parse_expression('Foo::Bar')
+          ]
+        )
+      end
+
+      before do
+        stub_const('Mutant::Config::DEFAULT', configured_default)
       end
 
       it_should_behave_like 'a cli parser'
@@ -312,265 +517,200 @@ RSpec.describe Mutant::CLI do
     end
   end
 
-  describe '#add_environment_options', mutant: false do
-    subject { cli.__send__(:add_environment_options, options) }
+  describe '#setup' do
+    subject(:setup_cli) { cli.send(:setup, arguments) }
 
-    let(:cli) do
-      object.allocate.tap do |instance|
-        instance.instance_variable_set(:@config, Mutant::Config::DEFAULT)
-      end
-    end
-    let(:options)   { instance_double(OptionParser) }
-    let(:handlers)  { {} }
+    let(:cli)       { described_class.allocate }
+    let(:arguments) { %w[foo] }
+    let(:loaded_config) { Mutant::Config::DEFAULT.with(jobs: 4) }
+    let(:loader) { instance_double(Mutant::Config::Loader, load: loaded_config) }
 
     before do
-      allow(options).to receive(:separator)
-      allow(options).to receive(:on) do |*arguments, &block|
-        handlers[arguments.fetch(0)] = [arguments, block]
+      allow(Mutant::Config::Loader).to receive(:new).with(Mutant::Config::DEFAULT).and_return(loader)
+      allow(cli).to receive(:config_file_sets_jobs?).and_return(true)
+      allow(cli).to receive(:parse)
+    end
+
+    it 'loads config and parses the provided arguments' do
+      setup_cli
+
+      expect(cli.config).to eql(loaded_config)
+      expect(cli.send(:state)).to eql(
+        exit_requested: false,
+        jobs_configured: true,
+        jobs_explicit: false
+      )
+      expect(cli.send(:apply_jobs_env_defaults?)).to be(false)
+      expect(cli).to have_received(:parse).with(arguments)
+    end
+  end
+
+  describe 'private helpers' do
+    subject(:cli) do
+      described_class.allocate.tap do |object|
+        object.send(:initialize, [])
       end
     end
 
-    it 'adds the environment section header' do
-      expect(options).to receive(:separator).with('Environment:')
-
-      subject
-    end
-
-    it 'registers a zombie handler that updates config' do
-      subject
-
-      arguments, handler = handlers.fetch('--zombie')
-
-      expect(arguments).to eql(['--zombie', 'Run mutant zombified'])
-
-      handler.call
-
-      expect(cli.config.zombie).to be(true)
-    end
-
-    it 'registers the remaining environment options with exact help text' do
-      subject
-
-      include_arguments, = handlers.fetch('-I')
-      require_arguments, = handlers.fetch('-r')
-      jobs_arguments,    = handlers.fetch('-j')
-
-      expect(include_arguments).to eql(['-I', '--include DIRECTORY', 'Add DIRECTORY to $LOAD_PATH'])
-      expect(require_arguments).to eql(['-r', '--require NAME', 'Require file with NAME'])
-      expect(jobs_arguments).to eql(['-j', '--jobs NUMBER', 'Number of kill jobs. Defaults to 1.'])
-    end
-
-    it 'applies include, require and jobs handlers to config' do
-      subject
-
-      _arguments, include_handler = handlers.fetch('-I')
-      _arguments, require_handler = handlers.fetch('-r')
-      _arguments, jobs_handler    = handlers.fetch('-j')
-
-      include_handler.call('lib/foo')
-      require_handler.call('foo/bar')
-      jobs_handler.call('3')
-
-      expect(cli.config.includes).to eql(['lib/foo'])
-      expect(cli.config.requires).to eql(['foo/bar'])
-      expect(cli.config.jobs).to eql(3)
-    end
-
-    it 'updates config through the jobs handler' do
-      subject
-
-      _arguments, jobs_handler = handlers.fetch('-j')
-
-      expect(cli).to receive(:with).with(jobs: 3).and_call_original
-
-      jobs_handler.call('3')
-    end
-  end
-
-  describe '#enable_zombie' do
-    subject { cli.__send__(:enable_zombie, :ignored_argument) }
-
-    let(:cli) do
-      object.allocate.tap do |instance|
-        instance.instance_variable_set(:@config, Mutant::Config::DEFAULT)
+    describe '#add' do
+      it 'appends the value to the selected configuration attribute' do
+        expect { cli.send(:add, :includes, 'foo') }
+          .to change { cli.config.includes }
+          .from(Mutant::EMPTY_ARRAY)
+          .to(%w[foo])
       end
     end
 
-    it 'updates config through with' do
-      expect(cli).to receive(:with).with(zombie: true)
+    describe '#add_debug_options' do
+      let(:option_parser) { OptionParser.new }
 
-      subject
-    end
-  end
-
-  describe '#initialize', mutant_expression: 'Mutant::CLI#initialize' do
-    let(:cli)       { object.allocate }
-    let(:arguments) { %w[TestApp*] }
-    let(:config)    { Mutant::Config::DEFAULT.with(jobs: 4) }
-
-    it 'loads config before parsing arguments' do
-      expect(cli).to receive(:load_config).ordered.and_return(config)
-      expect(cli).to receive(:parse).ordered.with(arguments) do
-        expect(cli.config).to eql(config)
+      before do
+        cli.send(:add_debug_options, option_parser)
       end
 
-      cli.__send__(:initialize, arguments)
+      it 'enables fail-fast via the configured option handler' do
+        expect { option_parser.parse!(%w[--fail-fast]) }
+          .to change { cli.config.fail_fast }
+          .from(false)
+          .to(true)
+      end
 
-      expect(cli.config).to eql(config)
+      it 'uses the configured kernel for --version exits' do
+        expect($stdout).to receive(:puts).with("mutant-#{Mutant::VERSION}")
+        expect(cli.config.kernel).to receive(:exit)
+
+        option_parser.parse!(%w[--version])
+      end
+
+      it 'uses the configured kernel for --help exits' do
+        expect($stdout).to receive(:puts).with(option_parser.to_s)
+        expect(cli.config.kernel).to receive(:exit)
+
+        option_parser.parse!(%w[--help])
+      end
     end
-  end
 
-  describe '#load_config', mutant_expression: 'Mutant::CLI#load_config' do
-    let(:cli) { object.allocate }
+    describe '#add_environment_options', mutant_expression: 'Mutant::CLI#add_environment_options' do
+      class OptionCollector
+        attr_reader :handlers, :separators
 
-    it 'returns the loaded default config' do
-      loaded_config = Mutant::Config::DEFAULT.with(jobs: 4)
+        def initialize
+          @handlers   = {}
+          @separators = []
+        end
 
-      expect(Mutant::Config::Loader).to receive(:call)
-        .with(Mutant::Config::DEFAULT)
-        .and_return(loaded_config)
+        def separator(value)
+          separators << value
+        end
 
-      expect(cli.__send__(:load_config)).to eql(loaded_config)
+        def on(*arguments, &block)
+          handlers[arguments.fetch(0)] = [arguments, block]
+        end
+      end
+
+      it 'registers and applies the environment option handlers' do
+        options = OptionCollector.new
+
+        cli.__send__(:add_environment_options, options)
+
+        expect(options.separators).to eql(['Environment:'])
+
+        include_arguments, include_handler = options.handlers.fetch('-I')
+        require_arguments, require_handler = options.handlers.fetch('-r')
+        jobs_arguments, jobs_handler       = options.handlers.fetch('-j')
+        zombie_arguments, zombie_handler   = options.handlers.fetch('--zombie')
+
+        expect(include_arguments).to eql(['-I', '--include DIRECTORY', 'Add DIRECTORY to $LOAD_PATH'])
+        expect(require_arguments).to eql(['-r', '--require NAME', 'Require file with NAME'])
+        expect(jobs_arguments).to eql(['-j', '--jobs NUMBER', 'Number of kill jobs. Defaults to MUTANT_JOBS or 1.'])
+        expect(zombie_arguments).to eql(['--zombie', 'Run mutant zombified'])
+
+        include_handler.call('lib/foo')
+        require_handler.call('foo/bar')
+        jobs_handler.call('3')
+        zombie_handler.call
+
+        expect(cli.config.includes).to eql(['lib/foo'])
+        expect(cli.config.requires).to eql(['foo/bar'])
+        expect(cli.config.jobs).to eql(3)
+        expect(cli.config.zombie).to be(true)
+      end
     end
 
-    it 'wraps loader failures with the original message' do
-      error = Class.new(Mutant::Config::Loader::Error) do
-        def message = 'invalid yaml'
-        def to_s = 'different to_s'
-      end.new
+    describe '#enable_zombie', mutant_expression: 'Mutant::CLI#enable_zombie' do
+      it 'updates the config even when invoked with an unused argument' do
+        cli.__send__(:enable_zombie, :ignored)
 
-      expect(Mutant::Config::Loader).to receive(:call)
-        .with(Mutant::Config::DEFAULT)
-        .and_raise(error)
-
-      expect { cli.__send__(:load_config) }.to raise_error(Mutant::CLI::Error, 'invalid yaml')
+        expect(cli.config.zombie).to be(true)
+      end
     end
-  end
 
-  describe '#parse_match_expressions', mutant_expression: 'Mutant::CLI#parse_match_expressions' do
-    let(:cli) { object.allocate }
+    describe '#load_config', mutant_expression: 'Mutant::CLI#load_config' do
+      let(:loader) { instance_double(Mutant::Config::Loader, load: loaded_config) }
+      let(:loaded_config) { Mutant::Config::DEFAULT.with(jobs: 4) }
 
-    before do
-      cli.instance_variable_set(
-        :@config,
-        Mutant::Config::DEFAULT.with(
-          matcher: Mutant::Matcher::Config::DEFAULT.with(
-            match_expressions: [parse_expression('YAMLApp*')]
+      before do
+        cli.instance_variable_set(
+          :@state,
+          { exit_requested: false, jobs_configured: false, jobs_explicit: false }
+        )
+      end
+
+      it 'returns the loaded default config and tracks configured jobs' do
+        expect(Mutant::Config::Loader).to receive(:new)
+          .with(Mutant::Config::DEFAULT)
+          .and_return(loader)
+        expect(cli).to receive(:config_file_sets_jobs?).and_return(true)
+
+        expect(cli.__send__(:load_config)).to eql(loaded_config)
+        expect(cli.send(:state)).to include(jobs_configured: true)
+      end
+
+      it 'wraps loader failures with the original message' do
+        error = Class.new(Mutant::Config::Loader::Error) do
+          def message = 'invalid yaml'
+          def to_s = 'different to_s'
+        end.new
+        failing_loader = instance_double(Mutant::Config::Loader)
+
+        expect(Mutant::Config::Loader).to receive(:new)
+          .with(Mutant::Config::DEFAULT)
+          .and_return(failing_loader)
+        expect(failing_loader).to receive(:load).and_raise(error)
+
+        expect { cli.__send__(:load_config) }.to raise_error(Mutant::CLI::Error, 'invalid yaml')
+      end
+    end
+
+    describe '#parse_match_expressions', mutant_expression: 'Mutant::CLI#parse_match_expressions' do
+      before do
+        cli.instance_variable_set(
+          :@config,
+          Mutant::Config::DEFAULT.with(
+            matcher: Mutant::Matcher::Config::DEFAULT.with(
+              match_expressions: [parse_expression('YAMLApp*')]
+            )
           )
         )
-      )
-    end
-
-    context 'when no cli expressions are provided' do
-      it 'preserves configured matcher expressions' do
-        cli.__send__(:parse_match_expressions, [])
-
-        expect(cli.config.matcher.match_expressions.map(&:syntax)).to eql(%w[YAMLApp*])
       end
-    end
 
-    context 'when cli expressions are provided' do
-      it 'replaces configured matcher expressions with parsed cli expressions' do
-        cli.__send__(:parse_match_expressions, %w[CLIApp* CLIApp::Thing#call])
+      context 'when no cli expressions are provided' do
+        it 'preserves configured matcher expressions' do
+          cli.__send__(:parse_match_expressions, [])
 
-        expect(cli.config.matcher.match_expressions.map(&:syntax)).to eql(
-          ['CLIApp*', 'CLIApp::Thing#call']
-        )
+          expect(cli.config.matcher.match_expressions.map(&:syntax)).to eql(%w[YAMLApp*])
+        end
       end
-    end
-  end
-end
 
-RSpec.describe 'Mutant::CLI mutation coverage' do
-  class InitializeProbe < Mutant::CLI
-    attr_reader :events
+      context 'when cli expressions are provided' do
+        it 'replaces configured matcher expressions with parsed cli expressions' do
+          cli.__send__(:parse_match_expressions, %w[CLIApp* CLIApp::Thing#call])
 
-    def load_config
-      @events << :load_config
-      Mutant::Config::DEFAULT.with(jobs: 4)
-    end
-
-    def parse(arguments)
-      @events << [:parse, arguments, config.jobs]
-    end
-
-    def self.build
-      allocate.tap { |instance| instance.instance_variable_set(:@events, []) }
-    end
-  end
-
-  class OptionCollector
-    attr_reader :handlers, :separators
-
-    def initialize
-      @handlers   = {}
-      @separators = []
-    end
-
-    def separator(value)
-      separators << value
-    end
-
-    def on(*arguments, &block)
-      handlers[arguments.fetch(0)] = [arguments, block]
-    end
-  end
-
-  describe 'Mutant::CLI#add_environment_options', mutant_expression: 'Mutant::CLI#add_environment_options' do
-    let(:cli) do
-      Mutant::CLI.allocate.tap do |instance|
-        instance.instance_variable_set(:@config, Mutant::Config::DEFAULT)
+          expect(cli.config.matcher.match_expressions.map(&:syntax)).to eql(
+            ['CLIApp*', 'CLIApp::Thing#call']
+          )
+        end
       end
-    end
-
-    it 'registers and applies the environment option handlers' do
-      options = OptionCollector.new
-
-      cli.__send__(:add_environment_options, options)
-
-      expect(options.separators).to eql(['Environment:'])
-
-      include_arguments, include_handler = options.handlers.fetch('-I')
-      require_arguments, require_handler = options.handlers.fetch('-r')
-      jobs_arguments, jobs_handler       = options.handlers.fetch('-j')
-      zombie_arguments, zombie_handler   = options.handlers.fetch('--zombie')
-
-      expect(include_arguments).to eql(['-I', '--include DIRECTORY', 'Add DIRECTORY to $LOAD_PATH'])
-      expect(require_arguments).to eql(['-r', '--require NAME', 'Require file with NAME'])
-      expect(jobs_arguments).to eql(['-j', '--jobs NUMBER', 'Number of kill jobs. Defaults to 1.'])
-      expect(zombie_arguments).to eql(['--zombie', 'Run mutant zombified'])
-
-      include_handler.call('lib/foo')
-      require_handler.call('foo/bar')
-      jobs_handler.call('3')
-      zombie_handler.call
-
-      expect(cli.config.includes).to eql(['lib/foo'])
-      expect(cli.config.requires).to eql(['foo/bar'])
-      expect(cli.config.jobs).to eql(3)
-      expect(cli.config.zombie).to be(true)
-    end
-  end
-
-  describe 'Mutant::CLI#enable_zombie', mutant_expression: 'Mutant::CLI#enable_zombie' do
-    it 'updates the config even when invoked with an unused argument' do
-      cli = Mutant::CLI.allocate
-      cli.instance_variable_set(:@config, Mutant::Config::DEFAULT)
-
-      cli.__send__(:enable_zombie, :ignored)
-
-      expect(cli.config.zombie).to be(true)
-    end
-  end
-
-  describe 'Mutant::CLI#initialize', mutant_expression: 'Mutant::CLI#initialize' do
-    it 'loads config before parsing arguments' do
-      cli = InitializeProbe.build
-
-      cli.__send__(:initialize, %w[TestApp*])
-
-      expect(cli.events).to eql([:load_config, [:parse, %w[TestApp*], 4]])
-      expect(cli.config.jobs).to eql(4)
     end
   end
 end

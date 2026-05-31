@@ -31,14 +31,10 @@ module Mutant
 
     private
 
-      def path
-        config.pathname.pwd.join(FILE_NAME)
-      end
+      def path = config.pathname.pwd.join(FILE_NAME)
       memoize :path
 
-      def reader
-        NodeReader.new(path)
-      end
+      def reader = NodeReader.new(path)
       memoize :reader
 
       def document
@@ -56,11 +52,7 @@ module Mutant
         end
       end
 
-      def document_root
-        return unless document.instance_of?(Psych::Nodes::Document)
-
-        document.root
-      end
+      def document_root = document.instance_of?(Psych::Nodes::Document) ? document.root : nil
 
       def attribute_name(key)
         key.to_sym

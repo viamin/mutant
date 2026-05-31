@@ -182,5 +182,28 @@ RSpec.describe Mutant::Env::Bootstrap do
 
       include_examples 'bootstrap call'
     end
+
+    context 'when object space contains anonymous classes' do
+      let(:object_space_modules) { [Class.new, TestApp::Literal] }
+
+      let(:matcher_config) do
+        super().with(match_expressions: [parse_expression('source:test_app/lib/test_app/literal.rb')])
+      end
+
+      let(:expected_env) do
+        subjects = Mutant::Matcher::Scope
+          .new(TestApp::Literal)
+          .call(Fixtures::TEST_ENV)
+          .select { |subject| subject.source_path.to_s.end_with?('test_app/lib/test_app/literal.rb') }
+
+        super().with(
+          matchable_scopes: [Mutant::Scope.new(TestApp::Literal, parse_expression('TestApp::Literal'))],
+          mutations:        subjects.flat_map(&:mutations),
+          subjects:         subjects
+        )
+      end
+
+      include_examples 'bootstrap call'
+    end
   end
 end
