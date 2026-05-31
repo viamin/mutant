@@ -64,19 +64,24 @@ jobs:
         with:
           fetch-depth: 0
       - if: github.event_name == 'pull_request'
-        run: git fetch --no-tags origin "${{ github.event.pull_request.base.ref }}"
+        run: git fetch --no-tags origin "${{ github.event.pull_request.base.ref }}:refs/remotes/origin/${{ github.event.pull_request.base.ref }}"
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: '3.3'
           bundler-cache: true
       - run: |
-          base_ref="${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}"
-          base_branch_ref="${{ github.event_name == 'pull_request' && format('origin/{0}', github.event.pull_request.base.ref) || '' }}"
+          base_ref=""
+          base_sha="${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}"
+          base_branch_ref="${{ github.event_name == 'pull_request' && format('refs/remotes/origin/{0}', github.event.pull_request.base.ref) || '' }}"
 
-          if [ -n "$base_ref" ] && [ "$base_ref" != "0000000000000000000000000000000000000000" ] && git rev-parse --verify --quiet "$base_ref^{commit}" >/dev/null; then
+          if [ -n "$base_branch_ref" ] && git rev-parse --verify --quiet "$base_branch_ref^{commit}" >/dev/null; then
+            base_ref="$base_branch_ref"
+          elif [ -n "$base_sha" ] && [ "$base_sha" != "0000000000000000000000000000000000000000" ] && git rev-parse --verify --quiet "$base_sha^{commit}" >/dev/null; then
+            base_ref="$base_sha"
+          fi
+
+          if [ -n "$base_ref" ]; then
             mutant_since="$(git merge-base HEAD "$base_ref")"
-          elif [ -n "$base_branch_ref" ] && git rev-parse --verify --quiet "$base_branch_ref^{commit}" >/dev/null; then
-            mutant_since="$(git merge-base HEAD "$base_branch_ref")"
           else
             mutant_since="HEAD~1"
           fi
