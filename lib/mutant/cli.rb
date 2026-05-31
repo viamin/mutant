@@ -132,8 +132,8 @@ module Mutant
           Repository::SubjectFilter.new(
             Repository::Diff.new(
               config: config,
-              from:   Repository::Diff::HEAD,
-              to:     revision
+              from:   revision,
+              to:     Repository::Diff::HEAD
             )
           )
         )

@@ -40,7 +40,7 @@ module Mutant
 
         command = %W[
           git log
-          #{from}...#{to}
+          #{from}..#{to}
           --ignore-all-space
           -L #{line_range.begin},#{line_range.end}:#{path}
         ]

@@ -13,11 +13,24 @@ module Mutant
 
       private_constant(*constants(false))
 
+      class State
+        define_method(:initialize) do |examples:, output:, runner:|
+          @examples = examples
+          @output   = output
+          @runner   = runner
+        end
+
+        attr_reader :examples, :output, :runner
+      end
+      private_constant :State
+
       define_method(:initialize) do |*arguments|
         super(*arguments)
-        reset_output
-        reset_runner
-        reset_examples
+        @state = State.new(
+          examples: RspecSupport::Examples.build(expression_parser: expression_parser, world: RSpec.world),
+          output:   StringIO.new,
+          runner:   RSpec::Core::Runner.new(RSpec::Core::ConfigurationOptions.new(CLI_OPTIONS))
+        )
       end
 
       def setup
@@ -34,7 +47,12 @@ module Mutant
         start = Timer.now
         passed = runner.run_specs(examples.ordered_groups).equal?(EXIT_SUCCESS)
         output.rewind
-        build_result_test(output.read, passed, Timer.now - start, tests)
+        Result::Test.new(
+          output:  output.read,
+          passed:  passed,
+          runtime: Timer.now - start,
+          tests:   tests
+        ).freeze
       end
 
       def all_tests
@@ -45,55 +63,18 @@ module Mutant
     private
 
       def output
-        return @output if @output.is_a?(StringIO)
-
-        reset_output
+        state.output
       end
 
       def runner
-        return @runner if @runner.is_a?(RSpec::Core::Runner)
-
-        reset_runner
+        state.runner
       end
 
       def examples
-        return @examples if @examples.is_a?(RspecSupport::Examples)
-
-        reset_examples
+        state.examples
       end
 
-      def reset_output
-        @output = StringIO.new
-      end
-
-      def reset_runner
-        @runner = build_runner
-      end
-
-      def reset_examples
-        @examples = build_examples
-      end
-
-      def build_runner
-        RSpec::Core::Runner.new(RSpec::Core::ConfigurationOptions.new(CLI_OPTIONS))
-      end
-
-      def build_examples
-        RspecSupport::Examples.new(
-          RspecSupport::ExpressionResolver.build(expression_parser),
-          RSpec.world
-        )
-      end
-
-      def build_result_test(output, passed, runtime, tests)
-        Result::Test.allocate.tap do |result|
-          result.instance_variable_set(:@output, output)
-          result.instance_variable_set(:@passed, passed)
-          result.instance_variable_set(:@runtime, runtime)
-          result.instance_variable_set(:@tests, tests)
-          result.freeze
-        end
-      end
+      attr_reader :state
 
     end # Rspec
 
@@ -316,16 +297,18 @@ module Mutant
           path = Source.path(metadata)
           return EMPTY_ARRAY unless path && File.file?(path)
 
-          cached_expressions(path).fetch(metadata.fetch(:line_number), EMPTY_ARRAY).map do |argument|
-            @parser.(argument, metadata.fetch(:described_class, nil))
+          indexed_expressions(path).fetch(metadata.fetch(:line_number), EMPTY_ARRAY).map do |argument|
+            parser.(argument, metadata.fetch(:described_class, nil))
           end
         end
 
       private
 
-        def cached_expressions(path)
-          @cache.fetch(path) { @cache[path] = index(path) }
+        def indexed_expressions(path)
+          cache.fetch(path) { cache[path] = index(path) }
         end
+
+        attr_reader :cache, :parser
 
         def index(path)
           root = parse(path)

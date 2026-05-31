@@ -36,8 +36,8 @@ RSpec.describe Mutant::Integration::Rspec do
       .with(Mutant::Config::DEFAULT.expression_parser)
       .and_return(expression_resolver)
 
-    allow(Mutant::Integration::RspecSupport::Examples).to receive(:new)
-      .with(expression_resolver, RSpec.world)
+    allow(Mutant::Integration::RspecSupport::Examples).to receive(:build)
+      .with(expression_parser: Mutant::Config::DEFAULT.expression_parser, world: RSpec.world)
       .and_return(example_collection)
 
     allow(Mutant::Timer).to receive_messages(now: Mutant::Timer.now)
@@ -46,121 +46,36 @@ RSpec.describe Mutant::Integration::Rspec do
   describe '.new', mutant_expression: 'Mutant::Integration::Rspec#initialize' do
     subject(:instance) { object }
 
-    it 'initializes the collaborator cache' do
+    it 'eagerly initializes collaborator state' do
       instance
+
       expect(RSpec::Core::ConfigurationOptions).to have_received(:new).once
       expect(RSpec::Core::Runner).to have_received(:new).once
-      expect(Mutant::Integration::RspecSupport::ExpressionResolver).to have_received(:build).once
-      expect(Mutant::Integration::RspecSupport::Examples).to have_received(:new).once
-      expect(instance.instance_variable_get(:@examples)).to be(example_collection)
-      expect(instance.instance_variable_get(:@output)).to be_a(StringIO)
-      expect(instance.instance_variable_get(:@runner)).to be(rspec_runner)
+      expect(Mutant::Integration::RspecSupport::Examples).to have_received(:build).once
     end
   end
 
-  describe 'fallback helpers' do
-    let(:mutable_object) do
-      described_class.allocate.tap { |instance| instance.send(:initialize, Mutant::Config::DEFAULT) }
-    end
-
-    describe '#examples', mutant_expression: 'Mutant::Integration::Rspec#examples' do
-      it 'returns the cached collection when it is still valid' do
-        expect(mutable_object.send(:examples)).to be(example_collection)
-        expect(Mutant::Integration::RspecSupport::Examples).to have_received(:new).once
-      end
-
-      it 'accepts subclasses of the cached collection type' do
-        subclass_instance = Class.new(example_collection_class).allocate
-        mutable_object.instance_variable_set(:@examples, subclass_instance)
-
-        expect(mutable_object.send(:examples)).to be(subclass_instance)
-        expect(Mutant::Integration::RspecSupport::Examples).to have_received(:new).once
-      end
-
-      it 'rebuilds the collection when the cached collaborator is invalid' do
-        mutable_object.instance_variable_set(:@examples, Object.new)
-
-        expect(mutable_object.send(:examples)).to be(example_collection)
-        expect(mutable_object.instance_variable_get(:@examples)).to be(example_collection)
-        expect(Mutant::Integration::RspecSupport::Examples).to have_received(:new).twice
-      end
-    end
-
-    describe '#output', mutant_expression: 'Mutant::Integration::Rspec#output' do
-      it 'returns the cached output when it is still valid' do
-        expect(mutable_object.send(:output)).to be(mutable_object.instance_variable_get(:@output))
-      end
-
-      it 'accepts subclasses of StringIO as valid cached output' do
-        subclass_instance = Class.new(output_class).new
-        mutable_object.instance_variable_set(:@output, subclass_instance)
-
-        expect(mutable_object.send(:output)).to be(subclass_instance)
-      end
-
-      it 'creates a fresh StringIO when the cached output is invalid' do
-        mutable_object.instance_variable_set(:@output, Object.new)
-
-        expect(mutable_object.send(:output)).to be_a(StringIO)
-        expect(mutable_object.instance_variable_get(:@output)).to be(mutable_object.send(:output))
-      end
-    end
-
-    describe '#runner', mutant_expression: 'Mutant::Integration::Rspec#runner' do
-      it 'returns the cached runner when it is still valid' do
-        expect(mutable_object.send(:runner)).to be(rspec_runner)
-        expect(RSpec::Core::ConfigurationOptions).to have_received(:new).once
-        expect(RSpec::Core::Runner).to have_received(:new).once
-      end
-
-      it 'accepts subclasses of the runner type' do
-        subclass_instance = Class.new(runner_class).allocate
-        mutable_object.instance_variable_set(:@runner, subclass_instance)
-
-        expect(mutable_object.send(:runner)).to be(subclass_instance)
-        expect(RSpec::Core::ConfigurationOptions).to have_received(:new).once
-        expect(RSpec::Core::Runner).to have_received(:new).once
-      end
-
-      it 'rebuilds the runner when the cached runner is invalid' do
-        mutable_object.instance_variable_set(:@runner, Object.new)
-
-        expect(mutable_object.send(:runner)).to be(rspec_runner)
-        expect(mutable_object.instance_variable_get(:@runner)).to be(rspec_runner)
-        expect(RSpec::Core::ConfigurationOptions).to have_received(:new).twice
-        expect(RSpec::Core::Runner).to have_received(:new).twice
-      end
+  describe '#examples', mutant_expression: 'Mutant::Integration::Rspec#examples' do
+    it 'memoizes the example collection' do
+      expect(object.send(:examples)).to be(example_collection)
+      expect(object.send(:examples)).to be(example_collection)
+      expect(Mutant::Integration::RspecSupport::Examples).to have_received(:build).once
     end
   end
 
-  describe '#build_examples', mutant_expression: 'Mutant::Integration::Rspec#build_examples' do
-    it 'builds the example collection from the resolver and rspec world' do
-      bare_object = described_class.allocate
-      bare_object.instance_variable_set(:@config, Mutant::Config::DEFAULT)
-
-      expect(bare_object.send(:build_examples)).to be(example_collection)
-      expect(Mutant::Integration::RspecSupport::ExpressionResolver).to have_received(:build)
-        .with(Mutant::Config::DEFAULT.expression_parser)
-        .once
-      expect(Mutant::Integration::RspecSupport::Examples).to have_received(:new)
-        .with(expression_resolver, RSpec.world)
-        .once
+  describe '#output', mutant_expression: 'Mutant::Integration::Rspec#output' do
+    it 'memoizes a StringIO output stream' do
+      expect(object.send(:output)).to be_a(StringIO)
+      expect(object.send(:output)).to be(object.send(:output))
     end
   end
 
-  describe '#build_result_test', mutant_expression: 'Mutant::Integration::Rspec#build_result_test' do
-    it 'builds a frozen test result' do
-      result = object.send(:build_result_test, 'output', true, 1.5, tests)
-
-      expect(result).to eql(
-        Mutant::Result::Test.new(
-          output:  'output',
-          passed:  true,
-          runtime: 1.5,
-          tests:   tests
-        )
-      )
-      expect(result).to be_frozen
+  describe '#runner', mutant_expression: 'Mutant::Integration::Rspec#runner' do
+    it 'memoizes the rspec runner' do
+      expect(object.send(:runner)).to be(rspec_runner)
+      expect(object.send(:runner)).to be(rspec_runner)
+      expect(RSpec::Core::ConfigurationOptions).to have_received(:new).once
+      expect(RSpec::Core::Runner).to have_received(:new).once
     end
   end
 
