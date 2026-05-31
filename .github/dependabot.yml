@@ -6,7 +6,6 @@ updates:
       interval: daily
     cooldown:
       default-days: 7
-    permissions: read
 
   - package-ecosystem: bundler
     directory: /
@@ -14,7 +13,6 @@ updates:
       interval: daily
     cooldown:
       default-days: 7
-    permissions: read
     groups:
       minor-and-patch:
         update-types:
