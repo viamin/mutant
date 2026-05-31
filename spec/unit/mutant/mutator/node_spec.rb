@@ -501,6 +501,19 @@ RSpec.describe Mutant::Mutator::Node::Begin do
         s(:begin, s(:lvasgn, :value, s(:int, 1)), s(:self))
       )
     end
+
+    it 'skips non-node children when mutating a begin body' do
+      input = s(:begin, :__sentinel__, s(:true))
+
+      expect(Mutant::Mutator).to receive(:mutate)
+        .once
+        .with(s(:true), kind_of(described_class))
+        .and_return([s(:false)].to_set)
+
+      expect(described_class.call(input)).to eql(
+        [s(:begin, :__sentinel__, s(:false))].to_set
+      )
+    end
   end
 end
 
