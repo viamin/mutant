@@ -218,15 +218,17 @@ module Mutant
       path = Config::DEFAULT.pathname.pwd.join('.mutant.yml')
       return false unless path.file?
 
-      document = Psych.parse_file(path.to_s)
+      document = Psych.parse_file(path)
       return false unless document.instance_of?(Psych::Nodes::Document)
 
       root = document.root
       return false unless root.instance_of?(Psych::Nodes::Mapping)
 
-      root.children.each_slice(2).any? do |key_node, _value_node|
-        Psych::Visitors::ToRuby.create.accept(key_node) == 'jobs'
-      end
+      root.children.each_slice(2).filter_map do |nodes|
+        key_node, value_node = nodes
+
+        Psych::Visitors::ToRuby.create.accept(key_node) unless value_node.nil?
+      end.include?('jobs')
     end
 
     alias_method :initialize, :setup

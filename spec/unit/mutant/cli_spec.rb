@@ -682,6 +682,99 @@ RSpec.describe Mutant::CLI do
       end
     end
 
+    describe '#config_file_sets_jobs?', mutant_expression: 'Mutant::CLI#config_file_sets_jobs?' do
+      subject(:config_file_sets_jobs?) { cli.__send__(:config_file_sets_jobs?) }
+
+      let(:cli) { described_class.allocate }
+
+      around do |example|
+        Dir.mktmpdir do |directory|
+          Dir.chdir(directory) do
+            @config_path = Pathname.new(directory).join('.mutant.yml')
+            example.run
+          end
+        end
+      end
+
+      let(:config_path) { @config_path }
+
+      context 'when the config file is absent' do
+        it { should be(false) }
+      end
+
+      context 'when the config file is empty' do
+        before do
+          config_path.write('')
+        end
+
+        it { should be(false) }
+      end
+
+      context 'when the config root is not a mapping' do
+        before do
+          config_path.write(<<~YAML)
+            - jobs
+          YAML
+        end
+
+        it { should be(false) }
+      end
+
+      context 'when a sequence root could be misread as a key value pair' do
+        before do
+          config_path.write(<<~YAML)
+            - jobs
+            - 4
+          YAML
+        end
+
+        it { should be(false) }
+      end
+
+      context 'when yaml parsing returns a non-document object' do
+        before do
+          config_path.write("jobs: 4\n")
+          allow(Psych).to receive(:parse_file).with(config_path).and_return(Object.new)
+        end
+
+        it { should be(false) }
+      end
+
+      context 'when the config file contains jobs among other keys' do
+        before do
+          config_path.write(<<~YAML)
+            fail_fast: true
+            matcher:
+              subjects:
+                - TestApp*
+            jobs: 4
+          YAML
+        end
+
+        it { should be(true) }
+      end
+
+      context 'when the config file does not contain jobs' do
+        before do
+          config_path.write(<<~YAML)
+            fail_fast: true
+            requires:
+              - ./config/environment
+          YAML
+        end
+
+        it { should be(false) }
+      end
+
+      context 'when a non-jobs key has the string value jobs' do
+        before do
+          config_path.write("integration: jobs\n")
+        end
+
+        it { should be(false) }
+      end
+    end
+
     describe '#parse_match_expressions', mutant_expression: 'Mutant::CLI#parse_match_expressions' do
       before do
         cli.instance_variable_set(

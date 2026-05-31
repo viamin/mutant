@@ -53,8 +53,6 @@ module Mutant
     #
     # @return [Result::Isolation]
     def run_mutation_tests(mutation)
-      Config::CoverageCriteria.current = config.coverage_criteria
-
       config.isolation.call do
         with_environment_variables do
           mutation.insert(config.kernel)

@@ -17,7 +17,6 @@ RSpec.describe Mutant::Result::Mutation do
 
   let(:object) do
     described_class.new(
-      coverage_criteria: coverage_criteria,
       isolation_result: isolation_result,
       mutation:         mutation,
       runtime:          2.0
@@ -41,11 +40,12 @@ RSpec.describe Mutant::Result::Mutation do
     Mutant::Isolation::Result::Success.new(test_result)
   end
 
-  around do |example|
-    original = Mutant::Config::CoverageCriteria.current
-    example.run
-  ensure
-    Mutant::Config::CoverageCriteria.current = original
+  before do
+    Mutant::Config::CoverageCriteria.current = coverage_criteria
+  end
+
+  after do
+    Mutant::Config::CoverageCriteria.current = Mutant::Config::CoverageCriteria::DEFAULT
   end
 
   shared_examples_for 'unsuccessful isolation' do
@@ -78,6 +78,12 @@ RSpec.describe Mutant::Result::Mutation do
     subject { object.runtime }
 
     it { should eql(2.0) }
+  end
+
+  describe '#coverage_criteria', mutant_expression: 'Mutant::Result::Mutation#coverage_criteria' do
+    subject { object.coverage_criteria }
+
+    it { should eql(coverage_criteria) }
   end
 
   describe '#success?' do
@@ -159,30 +165,4 @@ RSpec.describe Mutant::Result::Mutation do
     end
   end
 
-  describe '.new', mutant_expression: 'Mutant::Result::Mutation#initialize' do
-    it 'falls back to the current coverage criteria when none is provided' do
-      fallback_criteria = Mutant::Config::CoverageCriteria.new(
-        process_abort: true,
-        test_result:   false,
-        timeout:       true
-      )
-      mutation = Object.new
-      isolation_result = Mutant::Isolation::Result::Success.new(
-        instance_double(Mutant::Result::Test, runtime: 1.0)
-      )
-
-      Mutant::Config::CoverageCriteria.current = fallback_criteria
-
-      result = described_class.new(
-        isolation_result: isolation_result,
-        mutation:         mutation,
-        runtime:          2.0
-      )
-
-      expect(result.coverage_criteria).to eql(fallback_criteria)
-      expect(result.isolation_result).to eql(isolation_result)
-      expect(result.mutation).to eql(mutation)
-      expect(result.runtime).to eql(2.0)
-    end
-  end
 end

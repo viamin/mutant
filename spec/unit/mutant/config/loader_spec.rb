@@ -51,6 +51,25 @@ RSpec.describe Mutant::Config::Loader do
       end
     end
 
+    context 'when yaml parsing raises a syntax error with a custom to_s' do
+      before do
+        config_path.write("integration: rspec\n")
+
+        syntax_error_class = Class.new(Psych::SyntaxError) do
+          def message = 'syntax-message'
+          def to_s = 'other-string'
+        end
+
+        allow(Psych).to receive(:parse_file).with(config_path).and_raise(
+          syntax_error_class.new(config_path.to_s, 1, 1, 0, 'problem', nil)
+        )
+      end
+
+      it 'raises the syntax error message' do
+        expect { subject }.to raise_error(Mutant::Config::Loader::Error, 'syntax-message')
+      end
+    end
+
     context 'when config file is present' do
       before do
         expect(Kernel).to receive(:require)

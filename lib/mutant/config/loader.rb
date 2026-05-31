@@ -38,7 +38,7 @@ module Mutant
       memoize :reader
 
       def document
-        Psych.parse_file(path.to_s)
+        Psych.parse_file(path)
       rescue Psych::SyntaxError => exception
         fail Error, exception.message
       end
