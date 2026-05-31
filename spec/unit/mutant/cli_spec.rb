@@ -3,6 +3,12 @@
 RSpec.describe Mutant::CLI do
   let(:object) { described_class }
 
+  def build_processed_cli(arguments)
+    described_class.allocate.tap do |cli|
+      cli.send(:process, arguments)
+    end
+  end
+
   shared_examples_for 'an invalid cli run' do
     it 'raises error' do
       expect do
@@ -62,10 +68,24 @@ RSpec.describe Mutant::CLI do
     end
   end
 
-  describe '.new' do
-    let(:object) { described_class }
+  describe '.call' do
+    subject(:call) { object.call(arguments) }
 
-    subject { object.new(arguments) }
+    let(:arguments) { %w[run TestApp*] }
+    let(:cli)       { described_class.allocate }
+    let(:config)    { instance_double(Mutant::Config) }
+
+    it 'returns the config from the constructed cli instance' do
+      expect(object).to receive(:allocate).and_return(cli)
+      expect(cli).to receive(:process).with(arguments)
+      expect(cli).to receive(:config).and_return(config)
+
+      expect(call).to eql(config)
+    end
+  end
+
+  describe 'processed cli' do
+    subject { build_processed_cli(arguments) }
 
     before do
       allow(Kernel).to receive(:exit)
@@ -640,7 +660,24 @@ RSpec.describe Mutant::CLI do
       end
     end
 
-    describe 'subcommand dispatch from initialize' do
+    describe '#process' do
+      it 'dispatches normalized arguments on the instance' do
+        arguments = %w[run --fail-fast TestApp*]
+        normalized_arguments = %w[run TestApp*]
+        cli = described_class.allocate
+
+        expect(cli).to receive(:normalize_arguments).with(arguments).and_return(normalized_arguments)
+        expect(cli).to receive(:dispatch).with(normalized_arguments)
+
+        cli.send(:process, arguments)
+      end
+
+      it 'leaves config at the default before any configuration changes' do
+        expect(described_class.allocate.config).to eql(Mutant::Config::DEFAULT)
+      end
+    end
+
+    describe 'subcommand dispatch from process' do
       def build_dispatch_probe
         Class.new(described_class) do
           attr_reader :dispatched
@@ -667,32 +704,28 @@ RSpec.describe Mutant::CLI do
 
       it 'dispatches run with an empty argument array' do
         cli = build_dispatch_probe.allocate
-
-        cli.send(:initialize, %w[run])
+        cli.send(:process, %w[run])
 
         expect(cli.dispatched).to eql([:run, []])
       end
 
       it 'dispatches environment with an empty argument array' do
         cli = build_dispatch_probe.allocate
-
-        cli.send(:initialize, %w[environment])
+        cli.send(:process, %w[environment])
 
         expect(cli.dispatched).to eql([:environment, []])
       end
 
       it 'dispatches session with an empty argument array' do
         cli = build_dispatch_probe.allocate
-
-        cli.send(:initialize, %w[session])
+        cli.send(:process, %w[session])
 
         expect(cli.dispatched).to eql([:session, []])
       end
 
       it 'dispatches help with an empty argument array' do
         cli = build_dispatch_probe.allocate
-
-        cli.send(:initialize, %w[help])
+        cli.send(:process, %w[help])
 
         expect(cli.dispatched).to eql([:help, []])
       end
@@ -720,13 +753,19 @@ RSpec.describe Mutant::CLI do
       end
     end
 
-    describe '#exit' do
+    describe '#puts' do
       let(:cli) { build_cli }
 
-      it 'delegates to the configured kernel' do
-        expect(Kernel).to receive(:exit)
+      it 'writes explicit messages to stdout' do
+        expect($stdout).to receive(:puts).with('hello')
 
-        cli.send(:exit)
+        cli.send(:puts, 'hello')
+      end
+
+      it 'accepts a missing message and forwards nil to stdout' do
+        expect($stdout).to receive(:puts).with(nil)
+
+        cli.send(:puts)
       end
     end
 

@@ -3,7 +3,7 @@
 module Mutant
   # Commandline parser / runner
   class CLI
-    include Adamantium::Flat, Equalizer.new(:config), Procto.call(:config)
+    include Adamantium::Flat, Equalizer.new(:config)
 
     # Error failed when CLI argv is invalid
     Error = Class.new(RuntimeError)
@@ -28,20 +28,23 @@ module Mutant
       false
     end
 
-    # Initialize object
+    # Instantiate cli and process arguments
     #
-    # @param [Array<String>]
+    # @param [Array<String>] arguments
     #
-    # @return [undefined]
-    def initialize(arguments)
-      @config = Config::DEFAULT
-      dispatch(normalize_arguments(arguments))
+    # @return [Config]
+    def self.call(arguments)
+      allocate.tap do |instance|
+        instance.__send__(:process, arguments)
+      end.config
     end
 
     # Config parsed from CLI
     #
     # @return [Config]
-    attr_reader :config
+    def config
+      @config || Config::DEFAULT
+    end
 
   private
 
@@ -71,10 +74,6 @@ module Mutant
       $stdout.puts(message)
     end
 
-    def exit
-      config.kernel.exit
-    end
-
     def dispatch(arguments)
       subcommand, *subcommand_arguments = arguments
 
@@ -82,10 +81,14 @@ module Mutant
         __send__("handle_#{subcommand}", subcommand_arguments)
       elsif arguments.one? && HELP_FLAGS.include?(subcommand)
         print_main_help
-        exit
+        config.kernel.public_send(:exit)
       else
         parse(arguments)
       end
+    end
+
+    def process(arguments)
+      dispatch(normalize_arguments(arguments))
     end
 
     def parse(arguments)

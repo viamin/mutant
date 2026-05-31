@@ -61,11 +61,11 @@ module Mutant
         end
         opts.on('--version', 'Print mutants version') do
           puts("mutant-#{VERSION}")
-          config.kernel.exit
+          config.kernel.public_send(:exit)
         end
         opts.on_tail('-h', '--help', 'Show this message') do
           puts(opts.to_s)
-          config.kernel.exit
+          config.kernel.public_send(:exit)
         end
       end
     end

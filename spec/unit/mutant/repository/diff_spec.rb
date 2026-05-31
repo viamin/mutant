@@ -68,15 +68,16 @@ describe Mutant::Repository::Diff do
       include_context 'test if git tracks the file'
 
       before do
-        expect(config.open3).to receive(:capture2)
+        expect(config.open3).to receive(:capture3)
           .ordered
           .with(*expected_git_log_command, binmode: true)
-          .and_return([stdout, status])
+          .and_return([stdout, stderr, status])
       end
 
       let(:expected_git_log_command) do
         %W[git log from_rev...to_rev --ignore-all-space -L 1,2:#{path}]
       end
+      let(:stderr) { '' }
 
       context 'on failure of git log command' do
         let(:success?) { false }
@@ -86,6 +87,48 @@ describe Mutant::Repository::Diff do
             Mutant::Repository::RepositoryError,
             "Command #{expected_git_log_command} failed!"
           )
+        end
+
+        context 'when git cannot resolve the requested line range' do
+          let(:stderr) { "fatal: file #{path} has only 1 lines" }
+          let(:fallback_stdout) { instance_double(String, empty?: fallback_stdout_empty?) }
+          let(:fallback_stdout_empty?) { false }
+
+          before do
+            expect(config.open3).to receive(:capture2)
+              .ordered
+              .with(*expected_git_diff_command, binmode: true)
+              .and_return([fallback_stdout, fallback_status])
+          end
+
+          let(:fallback_status) { instance_double(Process::Status, success?: fallback_success?) }
+          let(:fallback_success?) { true }
+          let(:expected_git_diff_command) do
+            %W[git diff --name-only from_rev...to_rev -- #{path}]
+          end
+
+          context 'and the file is touched in the diff' do
+            let(:fallback_stdout_empty?) { false }
+
+            it { should be(true) }
+          end
+
+          context 'and the file is not touched in the diff' do
+            let(:fallback_stdout_empty?) { true }
+
+            it { should be(false) }
+          end
+
+          context 'and the fallback git diff command fails' do
+            let(:fallback_success?) { false }
+
+            it 'raises error' do
+              expect { subject }.to raise_error(
+                Mutant::Repository::RepositoryError,
+                "Command #{expected_git_diff_command} failed!"
+              )
+            end
+          end
         end
       end
 
