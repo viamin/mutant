@@ -67,8 +67,15 @@ jobs:
         shell: bash
         run: |
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            since="${{ github.event.pull_request.base.sha }}"
-          elif [[ "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ]]; then
+            base_sha="${{ github.event.pull_request.base.sha }}"
+
+            if git cat-file -e "${base_sha}^{commit}" 2>/dev/null; then
+              since="$(git merge-base HEAD "$base_sha")"
+            else
+              since="$(git merge-base HEAD origin/main)"
+            fi
+          elif [[ "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ]] &&
+               git cat-file -e "${{ github.event.before }}^{commit}" 2>/dev/null; then
             since="${{ github.event.before }}"
           else
             since="$(git merge-base HEAD origin/main)"
