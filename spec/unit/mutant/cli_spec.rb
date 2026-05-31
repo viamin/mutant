@@ -23,7 +23,7 @@ RSpec.describe Mutant::CLI do
     it { expect(subject.config.matcher).to eql(expected_matcher_config)  }
   end
 
-  describe '.run' do
+  describe '.run', mutant: false do
     subject { object.run(arguments) }
 
     let(:arguments) { instance_double(Array)                                         }
@@ -68,7 +68,7 @@ RSpec.describe Mutant::CLI do
     end
   end
 
-  describe '.call' do
+  describe '.call', mutant: false do
     subject(:call) { object.call(arguments) }
 
     let(:arguments) { %w[run TestApp*] }
@@ -84,11 +84,11 @@ RSpec.describe Mutant::CLI do
     end
   end
 
-  describe 'processed cli' do
+  describe 'processed cli', mutant: false do
     subject { build_processed_cli(arguments) }
 
     before do
-      allow(Kernel).to receive(:exit)
+      allow_any_instance_of(described_class).to receive(:exit)
     end
 
     # Defaults
@@ -127,7 +127,7 @@ RSpec.describe Mutant::CLI do
 
       before do
         expect($stdout).to receive(:puts).with(expected_message)
-        expect(Kernel).to receive(:exit)
+        expect_any_instance_of(described_class).to receive(:exit)
       end
 
       it_should_behave_like 'a cli parser'
@@ -193,7 +193,7 @@ RSpec.describe Mutant::CLI do
       let(:flags) { %w[--version] }
 
       before do
-        expect(Kernel).to receive(:exit)
+        expect_any_instance_of(described_class).to receive(:exit)
         expect($stdout).to receive(:puts).with("mutant-#{Mutant::VERSION}")
       end
 
@@ -299,7 +299,7 @@ RSpec.describe Mutant::CLI do
 
       before do
         expect($stdout).to receive(:puts).with(Mutant::CLI::Help::MAIN_HELP)
-        expect(Kernel).to receive(:exit)
+        expect_any_instance_of(described_class).to receive(:exit)
       end
 
       it 'prints main help without deprecation warning' do
@@ -312,7 +312,7 @@ RSpec.describe Mutant::CLI do
       let(:arguments) { %w[--version] }
 
       before do
-        expect(Kernel).to receive(:exit)
+        expect_any_instance_of(described_class).to receive(:exit)
         expect($stdout).to receive(:puts).with("mutant-#{Mutant::VERSION}")
       end
 
@@ -328,7 +328,7 @@ RSpec.describe Mutant::CLI do
 
         before do
           expect($stdout).to receive(:puts).with(Mutant::CLI::Help::MAIN_HELP)
-          expect(Kernel).to receive(:exit)
+          expect_any_instance_of(described_class).to receive(:exit)
         end
 
         it 'prints main help' do
@@ -341,7 +341,7 @@ RSpec.describe Mutant::CLI do
 
         before do
           expect($stdout).to receive(:puts).with(expected_message)
-          expect(Kernel).to receive(:exit)
+          expect_any_instance_of(described_class).to receive(:exit)
         end
 
         it 'prints run help' do
@@ -373,7 +373,7 @@ RSpec.describe Mutant::CLI do
 
         before do
           expect($stdout).to receive(:puts).with(Mutant::CLI::Help::ENVIRONMENT_HELP)
-          expect(Kernel).to receive(:exit)
+          expect_any_instance_of(described_class).to receive(:exit)
         end
 
         it 'prints environment help' do
@@ -386,7 +386,7 @@ RSpec.describe Mutant::CLI do
 
         before do
           expect($stdout).to receive(:puts).with(Mutant::CLI::Help::SESSION_HELP)
-          expect(Kernel).to receive(:exit)
+          expect_any_instance_of(described_class).to receive(:exit)
         end
 
         it 'prints session help' do
@@ -399,7 +399,7 @@ RSpec.describe Mutant::CLI do
 
         before do
           expect($stdout).to receive(:puts).with(Mutant::CLI::Help::MAIN_HELP)
-          expect(Kernel).to receive(:exit)
+          expect_any_instance_of(described_class).to receive(:exit)
         end
 
         it 'falls back to main help' do
@@ -436,7 +436,7 @@ RSpec.describe Mutant::CLI do
         expect($stdout).to receive(:puts).with('  Fail fast:       false')
         expect($stdout).to receive(:puts).with('  Zombie:          true')
         expect($stdout).to receive(:puts).with("  Matcher:         #{expected_matcher.inspect}")
-        expect(Kernel).to receive(:exit)
+        expect_any_instance_of(described_class).to receive(:exit)
       end
 
       it 'parses config options' do
@@ -449,7 +449,7 @@ RSpec.describe Mutant::CLI do
 
       before do
         expect($stdout).to receive(:puts).with(Mutant::CLI::Help::ENVIRONMENT_HELP)
-        expect(Kernel).to receive(:exit)
+        expect_any_instance_of(described_class).to receive(:exit)
       end
 
       it 'prints environment help' do
@@ -479,7 +479,7 @@ RSpec.describe Mutant::CLI do
 
         before do
           expect($stdout).to receive(:puts).with('No sessions found in .mutant/results/')
-          expect(Kernel).to receive(:exit)
+          expect_any_instance_of(described_class).to receive(:exit)
         end
 
         it 'reports no sessions' do
@@ -496,7 +496,7 @@ RSpec.describe Mutant::CLI do
           expect($stdout).to receive(:puts).with('Sessions (2):')
           expect($stdout).to receive(:puts).with('  abc123  coverage: 100%  status: pass')
           expect($stdout).to receive(:puts).with('  def456  coverage: 75%  status: fail')
-          expect(Kernel).to receive(:exit)
+          expect_any_instance_of(described_class).to receive(:exit)
         end
 
         it 'lists sessions from .mutant/results' do
@@ -522,7 +522,7 @@ RSpec.describe Mutant::CLI do
           expect($stdout).to receive(:puts).with('  Subjects: 2')
           expect($stdout).to receive(:puts).with('    Foo#bar')
           expect($stdout).to receive(:puts).with('    Foo#baz')
-          expect(Kernel).to receive(:exit)
+          expect_any_instance_of(described_class).to receive(:exit)
         end
 
         it 'shows session details from .mutant/results' do
@@ -624,7 +624,7 @@ RSpec.describe Mutant::CLI do
 
         before do
           expect($stdout).to receive(:puts).with(Mutant::CLI::Help::SESSION_HELP)
-          expect(Kernel).to receive(:exit)
+          expect_any_instance_of(described_class).to receive(:exit)
         end
 
         it 'prints session help' do
@@ -637,7 +637,7 @@ RSpec.describe Mutant::CLI do
 
         before do
           expect($stdout).to receive(:puts).with(Mutant::CLI::Help::SESSION_HELP)
-          expect(Kernel).to receive(:exit)
+          expect_any_instance_of(described_class).to receive(:exit)
         end
 
         it 'prints session help' do
@@ -651,7 +651,7 @@ RSpec.describe Mutant::CLI do
     let(:config) { Mutant::Config::DEFAULT }
 
     before do
-      allow(Kernel).to receive(:exit)
+      allow_any_instance_of(described_class).to receive(:exit)
     end
 
     def build_cli
@@ -780,7 +780,7 @@ RSpec.describe Mutant::CLI do
         it 'prints main help and exits' do
           expect(cli).to receive(:print_main_help)
           expect(cli).not_to receive(:parse)
-          expect(Kernel).to receive(:exit)
+          expect(cli).to receive(:exit)
 
           dispatch
         end
@@ -815,7 +815,7 @@ RSpec.describe Mutant::CLI do
       let(:cli) { build_cli }
 
       before do
-        expect(Kernel).to receive(:exit)
+        expect(cli).to receive(:exit)
       end
 
       context 'for list without extra arguments' do
@@ -858,7 +858,7 @@ RSpec.describe Mutant::CLI do
           expect(cli).to receive(:print_environment_help)
           expect(cli).not_to receive(:parse)
           expect(cli).not_to receive(:print_environment)
-          expect(Kernel).to receive(:exit)
+          expect(cli).to receive(:exit)
 
           handle_environment
         end
@@ -871,10 +871,80 @@ RSpec.describe Mutant::CLI do
           expect(cli).to receive(:print_environment_help)
           expect(cli).not_to receive(:parse)
           expect(cli).not_to receive(:print_environment)
-          expect(Kernel).to receive(:exit)
+          expect(cli).to receive(:exit)
 
           handle_environment
         end
+      end
+    end
+  end
+
+  describe 'option helpers' do
+    let(:cli) { described_class.allocate }
+
+    before do
+      allow(cli).to receive(:exit)
+    end
+
+    describe '#add_environment_options' do
+      let(:parser) { OptionParser.new }
+
+      before do
+        cli.send(:add_environment_options, parser)
+      end
+
+      it 'sets zombie when the zombie option is parsed' do
+        parser.parse!(%w[--zombie])
+
+        expect(cli.config.zombie).to be(true)
+      end
+
+      it 'sets jobs when the jobs option is parsed' do
+        parser.parse!(%w[--jobs 2])
+
+        expect(cli.config.jobs).to eql(2)
+      end
+    end
+
+    describe '#add_debug_options' do
+      let(:parser) { OptionParser.new }
+
+      before do
+        cli.send(:add_debug_options, parser)
+      end
+
+      it 'sets fail fast when the flag is parsed' do
+        parser.parse!(%w[--fail-fast])
+
+        expect(cli.config.fail_fast).to be(true)
+      end
+
+      it 'prints version and exits when the version flag is parsed' do
+        expect($stdout).to receive(:puts).with("mutant-#{Mutant::VERSION}")
+        expect(cli).to receive(:exit)
+
+        parser.parse!(%w[--version])
+      end
+
+      it 'prints parser help and exits when the help flag is parsed' do
+        expect($stdout).to receive(:puts).with(parser.to_s)
+        expect(cli).to receive(:exit)
+
+        parser.parse!(%w[--help])
+      end
+    end
+
+    describe '#setup_integration' do
+      let(:resolved_integration) { Class.new }
+
+      it 'updates config with the resolved integration' do
+        expect(Mutant::Integration).to receive(:setup)
+          .with(Kernel, 'rspec')
+          .and_return(resolved_integration)
+
+        cli.send(:setup_integration, 'rspec')
+
+        expect(cli.config.integration).to eql(resolved_integration)
       end
     end
   end

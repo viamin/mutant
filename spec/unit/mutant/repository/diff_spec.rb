@@ -101,8 +101,8 @@ describe Mutant::Repository::Diff do
               .and_return([fallback_stdout, fallback_status])
           end
 
-          let(:fallback_status) { instance_double(Process::Status, success?: fallback_success?) }
-          let(:fallback_success?) { true }
+          let(:fallback_status) { instance_double(Process::Status, exitstatus: fallback_exitstatus) }
+          let(:fallback_exitstatus) { 0 }
           let(:expected_git_diff_command) do
             %W[git diff --name-only from_rev...to_rev -- #{path}]
           end
@@ -120,7 +120,7 @@ describe Mutant::Repository::Diff do
           end
 
           context 'and the fallback git diff command fails' do
-            let(:fallback_success?) { false }
+            let(:fallback_exitstatus) { 1 }
 
             it 'raises error' do
               expect { subject }.to raise_error(

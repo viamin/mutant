@@ -38,12 +38,13 @@ module Mutant
       def touches?(path, line_range)
         return false unless within_working_directory?(path) && tracks?(path)
 
-        stdout, stderr, status = config.open3.capture3(*line_command(path, line_range), binmode: true)
+        command = line_command(path, line_range)
+        stdout, stderr, status = config.open3.capture3(*command, binmode: true)
 
         return !stdout.empty? if status.success?
-        return touched_file?(path) if line_range_lookup_failed?(stderr)
+        return touched_file?(path) if stderr.include?(' has only ')
 
-        fail RepositoryError, "Command #{line_command(path, line_range)} failed!"
+        fail RepositoryError, "Command #{command} failed!"
       end
 
     private
@@ -61,13 +62,9 @@ module Mutant
         command = %W[git diff --name-only #{from}...#{to} -- #{path}]
         stdout, status = config.open3.capture2(*command, binmode: true)
 
-        fail RepositoryError, "Command #{command} failed!" unless status.success?
+        fail RepositoryError, "Command #{command} failed!" unless status.exitstatus.zero?
 
         !stdout.empty?
-      end
-
-      def line_range_lookup_failed?(stderr)
-        stderr.include?(' has only ')
       end
 
       # Test if path is tracked in repository

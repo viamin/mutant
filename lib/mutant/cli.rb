@@ -43,7 +43,9 @@ module Mutant
     #
     # @return [Config]
     def config
-      @config || Config::DEFAULT
+      return instance_variable_get(:@config) if instance_variable_defined?(:@config)
+
+      Config::DEFAULT
     end
 
   private
@@ -74,6 +76,10 @@ module Mutant
       $stdout.puts(message)
     end
 
+    def exit
+      config.kernel.public_send(:exit)
+    end
+
     def dispatch(arguments)
       subcommand, *subcommand_arguments = arguments
 
@@ -81,7 +87,7 @@ module Mutant
         __send__("handle_#{subcommand}", subcommand_arguments)
       elsif arguments.one? && HELP_FLAGS.include?(subcommand)
         print_main_help
-        config.kernel.public_send(:exit)
+        exit
       else
         parse(arguments)
       end
@@ -111,7 +117,7 @@ module Mutant
     end
 
     def with(attributes)
-      @config = config.with(attributes)
+      instance_variable_set(:@config, config.with(attributes))
     end
 
     def add(attribute, value)
