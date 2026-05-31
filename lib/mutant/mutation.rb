@@ -64,9 +64,17 @@ module Mutant
     def self.mutation_exception?(exception)
       case exception
       when Isolation::Result::SerializedException
-        %w[Interrupt ScriptError SignalException SyntaxError SystemExit].include?(exception.exception_class_name)
+        %w[
+          Interrupt
+          NameError
+          NoMethodError
+          ScriptError
+          SignalException
+          SyntaxError
+          SystemExit
+        ].include?(exception.exception_class_name)
       else
-        exception.is_a?(Interrupt) ||
+        exception.is_a?(NameError) ||
           exception.is_a?(ScriptError) ||
           exception.is_a?(SignalException) ||
           exception.is_a?(SystemExit)

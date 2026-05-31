@@ -55,7 +55,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       MUTANT_JOBS: 4
-      MUTANT_SINCE: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.event.pull_request.base.ref) || github.event.before }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -64,7 +63,12 @@ jobs:
         with:
           ruby-version: '3.3'
           bundler-cache: true
-      - if: github.event_name == 'pull_request'
-        name: Fetch pull request base branch
-        run: git fetch --no-tags --depth=1 origin +refs/heads/${{ github.event.pull_request.base.ref }}:refs/remotes/origin/${{ github.event.pull_request.base.ref }}
+      - name: Determine mutant base revision
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git fetch --no-tags --depth=1 origin +refs/heads/${{ github.event.pull_request.base.ref }}:refs/remotes/origin/${{ github.event.pull_request.base.ref }}
+            echo "MUTANT_SINCE=origin/${{ github.event.pull_request.base.ref }}" >> "$GITHUB_ENV"
+          else
+            echo "MUTANT_SINCE=${{ github.event.before }}" >> "$GITHUB_ENV"
+          fi
       - run: bundle exec rake metrics:mutant

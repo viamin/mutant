@@ -1,6 +1,86 @@
 # frozen_string_literal: true
 
 describe Mutant::Repository::Diff do
+  describe Mutant::Repository::DiffCommandResult do
+    subject(:output?) do
+      described_class.new(
+        command: command,
+        stdout:  stdout,
+        stderr:  stderr,
+        status:  status
+      ).output?
+    end
+
+    let(:command) { %w[git diff] }
+    let(:stderr)  { instance_double(String) }
+    let(:status)  { instance_double(Process::Status, success?: success?) }
+
+    context 'when the command fails with output' do
+      let(:success?) { false }
+      let(:stdout)   { 'diff output' }
+
+      it { should be(false) }
+    end
+
+    context 'when the command succeeds with empty output' do
+      let(:success?) { true }
+      let(:stdout)   { '' }
+
+      it { should be(false) }
+    end
+
+    context 'when the command succeeds with output' do
+      let(:success?) { true }
+      let(:stdout)   { 'diff output' }
+
+      it { should be(true) }
+    end
+  end
+
+  describe Mutant::Repository::DiffLocation do
+    subject(:touched_by_hunk?) do
+      described_class.new(path: Pathname.new('/foo/bar.rb'), line_range: line_range)
+        .touched_by_hunk?(start_line, line_count)
+    end
+
+    let(:line_range) { 5..7 }
+
+    context 'when the hunk has zero added lines' do
+      let(:start_line) { 5 }
+      let(:line_count) { 0 }
+
+      it { should be(false) }
+    end
+
+    context 'when the hunk ends before the location starts' do
+      let(:start_line) { 1 }
+      let(:line_count) { 3 }
+
+      it { should be(false) }
+    end
+
+    context 'when the hunk starts after the location ends' do
+      let(:start_line) { 8 }
+      let(:line_count) { 2 }
+
+      it { should be(false) }
+    end
+
+    context 'when the hunk overlaps the start of the location' do
+      let(:start_line) { 3 }
+      let(:line_count) { 3 }
+
+      it { should be(true) }
+    end
+
+    context 'when the hunk overlaps the end of the location' do
+      let(:start_line) { 7 }
+      let(:line_count) { 2 }
+
+      it { should be(true) }
+    end
+  end
+
   let(:object) do
     described_class.new(
       config: config,
@@ -162,6 +242,12 @@ describe Mutant::Repository::Diff do
       let(:line) { '@@ -4 +7 @@' }
 
       it { should eql([7, 1]) }
+    end
+
+    context 'with a zero-length added hunk' do
+      let(:line) { '@@ -4,2 +7,0 @@' }
+
+      it { should eql([7, 0]) }
     end
 
     context 'with a malformed hunk header' do

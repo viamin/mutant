@@ -108,8 +108,9 @@ module Mutant
       end
 
       def parse_hunk(line)
-        match = /\A@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/.match(line) or
-          fail RepositoryError, "Cannot parse diff hunk: #{line.inspect}"
+        match = /\A@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/.match(line)
+
+        fail RepositoryError, "Cannot parse diff hunk: #{line.inspect}" unless match
 
         [Integer(match[1]), Integer(match[2] || 1)]
       end
