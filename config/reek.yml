@@ -154,3 +154,4 @@ detectors:
     - Mutant::Config::CoverageCriteria#timeout_status? # intentional, private
     - Mutant::Config::Loader::NodeReader#to_ruby # intentional, private
     - Mutant::CLI#config_file_sets_jobs? # intentional, private helper for config
+    - Mutant::Result::Mutation#coverage_criteria # intentional, private helper for thread-local config
