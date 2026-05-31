@@ -90,4 +90,26 @@ RSpec.describe 'subject matcher expression syntax' do
       ]
     )
   end
+
+  specify 'composes ignore expressions with source matchers' do
+    expressions = matched_subjects(
+      match_expressions: [
+        parse_expression('TestApp::Literal'),
+        parse_expression('TestApp::SubjectMatchers')
+      ],
+      ignore_expressions: [parse_expression('source:lib/test_app/subjects.rb')]
+    ).map { |subject| subject.expression.syntax }.sort
+
+    expect(expressions).to eql(
+      %w[
+        TestApp::Literal#boolean
+        TestApp::Literal#command
+        TestApp::Literal#float
+        TestApp::Literal#string
+        TestApp::Literal#symbol
+        TestApp::Literal#uncovered_string
+        TestApp::Literal.string
+      ]
+    )
+  end
 end
