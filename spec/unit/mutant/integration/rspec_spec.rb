@@ -54,6 +54,11 @@ RSpec.describe Mutant::Integration::Rspec do
     let(:state) { object.instance_variable_get(:@state) }
 
     describe '#examples' do
+      it 'returns the cached collection when it is still valid' do
+        expect(object.send(:examples)).to be(example_collection)
+        expect(Mutant::Integration::RspecSupport::Examples).to have_received(:build).once
+      end
+
       it 'rebuilds the collection when the cached collaborator is invalid' do
         state[:examples] = Object.new
 
@@ -63,14 +68,25 @@ RSpec.describe Mutant::Integration::Rspec do
     end
 
     describe '#output' do
+      it 'returns the cached output when it is still valid' do
+        expect(object.send(:output)).to be(state.fetch(:output))
+      end
+
       it 'creates a fresh StringIO when the cached output is invalid' do
         state[:output] = Object.new
 
         expect(object.send(:output)).to be_a(StringIO)
+        expect(state.fetch(:output)).to be(object.send(:output))
       end
     end
 
     describe '#runner' do
+      it 'returns the cached runner when it is still valid' do
+        expect(object.send(:runner)).to be(rspec_runner)
+        expect(RSpec::Core::ConfigurationOptions).to have_received(:new).once
+        expect(RSpec::Core::Runner).to have_received(:new).once
+      end
+
       it 'rebuilds the runner when the cached runner is invalid' do
         state[:runner] = Object.new
 
@@ -126,7 +142,9 @@ RSpec.describe Mutant::Integration::Rspec do
       let(:exit_status) { 1 }
 
       it 'should return failed result' do
-        expect(subject).to eql(
+        result = subject
+
+        expect(result).to eql(
           Mutant::Result::Test.new(
             output:  'the-test-output',
             passed:  false,
@@ -134,6 +152,7 @@ RSpec.describe Mutant::Integration::Rspec do
             tests:   tests
           )
         )
+        expect(result.tests).to be(tests)
       end
     end
 
@@ -141,7 +160,9 @@ RSpec.describe Mutant::Integration::Rspec do
       let(:exit_status) { 0 }
 
       it 'should return passed result' do
-        expect(subject).to eql(
+        result = subject
+
+        expect(result).to eql(
           Mutant::Result::Test.new(
             output:  'the-test-output',
             passed:  true,
@@ -149,8 +170,74 @@ RSpec.describe Mutant::Integration::Rspec do
             tests:   tests
           )
         )
+        expect(object.send(:output).pos).to eql('the-test-output'.length)
       end
     end
+  end
+end
+
+RSpec.describe Mutant::Integration::RspecSupport do
+  describe '.cover_annotation?' do
+    before do
+      stub_const('Example::NamedTarget', Class.new)
+    end
+
+    it 'accepts named modules' do
+      expect(described_class.cover_annotation?(Example::NamedTarget)).to be(true)
+    end
+
+    it 'accepts parsable string expressions' do
+      expect(described_class.cover_annotation?('Example::NamedTarget')).to be_truthy
+    end
+
+    it 'rejects anonymous modules' do
+      expect(described_class.cover_annotation?(Class.new)).to be(false)
+    end
+
+    it 'rejects unsupported annotations' do
+      expect(described_class.cover_annotation?(:symbol)).to be(false)
+    end
+  end
+end
+
+RSpec.describe Mutant::Integration::RspecSupport::Matchers do
+  subject(:matcher_host) do
+    Class.new do
+      prepend Mutant::Integration::RspecSupport::Matchers
+
+      def cover(expected)
+        [:super, expected]
+      end
+    end.new
+  end
+
+  before do
+    stub_const('Example::MatcherTarget', Class.new)
+  end
+
+  it 'returns a mutant cover matcher for supported annotations' do
+    matcher = matcher_host.send(:cover, Example::MatcherTarget)
+
+    expect(matcher).to be_a(Mutant::Integration::RspecSupport::CoverMatcher)
+    expect(matcher.description).to eql("cover #{Example::MatcherTarget.inspect}")
+  end
+
+  it 'delegates unsupported annotations to the original matcher' do
+    expect(matcher_host.send(:cover, :symbol)).to eql([:super, :symbol])
+  end
+end
+
+RSpec.describe Mutant::Integration::RspecSupport::CoverMatcher do
+  subject(:matcher) { described_class.new('Example::MatcherTarget') }
+
+  it 'always matches' do
+    expect(matcher.matches?(:anything)).to be(true)
+  end
+
+  it 'describes the expected cover annotation' do
+    expect(matcher.description).to eql('cover "Example::MatcherTarget"')
+    expect(matcher.failure_message).to eql('cover "Example::MatcherTarget"')
+    expect(matcher.failure_message_when_negated).to eql('cover "Example::MatcherTarget"')
   end
 end
 
@@ -350,6 +437,127 @@ RSpec.describe Mutant::Integration::RspecSupport::Examples do
   end
 end
 
+RSpec.describe Mutant::Integration::RspecSupport::Node do
+  let(:parser) { ::Parser::CurrentRuby }
+
+  describe '.cover_argument' do
+    it 'extracts the cover matcher argument from expectation nodes' do
+      node = parser.parse("is_expected.to cover('Example::Target')")
+
+      expect(described_class.cover_argument(node)).to eql(
+        parser.parse("'Example::Target'")
+      )
+    end
+
+    it 'returns nil for non-cover matcher expectations' do
+      node = parser.parse('is_expected.to eq(1)')
+
+      expect(described_class.cover_argument(node)).to be(nil)
+    end
+
+    it 'returns nil for non-send nodes' do
+      expect(described_class.cover_argument(parser.parse("'value'"))).to be(nil)
+    end
+  end
+
+  describe '.cover_arguments' do
+    it 'returns an empty array for non-nodes' do
+      expect(described_class.cover_arguments(nil)).to eql([])
+    end
+
+    it 'collects cover matcher arguments from descendant nodes' do
+      node = parser.parse(
+        <<~RUBY
+          begin
+            is_expected.to cover('Example::One')
+            is_expected.to eq(1)
+            expect(subject).to cover('Example::Two')
+          end
+        RUBY
+      )
+
+      expect(described_class.cover_arguments(node)).to eql(
+        [
+          parser.parse("'Example::One'"),
+          parser.parse("'Example::Two'")
+        ]
+      )
+    end
+  end
+
+  describe '.each' do
+    it 'returns an enumerator when no block is given' do
+      node = parser.parse("cover('Example::Target')")
+
+      expect(described_class.each(node).to_a).to include(node)
+    end
+
+    it 'visits descendant nodes in depth-first order' do
+      node = parser.parse("expect(subject).to cover('Example::Target')")
+
+      expect(described_class.each(node).map(&:type)).to eql(%i[send send send send str])
+    end
+  end
+
+  describe '.example_block?' do
+    it 'returns true for rspec example blocks' do
+      node = parser.parse("it('works') { expect(true).to eql(true) }")
+
+      expect(described_class.example_block?(node)).to be(true)
+    end
+
+    it 'returns false for non-example blocks' do
+      node = parser.parse('foo { bar }')
+
+      expect(described_class.example_block?(node)).to be(false)
+    end
+
+    it 'returns false for non-block nodes' do
+      expect(described_class.example_block?(parser.parse("it('works')"))).to be(false)
+    end
+  end
+
+  describe '.cover_matcher?' do
+    it 'returns true for bare cover matcher sends' do
+      matcher = parser.parse("cover('Example::Target')")
+
+      expect(described_class.cover_matcher?(matcher)).to be(true)
+    end
+
+    it 'returns false for other sends' do
+      matcher = parser.parse("other('Example::Target')")
+
+      expect(described_class.cover_matcher?(matcher)).to be(false)
+    end
+
+    it 'returns false when the matcher has a receiver' do
+      matcher = parser.parse("self.cover('Example::Target')")
+
+      expect(described_class.cover_matcher?(matcher)).to be(false)
+    end
+
+    it 'returns false for non-send nodes' do
+      expect(described_class.cover_matcher?(parser.parse("'Example::Target'"))).to be(false)
+    end
+  end
+end
+
+RSpec.describe Mutant::Integration::RspecSupport::Source do
+  it 'prefers the absolute file path' do
+    expect(
+      described_class.path(absolute_file_path: '/tmp/absolute.rb', file_path: 'relative.rb')
+    ).to eql('/tmp/absolute.rb')
+  end
+
+  it 'falls back to the relative file path' do
+    expect(described_class.path(file_path: 'relative.rb')).to eql('relative.rb')
+  end
+
+  it 'returns nil when no path metadata is present' do
+    expect(described_class.path({})).to be(nil)
+  end
+end
+
 RSpec.describe Mutant::Integration::RspecSupport::AnnotationParser do
   subject(:annotation_parser) { described_class.new(Mutant::Config::DEFAULT.expression_parser) }
 
@@ -389,9 +597,34 @@ RSpec.describe Mutant::Integration::RspecSupport::ExpressionParser do
 
   before do
     stub_const('Example::DescribedClass', Class.new)
+    stub_const('Example::Outer::Inner', Class.new)
   end
 
   let(:parser) { ::Parser::CurrentRuby }
+
+  it 'parses constant cover annotations' do
+    node = parser.parse('cover(Example::Outer::Inner)').children.fetch(2)
+
+    expect(expression_parser.call(node, nil)).to eql(
+      parse_expression('Example::Outer::Inner')
+    )
+  end
+
+  it 'parses top-level constant cover annotations' do
+    node = parser.parse('cover(::Example::Outer::Inner)').children.fetch(2)
+
+    expect(expression_parser.call(node, nil)).to eql(
+      parse_expression('Example::Outer::Inner')
+    )
+  end
+
+  it 'parses string cover annotations' do
+    node = parser.parse("cover('Example::Outer::Inner')").children.fetch(2)
+
+    expect(expression_parser.call(node, nil)).to eql(
+      parse_expression('Example::Outer::Inner')
+    )
+  end
 
   it 'parses described_class cover annotations' do
     node = parser.parse('cover(described_class)').children.fetch(2)
@@ -409,10 +642,51 @@ RSpec.describe Mutant::Integration::RspecSupport::ExpressionParser do
       'Cannot derive mutant expression from anonymous or missing described_class'
     )
   end
+
+  it 'rejects unsupported matcher node types' do
+    node = parser.parse('cover(1)').children.fetch(2)
+
+    expect { expression_parser.call(node, nil) }.to raise_error(
+      ArgumentError,
+      'Cannot derive mutant expression from RSpec cover matcher node type :int'
+    )
+  end
+
+  it 'rejects unsupported constant parent node types' do
+    node = parser.parse('cover(foo::Bar)').children.fetch(2)
+
+    expect { expression_parser.call(node, nil) }.to raise_error(
+      ArgumentError,
+      'Cannot derive mutant expression from constant parent node type :send'
+    )
+  end
+
+  it 'rejects unsupported matcher sends' do
+    node = parser.parse('cover(subject)').children.fetch(2)
+
+    expect { expression_parser.call(node, nil) }.to raise_error(
+      ArgumentError,
+      'Cannot derive mutant expression from RSpec cover matcher send :subject'
+    )
+  end
 end
 
 RSpec.describe Mutant::Integration::RspecSupport::ExpressionResolver do
-  subject(:expression_resolver) { described_class.build(Mutant::Config::DEFAULT.expression_parser) }
+  subject(:expression_resolver) do
+    described_class.new(annotation_parser, expression_parser, source_index)
+  end
+
+  let(:annotation_parser) { instance_double(Mutant::Integration::RspecSupport::AnnotationParser) }
+  let(:expression_parser) { instance_double(Mutant::Expression::Parser) }
+  let(:source_index)      { instance_double(Mutant::Integration::RspecSupport::SourceIndex) }
+  let(:metadata) do
+    {
+      absolute_file_path: source_file,
+      line_number:        2,
+      location:           "#{source_file}:2",
+      full_description:   'Example::Description extra words'
+    }
+  end
 
   let(:source_file) do
     file = Tempfile.new(['mutant-rspec-multi-cover', '.rb'])
@@ -434,18 +708,105 @@ RSpec.describe Mutant::Integration::RspecSupport::ExpressionResolver do
     File.unlink(source_file) if File.exist?(source_file)
   end
 
+  describe '.build' do
+    subject(:built_resolver) { described_class.build(Mutant::Config::DEFAULT.expression_parser) }
+
+    it 'builds the annotation parser and source index collaborators' do
+      expect(
+        built_resolver.send(:annotation_parser)
+      ).to be_a(Mutant::Integration::RspecSupport::AnnotationParser)
+      expect(built_resolver.send(:expression_parser)).to be(Mutant::Config::DEFAULT.expression_parser)
+      expect(
+        built_resolver.send(:source_index)
+      ).to be_a(Mutant::Integration::RspecSupport::SourceIndex)
+    end
+
+    it 'wires the expression parser into each collaborator constructor' do
+      annotation_parser = instance_double(Mutant::Integration::RspecSupport::AnnotationParser)
+      expression_parser = Mutant::Config::DEFAULT.expression_parser
+      expression_resolver = instance_double(Mutant::Integration::RspecSupport::ExpressionResolver)
+      parser_wrapper = instance_double(Mutant::Integration::RspecSupport::ExpressionParser)
+      source_index = instance_double(Mutant::Integration::RspecSupport::SourceIndex)
+
+      expect(Mutant::Integration::RspecSupport::AnnotationParser).to receive(:new)
+        .with(expression_parser)
+        .and_return(annotation_parser)
+      expect(Mutant::Integration::RspecSupport::ExpressionParser).to receive(:new)
+        .with(expression_parser)
+        .and_return(parser_wrapper)
+      expect(Mutant::Integration::RspecSupport::SourceIndex).to receive(:new)
+        .with(parser_wrapper)
+        .and_return(source_index)
+      expect(described_class).to receive(:new)
+        .with(annotation_parser, expression_parser, source_index)
+        .and_return(expression_resolver)
+
+      expect(described_class.build(expression_parser)).to be(expression_resolver)
+    end
+  end
+
+  it 'prefers explicit mutant_expression annotations' do
+    expect(annotation_parser).to receive(:call).with('Example::Annotated').and_return(:annotation_expression)
+    expect(source_index).not_to receive(:expressions)
+    expect(expression_parser).not_to receive(:try_parse)
+
+    expect(
+      expression_resolver.call(metadata.merge(mutant_expression: 'Example::Annotated'))
+    ).to be(:annotation_expression)
+  end
+
+  it 'uses a single source-derived expression before falling back to the description' do
+    allow(source_index).to receive(:expressions).with(metadata).and_return([:source_expression])
+    expect(expression_parser).not_to receive(:try_parse)
+
+    expect(expression_resolver.call(metadata)).to be(:source_expression)
+  end
+
   it 'rejects multiple cover annotations on one example' do
-    metadata = {
-      absolute_file_path: source_file,
-      line_number:        2,
-      location:           "#{source_file}:2",
-      full_description:   'ignored by cover matcher'
-    }
+    allow(source_index).to receive(:expressions).with(metadata).and_return(%i[first second])
+    expect(expression_parser).not_to receive(:try_parse)
 
     expect { expression_resolver.call(metadata) }.to raise_error(
       ArgumentError,
       "Multiple cover annotations found for RSpec example at #{source_file}:2"
     )
+  end
+
+  it 'falls back to the description-derived expression when no source annotation exists' do
+    allow(source_index).to receive(:expressions).with(metadata).and_return([])
+    expect(expression_parser).to receive(:try_parse).with('Example::Description').and_return(:description_expression)
+
+    expect(expression_resolver.call(metadata)).to be(:description_expression)
+  end
+
+  it 'extracts only the first token from the description' do
+    allow(source_index).to receive(:expressions).with(metadata).and_return([])
+    expect(expression_parser).to receive(:try_parse).with('Example::Description').and_return(nil)
+
+    expression_resolver.call(metadata)
+  end
+
+  it 'falls back to the default expression when source and description parsing do not resolve an expression' do
+    allow(source_index).to receive(:expressions)
+      .with(metadata.merge(full_description: 'not-an-expression'))
+      .and_return([])
+    expect(expression_parser).to receive(:try_parse).with('not-an-expression').and_return(nil)
+
+    expect(expression_resolver.call(metadata.merge(full_description: 'not-an-expression'))).to eql(
+      Mutant::Integration::RspecSupport::DEFAULT_EXPRESSION
+    )
+  end
+
+  it 'returns nil from source_expression when there are no source expressions' do
+    allow(source_index).to receive(:expressions).with(metadata).and_return([])
+
+    expect(expression_resolver.send(:source_expression, metadata)).to be(nil)
+  end
+
+  it 'returns the single source expression from source_expression' do
+    allow(source_index).to receive(:expressions).with(metadata).and_return([:source_expression])
+
+    expect(expression_resolver.send(:source_expression, metadata)).to be(:source_expression)
   end
 end
 
@@ -469,5 +830,137 @@ RSpec.describe Mutant::Integration::RspecSupport::SourceIndex do
 
   it 'returns no expressions for invalid ruby source' do
     expect(source_index.expressions(absolute_file_path: source_file, line_number: 1)).to eql([])
+  end
+
+  it 'stores the parser collaborator during initialization' do
+    parser = Mutant::Integration::RspecSupport::ExpressionParser.new(Mutant::Config::DEFAULT.expression_parser)
+    index = described_class.new(parser)
+
+    expect(index.instance_variable_get(:@parser)).to be(parser)
+    expect(index.instance_variable_get(:@cache)).to eql({})
+  end
+
+  it 'returns no expressions when the requested line is not indexed' do
+    file = Tempfile.new(['mutant-rspec-unindexed', '.rb'])
+    file.write(
+      <<~RUBY
+        RSpec.describe Example::Root do
+          it('ignored by cover matcher') do
+            is_expected.to cover('Example::Covered')
+          end
+        end
+      RUBY
+    )
+    file.close
+
+    expect(source_index.expressions(absolute_file_path: file.path, line_number: 99)).to eql([])
+  ensure
+    File.unlink(file.path) if file && File.exist?(file.path)
+  end
+
+  it 'returns no expressions when the source file is missing' do
+    expect(source_index.expressions(absolute_file_path: '/tmp/does-not-exist.rb', line_number: 1)).to eql([])
+  end
+
+  it 'returns cover expressions indexed by the example line number' do
+    file = Tempfile.new(['mutant-rspec-valid', '.rb'])
+    file.write(
+      <<~RUBY
+        RSpec.describe Example::Root do
+          it('ignored by cover matcher') do
+            is_expected.to cover('Example::Covered')
+          end
+        end
+      RUBY
+    )
+    file.close
+
+    expect(
+      source_index.expressions(absolute_file_path: file.path, line_number: 2)
+    ).to eql([parse_expression('Example::Covered')])
+  ensure
+    File.unlink(file.path) if file && File.exist?(file.path)
+  end
+
+  it 'passes described_class metadata to the expression parser' do
+    file = Tempfile.new(['mutant-rspec-described-class', '.rb'])
+    file.write(
+      <<~RUBY
+        RSpec.describe Example::DescribedClass do
+          it('ignored by cover matcher') do
+            is_expected.to cover(described_class)
+          end
+        end
+      RUBY
+    )
+    file.close
+
+    parser = instance_double(Mutant::Integration::RspecSupport::ExpressionParser)
+    index = described_class.new(parser)
+    described_class_constant = Class.new
+    stub_const('Example::DescribedClass', described_class_constant)
+
+    expect(parser).to receive(:call).with(instance_of(Parser::AST::Node), described_class_constant)
+      .and_return(parse_expression('Example::DescribedClass'))
+
+    expect(
+      index.expressions(
+        absolute_file_path: file.path,
+        described_class:    described_class_constant,
+        line_number:        2
+      )
+    ).to eql([parse_expression('Example::DescribedClass')])
+  ensure
+    File.unlink(file.path) if file && File.exist?(file.path)
+  end
+
+  it 'preserves the parsed buffer path for downstream location handling' do
+    file = Tempfile.new(['mutant-rspec-buffer', '.rb'])
+    file.write(
+      <<~RUBY
+        RSpec.describe Example::Root do
+          it('ignored by cover matcher') do
+            is_expected.to cover('Example::Covered')
+          end
+        end
+      RUBY
+    )
+    file.close
+
+    node = source_index.send(:parse, file.path)
+
+    expect(node.loc.expression.source_buffer.name).to eql(file.path)
+  ensure
+    File.unlink(file.path) if file && File.exist?(file.path)
+  end
+
+  it 'caches parsed source indexes by path' do
+    file = Tempfile.new(['mutant-rspec-cache', '.rb'])
+    file.write(
+      <<~RUBY
+        RSpec.describe Example::Root do
+          it('ignored by cover matcher') do
+            is_expected.to cover('Example::Covered')
+          end
+        end
+      RUBY
+    )
+    file.close
+
+    parser = instance_double(
+      Mutant::Integration::RspecSupport::ExpressionParser,
+      call: parse_expression('Example::Covered')
+    )
+    indexed_source = described_class.new(parser)
+
+    allow(File).to receive(:read).and_call_original
+
+    2.times do
+      indexed_source.expressions(absolute_file_path: file.path, line_number: 2)
+    end
+
+    expect(File).to have_received(:read).with(file.path).once
+  ensure
+    File.unlink(file.path) if file && File.exist?(file.path)
   end
 end
