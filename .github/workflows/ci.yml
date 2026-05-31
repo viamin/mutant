@@ -26,8 +26,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - suite: rspec
-            command: bundle exec rspec spec/integration/mutant/rspec_spec.rb
+          - suite: rspec-3.10
+            command: MUTANT_RSPEC_VERSION=3.10 bundle exec rspec spec/integration/mutant/rspec_spec.rb
+          - suite: rspec-3.13
+            command: MUTANT_RSPEC_VERSION=3.13 bundle exec rspec spec/integration/mutant/rspec_spec.rb
+          - suite: rspec-4.0
+            command: MUTANT_RSPEC_VERSION=4.0 bundle exec rspec spec/integration/mutant/rspec_spec.rb
           - suite: minitest
             command: bundle exec rspec spec/integration/mutant/minitest_spec.rb
           - suite: generation
@@ -55,13 +59,43 @@ jobs:
     runs-on: ubuntu-latest
     env:
       MUTANT_JOBS: 4
-      MUTANT_SINCE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
+      - if: github.event_name == 'pull_request'
+        run: git fetch --no-tags origin "${{ github.event.pull_request.base.ref }}:refs/remotes/origin/${{ github.event.pull_request.base.ref }}"
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: '3.3'
           bundler-cache: true
-      - run: bundle exec rake metrics:mutant
+      - run: |
+          base_ref=""
+          base_sha="${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}"
+          base_branch_ref="${{ github.event_name == 'pull_request' && format('refs/remotes/origin/{0}', github.event.pull_request.base.ref) || '' }}"
+
+          if [ -n "$base_branch_ref" ] && git rev-parse --verify --quiet "$base_branch_ref^{commit}" >/dev/null; then
+            base_ref="$base_branch_ref"
+
+            if ! mutant_since="$(git merge-base HEAD "$base_ref" 2>/dev/null)"; then
+              mutant_since=""
+            fi
+          fi
+
+          if [ -z "$mutant_since" ] && [ -n "$base_sha" ] && [ "$base_sha" != "0000000000000000000000000000000000000000" ] && git rev-parse --verify --quiet "$base_sha^{commit}" >/dev/null; then
+            base_ref="$base_sha"
+
+            if ! mutant_since="$(git merge-base HEAD "$base_ref" 2>/dev/null)"; then
+              mutant_since=""
+            fi
+          fi
+
+          if [ -z "$mutant_since" ]; then
+            if git rev-parse --verify --quiet 'HEAD~1^{commit}' >/dev/null; then
+              mutant_since="HEAD~1"
+            else
+              mutant_since="HEAD"
+            fi
+          fi
+
+          MUTANT_SINCE="$mutant_since" bundle exec rake metrics:mutant

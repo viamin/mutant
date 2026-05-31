@@ -27,6 +27,7 @@ namespace :metrics do
   task :mutant do
     mutant_jobs = ENV['MUTANT_JOBS']
     mutant_since = ENV.fetch('MUTANT_SINCE', 'HEAD~1')
+    head_revision = `git rev-parse HEAD`.chomp
     arguments = %w[
       bundle exec mutant
       --include lib
@@ -34,7 +35,7 @@ namespace :metrics do
       --use rspec
       --zombie
     ]
-    arguments.concat(['--since', mutant_since])
+    arguments.concat(['--since', mutant_since]) unless mutant_since.empty? || mutant_since == head_revision
     arguments.concat(['--jobs', mutant_jobs]) if mutant_jobs
 
     arguments.concat(%w[-- Mutant*])

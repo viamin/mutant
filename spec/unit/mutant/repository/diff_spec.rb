@@ -4,8 +4,8 @@ describe Mutant::Repository::Diff do
   let(:object) do
     described_class.new(
       config: config,
-      from:   'HEAD',
-      to:     'from_rev'
+      from:   'from_rev',
+      to:     'HEAD'
     )
   end
 
@@ -22,12 +22,12 @@ describe Mutant::Repository::Diff do
   let(:pwd)      { Pathname.new('/foo')             }
   let(:status)   { instance_double(Process::Status, success?: true) }
 
-  let(:rev_parse_to_stdout)   { instance_double(String, strip: 'sha_to')   }
   let(:rev_parse_from_stdout) { instance_double(String, strip: 'sha_from') }
+  let(:rev_parse_to_stdout)   { instance_double(String, strip: 'sha_to')   }
   let(:rev_parse_status)      { instance_double(Process::Status, success?: true) }
 
   let(:expected_diff_command) do
-    %w[git diff sha_to...sha_from]
+    %w[git diff sha_from...sha_to]
   end
 
   shared_context 'setup rev-parse commands' do
@@ -35,12 +35,12 @@ describe Mutant::Repository::Diff do
       expect(config.open3).to receive(:capture2)
         .ordered
         .with(*%w[git rev-parse --verify from_rev], binmode: true)
-        .and_return([rev_parse_to_stdout, rev_parse_status])
+        .and_return([rev_parse_from_stdout, rev_parse_status])
 
       expect(config.open3).to receive(:capture2)
         .ordered
         .with(*%w[git rev-parse --verify HEAD], binmode: true)
-        .and_return([rev_parse_from_stdout, rev_parse_status])
+        .and_return([rev_parse_to_stdout, rev_parse_status])
     end
   end
 
@@ -71,15 +71,14 @@ describe Mutant::Repository::Diff do
       end
     end
 
-    context 'when git rev-parse fails for "to" ref' do
-      let(:diff_output) { '' }
+    context 'when git rev-parse fails for "from" ref' do
       let(:rev_parse_status) { instance_double(Process::Status, success?: false) }
 
       before do
         expect(config.open3).to receive(:capture2)
           .ordered
           .with(*%w[git rev-parse --verify from_rev], binmode: true)
-          .and_return([rev_parse_to_stdout, rev_parse_status])
+          .and_return([rev_parse_from_stdout, rev_parse_status])
       end
 
       it 'raises error' do
@@ -147,7 +146,6 @@ describe Mutant::Repository::Diff do
     end
 
     context 'when file is in diff but hunks do not overlap' do
-      let(:path)       { Pathname.new('/foo/lib/bar.rb') }
       let(:line_range) { 50..60 }
 
       let(:diff_output) do

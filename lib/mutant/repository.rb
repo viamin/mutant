@@ -44,7 +44,7 @@ module Mutant
         return false unless ranges
         return true if ranges.equal?(ParseState::ALL)
 
-        ranges.any? { |range| range.begin <= line_range.end && line_range.begin <= range.end }
+        ranges.any? { |range| ranges_overlap?(range, line_range) }
       end
 
     private
@@ -56,7 +56,7 @@ module Mutant
       # @raise [RepositoryError]
       #   when git command failed
       def diff_hunks
-        ParseState.parse(command_output(%W[git diff #{resolved_to}...#{resolved_from}]))
+        ParseState.parse(command_output(%W[git diff #{resolved_from}...#{resolved_to}]))
       end
       memoize :diff_hunks
 
@@ -150,6 +150,16 @@ module Mutant
       end
       ParseState::ALL = :all
       private_constant :ParseState
+
+      # Test if two ranges overlap
+      #
+      # @param [Range<Integer>] range_a
+      # @param [Range<Integer>] range_b
+      #
+      # @return [Boolean]
+      def ranges_overlap?(range_a, range_b)
+        range_a.begin <= range_b.end && range_b.begin <= range_a.end
+      end
 
       # Test if the path is within the current working directory
       #
