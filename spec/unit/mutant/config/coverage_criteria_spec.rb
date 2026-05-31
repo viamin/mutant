@@ -1,6 +1,13 @@
 # frozen_string_literal: true
 
 RSpec.describe Mutant::Config::CoverageCriteria do
+  around do |example|
+    original = Thread.current[described_class::THREAD_KEY]
+    example.run
+  ensure
+    Thread.current[described_class::THREAD_KEY] = original
+  end
+
   let(:object) do
     described_class.new(
       process_abort: process_abort,
@@ -13,6 +20,42 @@ RSpec.describe Mutant::Config::CoverageCriteria do
   let(:test_result)   { true  }
   let(:timeout)       { false }
   let(:mutation)      { instance_double(Mutant::Mutation) }
+
+  describe '.current' do
+    subject(:current) { described_class.current }
+
+    context 'when no thread-local value is configured' do
+      before do
+        Thread.current[described_class::THREAD_KEY] = nil
+      end
+
+      it { should eql(described_class::DEFAULT) }
+    end
+
+    context 'when a thread-local value is configured' do
+      let(:object) do
+        described_class.new(
+          process_abort: true,
+          test_result:   false,
+          timeout:       true
+        )
+      end
+
+      before do
+        described_class.current = object
+      end
+
+      it { should eql(object) }
+    end
+  end
+
+  describe '.current=' do
+    it 'stores the value in the current thread' do
+      described_class.current = object
+
+      expect(Thread.current[described_class::THREAD_KEY]).to eql(object)
+    end
+  end
 
   describe '#success?' do
     subject { object.success?(mutation, isolation_result) }
@@ -42,20 +85,52 @@ RSpec.describe Mutant::Config::CoverageCriteria do
       end
     end
 
-    context 'when isolation is unsuccessful' do
+    context 'when isolation raises a non-mutation exception' do
+      let(:mutation) do
+        instance_double(
+          Class.new(Mutant::Mutation::Neutral),
+          class: Mutant::Mutation::Neutral
+        )
+      end
       let(:isolation_result) do
         Mutant::Isolation::Result::Exception.new(RuntimeError.new('boom'))
       end
 
-      context 'and process_abort criteria is enabled' do
-        let(:process_abort) { true }
+      it { should be(false) }
+    end
 
-        it { should be(true) }
+    context 'when isolation raises a mutation-induced exception on an evil mutation' do
+      let(:mutation) do
+        instance_double(
+          Class.new(Mutant::Mutation::Evil),
+          class: Mutant::Mutation::Evil
+        )
+      end
+      let(:isolation_result) do
+        Mutant::Isolation::Result::Exception.new(SyntaxError.new('broken mutation'))
       end
 
-      context 'and process_abort criteria is disabled' do
-        it { should be(false) }
+      it { should be(true) }
+    end
+
+    context 'when isolation raises a serialized mutation-induced exception on an evil mutation' do
+      let(:mutation) do
+        instance_double(
+          Class.new(Mutant::Mutation::Evil),
+          class: Mutant::Mutation::Evil
+        )
       end
+      let(:isolation_result) do
+        Mutant::Isolation::Result::Exception.new(
+          Mutant::Isolation::Result::SerializedException.new(
+            Mutant::EMPTY_ARRAY,
+            'SyntaxError',
+            '#<SyntaxError: broken mutation>'
+          )
+        )
+      end
+
+      it { should be(true) }
     end
 
     context 'when isolation timed out' do
@@ -142,6 +217,22 @@ RSpec.describe Mutant::Config::CoverageCriteria do
       let(:process_abort) { true }
 
       it { should be(true) }
+    end
+
+    context 'when child exit was signaled with a non-timeout signal and process_abort is disabled' do
+      let(:status) do
+        instance_double(
+          Process::Status,
+          signaled?: true,
+          termsig:   Signal.list.fetch('INT')
+        )
+      end
+
+      let(:isolation_result) do
+        Mutant::Isolation::Fork::ChildError.new(status)
+      end
+
+      it { should be(false) }
     end
 
     context 'when child exit was not signaled' do

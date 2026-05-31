@@ -19,9 +19,7 @@ module Mutant
         timeout:       false
       )
 
-      def self.current
-        Thread.current.fetch(THREAD_KEY, DEFAULT)
-      end
+      def self.current = Thread.current[THREAD_KEY] || DEFAULT
 
       def self.current=(value)
         Thread.current[THREAD_KEY] = value
@@ -36,6 +34,8 @@ module Mutant
       def success?(mutation, isolation_result)
         if isolation_result.success?
           test_result && mutation.class.success?(isolation_result.value)
+        elsif isolation_result.instance_of?(Isolation::Result::Exception)
+          mutation.class.exception_success?(isolation_result.value)
         elsif timeout_result?(isolation_result)
           timeout
         else

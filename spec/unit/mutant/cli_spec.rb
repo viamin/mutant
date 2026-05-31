@@ -523,11 +523,17 @@ RSpec.describe Mutant::CLI do
     let(:cli)       { described_class.allocate }
     let(:arguments) { %w[foo] }
     let(:loaded_config) { Mutant::Config::DEFAULT.with(jobs: 4) }
-    let(:loader) { instance_double(Mutant::Config::Loader, load: loaded_config) }
 
     before do
-      allow(Mutant::Config::Loader).to receive(:new).with(Mutant::Config::DEFAULT).and_return(loader)
-      allow(cli).to receive(:config_file_sets_jobs?).and_return(true)
+      allow(cli).to receive(:load_config) do
+        expect(cli.send(:state)).to eql(
+          exit_requested: false,
+          jobs_configured: false,
+          jobs_explicit: false
+        )
+        cli.send(:state)[:jobs_configured] = true
+        loaded_config
+      end
       allow(cli).to receive(:parse)
     end
 
@@ -633,7 +639,19 @@ RSpec.describe Mutant::CLI do
         expect(cli.config.includes).to eql(['lib/foo'])
         expect(cli.config.requires).to eql(['foo/bar'])
         expect(cli.config.jobs).to eql(3)
+        expect(cli.send(:state)).to include(jobs_explicit: true)
         expect(cli.config.zombie).to be(true)
+      end
+
+      it 'uses the --jobs source name for parse errors' do
+        options = OptionCollector.new
+
+        cli.__send__(:add_environment_options, options)
+
+        _arguments, jobs_handler = options.handlers.fetch('-j')
+
+        expect { jobs_handler.call('invalid') }
+          .to raise_error(Mutant::CLI::Error, '--jobs must be an integer')
       end
     end
 

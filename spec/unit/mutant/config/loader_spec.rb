@@ -175,6 +175,77 @@ RSpec.describe Mutant::Config::Loader do
       end
     end
 
+    context 'when fail_fast has an invalid value type' do
+      before do
+        config_path.write("fail_fast: nope\n")
+      end
+
+      it 'raises a validation error for fail_fast' do
+        expect { subject }.to raise_error(
+          Mutant::Config::Loader::Error,
+          %r{\AInvalid value for fail_fast at .*/\.mutant\.yml:1: expected Boolean\z}
+        )
+      end
+    end
+
+    context 'when requires has an invalid value type' do
+      before do
+        config_path.write("requires: true\n")
+      end
+
+      it 'raises a validation error for requires' do
+        expect { subject }.to raise_error(
+          Mutant::Config::Loader::Error,
+          %r{\AInvalid value for requires at .*/\.mutant\.yml:1: expected sequence\z}
+        )
+      end
+    end
+
+    context 'when a requires entry has an invalid value type' do
+      before do
+        config_path.write(<<~YAML)
+          requires:
+            - 1
+        YAML
+      end
+
+      it 'raises a validation error for the requires entry' do
+        expect { subject }.to raise_error(
+          Mutant::Config::Loader::Error,
+          %r{\AInvalid value for requires at .*/\.mutant\.yml:2: expected String\z}
+        )
+      end
+    end
+
+    context 'when environment_variables has an invalid value type' do
+      before do
+        config_path.write("environment_variables: true\n")
+      end
+
+      it 'raises a validation error for the environment_variables mapping' do
+        expect { subject }.to raise_error(
+          Mutant::Config::Loader::Error,
+          %r{\AInvalid value for environment_variables at .*/\.mutant\.yml:1: expected mapping\z}
+        )
+      end
+    end
+
+    context 'when an environment_variables entry has an invalid value type' do
+      before do
+        config_path.write(<<~YAML)
+          environment_variables:
+            RAILS_ENV: 1
+        YAML
+      end
+
+      it 'raises a validation error for the nested environment_variables key' do
+        expect { subject }.to raise_error(
+          Mutant::Config::Loader::Error,
+          %r{\AInvalid value for environment_variables\.RAILS_ENV at .*/\.mutant\.yml:2: expected String\z}
+        )
+      end
+    end
+
     context 'when results_dir has an invalid value type' do
       before do
         config_path.write("results_dir: 1\n")
@@ -184,6 +255,51 @@ RSpec.describe Mutant::Config::Loader do
         expect { subject }.to raise_error(
           Mutant::Config::Loader::Error,
           %r{\AInvalid value for results_dir at .*/\.mutant\.yml:1: expected String\z}
+        )
+      end
+    end
+
+    context 'when matcher has an invalid value type' do
+      before do
+        config_path.write("matcher: true\n")
+      end
+
+      it 'raises a validation error for matcher' do
+        expect { subject }.to raise_error(
+          Mutant::Config::Loader::Error,
+          %r{\AInvalid value for matcher at .*/\.mutant\.yml:1: expected mapping\z}
+        )
+      end
+    end
+
+    context 'when matcher subjects has an invalid value type' do
+      before do
+        config_path.write(<<~YAML)
+          matcher:
+            subjects: true
+        YAML
+      end
+
+      it 'raises a validation error for matcher.subjects' do
+        expect { subject }.to raise_error(
+          Mutant::Config::Loader::Error,
+          %r{\AInvalid value for matcher\.subjects at .*/\.mutant\.yml:2: expected sequence\z}
+        )
+      end
+    end
+
+    context 'when matcher ignore has an invalid value type' do
+      before do
+        config_path.write(<<~YAML)
+          matcher:
+            ignore: true
+        YAML
+      end
+
+      it 'raises a validation error for matcher.ignore' do
+        expect { subject }.to raise_error(
+          Mutant::Config::Loader::Error,
+          %r{\AInvalid value for matcher\.ignore at .*/\.mutant\.yml:2: expected sequence\z}
         )
       end
     end
@@ -203,6 +319,51 @@ RSpec.describe Mutant::Config::Loader do
             test_result:   true,
             timeout:       false
           )
+        )
+      end
+    end
+
+    context 'when coverage criteria contains an unknown nested key' do
+      before do
+        config_path.write(<<~YAML)
+          coverage_criteria:
+            invalid: true
+        YAML
+      end
+
+      it 'raises a line-aware error for the nested coverage key' do
+        expect { subject }.to raise_error(
+          Mutant::Config::Loader::Error,
+          %r{\AUnknown config key "coverage_criteria\.invalid" at .*/\.mutant\.yml:2\z}
+        )
+      end
+    end
+
+    context 'when coverage criteria has an invalid value type' do
+      before do
+        config_path.write("coverage_criteria: true\n")
+      end
+
+      it 'raises a validation error for the coverage_criteria mapping' do
+        expect { subject }.to raise_error(
+          Mutant::Config::Loader::Error,
+          %r{\AInvalid value for coverage_criteria at .*/\.mutant\.yml:1: expected mapping\z}
+        )
+      end
+    end
+
+    context 'when a coverage criteria entry has an invalid value type' do
+      before do
+        config_path.write(<<~YAML)
+          coverage_criteria:
+            timeout: 1
+        YAML
+      end
+
+      it 'raises a validation error for the nested coverage_criteria key' do
+        expect { subject }.to raise_error(
+          Mutant::Config::Loader::Error,
+          %r{\AInvalid value for coverage_criteria\.timeout at .*/\.mutant\.yml:2: expected Boolean\z}
         )
       end
     end

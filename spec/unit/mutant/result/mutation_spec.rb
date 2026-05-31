@@ -122,9 +122,9 @@ RSpec.describe Mutant::Result::Mutation do
 
       include_context 'mutation exception isolation'
 
-      let(:success) { false }
+      let(:success) { true }
 
-      it { should be(false) }
+      it { should be(true) }
     end
 
     context 'if isolation raises a serialized mutation-induced exception on evil mutations' do
@@ -144,9 +144,9 @@ RSpec.describe Mutant::Result::Mutation do
 
       include_context 'mutation exception isolation'
 
-      let(:success) { false }
+      let(:success) { true }
 
-      it { should be(false) }
+      it { should be(true) }
     end
 
     context 'if process_abort criteria is enabled for a mutation exception' do
