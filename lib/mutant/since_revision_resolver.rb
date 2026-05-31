@@ -7,8 +7,8 @@ module Mutant
     BASE_REFS = %w[origin/main main].freeze
     HEAD_PREDECESSOR = 'HEAD~1'
 
-    def initialize(open3, kernel)
-      @open3 = open3
+    def initialize(capture, kernel)
+      @capture = capture
       @kernel = kernel
     end
 
@@ -33,7 +33,7 @@ module Mutant
     def merge_base_revision(base_ref)
       return unless valid_git_revision?(base_ref)
 
-      stdout, status = @open3.capture2('git', 'merge-base', 'HEAD', base_ref, binmode: true)
+      stdout, status = @capture.capture2('git', 'merge-base', 'HEAD', base_ref, binmode: true)
       return unless status.success?
 
       revision = stdout.strip

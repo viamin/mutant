@@ -3,9 +3,9 @@
 require 'mutant/since_revision_resolver'
 
 RSpec.describe Mutant::SinceRevisionResolver do
-  let(:object) { described_class.new(open3, kernel) }
+  let(:object) { described_class.new(capture, kernel) }
 
-  let(:open3)  { class_double(Open3)  }
+  let(:capture) { class_double(Open3) }
   let(:kernel) { class_double(Kernel) }
 
   describe '#call' do
@@ -38,7 +38,7 @@ RSpec.describe Mutant::SinceRevisionResolver do
       before do
         expect_revision('invalid', false)
         expect_revision('origin/main', true)
-        expect(open3).to receive(:capture2)
+        expect(capture).to receive(:capture2)
           .with('git', 'merge-base', 'HEAD', 'origin/main', binmode: true)
           .and_return(["merge_base\n", status])
         expect_revision('merge_base', true)
@@ -53,7 +53,7 @@ RSpec.describe Mutant::SinceRevisionResolver do
       before do
         expect_revision('origin/main', false)
         expect_revision('main', true)
-        expect(open3).to receive(:capture2)
+        expect(capture).to receive(:capture2)
           .with('git', 'merge-base', 'HEAD', 'main', binmode: true)
           .and_return(["main_merge_base\n", status])
         expect_revision('main_merge_base', true)
@@ -68,7 +68,7 @@ RSpec.describe Mutant::SinceRevisionResolver do
 
       before do
         expect_revision('origin/main', true)
-        expect(open3).to receive(:capture2)
+        expect(capture).to receive(:capture2)
           .with('git', 'merge-base', 'HEAD', 'origin/main', binmode: true)
           .and_return(['', status])
         expect_revision('main', false)

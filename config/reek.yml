@@ -61,6 +61,7 @@ detectors:
     exclude:
     - Mutant::Mutator
     - Mutant::Meta::Example::DSL
+    - Mutant::SinceRevisionResolver
     max_ifs: 1
   TooManyInstanceVariables:
     enabled: true
