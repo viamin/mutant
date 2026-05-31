@@ -11,6 +11,8 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
@@ -25,6 +27,8 @@ jobs:
 
   integration:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
@@ -49,6 +53,8 @@ jobs:
 
   metrics:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v6
       - uses: ruby/setup-ruby@v1
@@ -60,6 +66,8 @@ jobs:
 
   mutant:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     env:
       MUTANT_JOBS: 4
     steps:
