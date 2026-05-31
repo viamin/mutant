@@ -21,18 +21,6 @@ module Mutant
       class Recursive < self
         REGEXP = /\A#{SCOPE_NAME_PATTERN}?\*\z/.freeze
 
-        # Initialize object
-        #
-        # @return [undefined]
-        def initialize(*)
-          super
-          @recursion_pattern = Regexp.union(
-            /\A#{scope_name}\z/,
-            /\A#{scope_name}::/,
-            /\A#{scope_name}[.#]/
-          )
-        end
-
         # Syntax for expression
         #
         # @return [String]
@@ -56,7 +44,7 @@ module Mutant
         def match_length(expression)
           if eql?(expression)
             syntax.length
-          elsif @recursion_pattern.match?(expression.syntax)
+          elsif prefix_match_length(expression).positive?
             scope_name.length
           else
             0
