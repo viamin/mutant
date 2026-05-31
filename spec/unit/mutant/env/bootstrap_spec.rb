@@ -240,14 +240,33 @@ RSpec.describe Mutant::Env::Bootstrap do
         'No subjects matched the configured diff filter. No mutations to test.'
       end
 
+      let(:subject_filter) do
+        Mutant::Repository::SubjectFilter.new(instance_double(Mutant::Repository::Diff))
+      end
+
       let(:matcher_config) do
         super().with(
           match_expressions: [parse_expression('TestApp*')],
-          subject_filters:   [instance_double(Mutant::Repository::SubjectFilter)]
+          subject_filters:   [subject_filter]
         )
       end
 
       before { expect_warning }
+
+      include_examples 'bootstrap call'
+    end
+
+    context 'when no subjects match and only non-diff subject_filters are configured' do
+      let(:matcher_config) do
+        super().with(
+          match_expressions: [parse_expression('TestApp*')],
+          subject_filters:   [double('SubjectFilter', call: true)]
+        )
+      end
+
+      before do
+        expect(config.reporter).to_not receive(:warn)
+      end
 
       include_examples 'bootstrap call'
     end
