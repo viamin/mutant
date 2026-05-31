@@ -143,8 +143,8 @@ describe Mutant::Repository::Diff do
     context 'when file is tracked in repository' do
       let(:git_ls_success?) { true                                                 }
       let(:status)          { instance_double(Process::Status, success?: success?) }
-      let(:stderr)          { 'fatal: git log failed'                              }
       let(:stdout)          { instance_double(String, empty?: stdout_empty?)       }
+      let(:stderr)          { ''                                                   }
       let(:stdout_empty?)   { false                                                }
 
       include_context 'test if git tracks the file'
@@ -226,6 +226,7 @@ describe Mutant::Repository::Diff do
           it { should be(true) }
         end
       end
+
     end
   end
 

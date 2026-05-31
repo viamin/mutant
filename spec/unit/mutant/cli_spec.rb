@@ -364,8 +364,8 @@ RSpec.describe Mutant::CLI do
             Mutant::Repository::SubjectFilter.new(
               Mutant::Repository::Diff.new(
                 config: Mutant::Config::DEFAULT,
-                from:   'HEAD',
-                to:     'master'
+                from:   'master',
+                to:     'HEAD'
               )
             )
           ]
