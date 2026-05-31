@@ -5,11 +5,13 @@ module Mutant
     # Error raised on repository interaction problems
     RepositoryError = Class.new(RuntimeError)
 
-    DiffCommandResult = Struct.new(:command, :stdout, :stderr, :status) do
+    class DiffCommandResult
+      include Adamantium::Flat, Anima.new(:command, :stdout, :stderr, :status)
+
       def self.capture(open3_module, command)
         stdout, stderr, status = open3_module.capture3(*command, binmode: true)
 
-        new(command, stdout, stderr, status)
+        new(command: command, stdout: stdout, stderr: stderr, status: status)
       end
 
       def fetch_stdout
@@ -27,7 +29,9 @@ module Mutant
       def success? = status.success?
     end
 
-    DiffLocation = Struct.new(:path, :line_range) do
+    class DiffLocation
+      include Adamantium::Flat, Anima.new(:path, :line_range)
+
       def line_argument = "#{line_range.begin},#{line_range.end}:#{path}"
 
       def touched_by_hunk?(start_line, line_count)
@@ -71,7 +75,7 @@ module Mutant
       # @raise [RepositoryError]
       #   when git command failed
       def touches?(path, line_range)
-        location = DiffLocation.new(path, line_range)
+        location = DiffLocation.new(path: path, line_range: line_range)
 
         return false unless within_working_directory?(location.path) && tracks?(location.path)
 
