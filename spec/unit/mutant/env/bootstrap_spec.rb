@@ -205,5 +205,71 @@ RSpec.describe Mutant::Env::Bootstrap do
 
       include_examples 'bootstrap call'
     end
+
+    context 'when subjects match and subject_filters are configured' do
+      let(:diff)                 { instance_double(Mutant::Repository::Diff, touches?: true) }
+      let(:subject_filter)       { Mutant::Repository::SubjectFilter.new(diff) }
+      let(:object_space_modules) { [TestApp::Literal] }
+      let(:match_expressions)    { object_space_modules.map(&:name).map(&method(:parse_expression)) }
+
+      let(:matcher_config) do
+        super().with(
+          match_expressions: match_expressions,
+          subject_filters:   [subject_filter]
+        )
+      end
+
+      let(:expected_env) do
+        subjects = Mutant::Matcher::Scope.new(TestApp::Literal).call(Fixtures::TEST_ENV)
+
+        super().with(
+          matchable_scopes: [Mutant::Scope.new(TestApp::Literal, match_expressions.first)],
+          mutations:        subjects.flat_map(&:mutations),
+          subjects:         subjects
+        )
+      end
+
+      before do
+        expect(config.reporter).to_not receive(:warn)
+      end
+
+      include_examples 'bootstrap call'
+    end
+
+    context 'when no subjects match and subject_filters are configured' do
+      let(:expected_warning) do
+        'No subjects matched the configured diff filter. No mutations to test.'
+      end
+
+      let(:subject_filter) do
+        Mutant::Repository::SubjectFilter.new(instance_double(Mutant::Repository::Diff))
+      end
+
+      let(:matcher_config) do
+        super().with(
+          match_expressions: [parse_expression('TestApp*')],
+          subject_filters:   [subject_filter]
+        )
+      end
+
+      before { expect_warning }
+
+      include_examples 'bootstrap call'
+    end
+
+    context 'when no subjects match and only non-diff subject_filters are configured' do
+      let(:matcher_config) do
+        super().with(
+          match_expressions: [parse_expression('TestApp*')],
+          subject_filters:   [double('SubjectFilter', call: true)]
+        )
+      end
+
+      before do
+        expect(config.reporter).to_not receive(:warn)
+      end
+
+      include_examples 'bootstrap call'
+    end
   end
 end

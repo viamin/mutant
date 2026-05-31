@@ -137,11 +137,62 @@ RSpec.describe Mutant::Runner do
       ]
     end
 
-    it 'returns env result' do
-      verify_events { expect(apply).to eql(env_result) }
+    context 'when env has mutations' do
+      let(:mutation) { instance_double(Mutant::Mutation) }
+
+      let(:env) do
+        instance_double(
+          Mutant::Env,
+          config:    config,
+          mutations: [mutation]
+        )
+      end
+
+      it 'returns env result' do
+        verify_events { expect(apply).to eql(env_result) }
+      end
+    end
+
+    context 'when env has no mutations' do
+      let(:empty_result) do
+        Mutant::Result::Env.new(
+          env:             env,
+          runtime:         0.0,
+          subject_results: []
+        )
+      end
+
+      let(:raw_expectations) do
+        [
+          {
+            receiver:  reporter,
+            selector:  :start,
+            arguments: [env]
+          },
+          {
+            receiver:  reporter,
+            selector:  :report,
+            arguments: [empty_result]
+          }
+        ]
+      end
+
+      it 'returns empty result' do
+        verify_events { expect(apply).to eql(empty_result) }
+      end
     end
 
     context 'when interrupted before first result is returned' do
+      let(:mutation) { instance_double(Mutant::Mutation) }
+
+      let(:env) do
+        instance_double(
+          Mutant::Env,
+          config:    config,
+          mutations: [mutation]
+        )
+      end
+
       let(:raw_expectations) do
         [
           *super()[0..5],
@@ -185,6 +236,16 @@ RSpec.describe Mutant::Runner do
     end
 
     context 'when interrupted before the driver is assigned' do
+      let(:mutation) { instance_double(Mutant::Mutation) }
+
+      let(:env) do
+        instance_double(
+          Mutant::Env,
+          config:    config,
+          mutations: [mutation]
+        )
+      end
+
       let(:raw_expectations) do
         [
           {
@@ -242,6 +303,16 @@ RSpec.describe Mutant::Runner do
   end
 
   describe '.build' do
+    let(:mutation) { instance_double(Mutant::Mutation) }
+
+    let(:env) do
+      instance_double(
+        Mutant::Env,
+        config:    config,
+        mutations: [mutation]
+      )
+    end
+
     it 'initializes and runs the runner before returning it' do
       expect(env).to receive(:method).with(:kill).and_return(processor)
       expect(Mutant::Runner::Sink).to receive(:new).with(env).and_return(sink)
@@ -311,6 +382,16 @@ RSpec.describe Mutant::Runner do
   end
 
   describe '#mutation_test_config' do
+    let(:mutation) { instance_double(Mutant::Mutation) }
+
+    let(:env) do
+      instance_double(
+        Mutant::Env,
+        config:    config,
+        mutations: [mutation]
+      )
+    end
+
     let(:runner) do
       described_class.allocate.tap do |object|
         object.send(:initialize, env)
@@ -326,6 +407,16 @@ RSpec.describe Mutant::Runner do
   end
 
   describe '#run' do
+    let(:mutation) { instance_double(Mutant::Mutation) }
+
+    let(:env) do
+      instance_double(
+        Mutant::Env,
+        config:    config,
+        mutations: [mutation]
+      )
+    end
+
     let(:runner) do
       described_class.allocate.tap do |object|
         object.send(:initialize, env)
