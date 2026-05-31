@@ -66,8 +66,8 @@ jobs:
       - name: Determine mutant base revision
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            git fetch --no-tags --depth=1 origin +refs/heads/${{ github.event.pull_request.base.ref }}:refs/remotes/origin/${{ github.event.pull_request.base.ref }}
-            echo "MUTANT_SINCE=origin/${{ github.event.pull_request.base.ref }}" >> "$GITHUB_ENV"
+            git fetch --no-tags --depth=1 origin ${{ github.event.pull_request.base.sha }}
+            echo "MUTANT_SINCE=${{ github.event.pull_request.base.sha }}" >> "$GITHUB_ENV"
           else
             echo "MUTANT_SINCE=${{ github.event.before }}" >> "$GITHUB_ENV"
           fi
