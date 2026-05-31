@@ -46,6 +46,16 @@ RSpec.describe Mutant::CLI do
       end
     end
 
+    context 'when usage is passed multiple times' do
+      let(:arguments) { %w[--usage opensource --usage=commercial TestApp*] }
+
+      it 'removes every usage flag and warns once' do
+        expect($stderr).to receive(:puts).with(described_class::WARNING).once
+
+        expect(sanitize_arguments).to eql(%w[TestApp*])
+      end
+    end
+
     context 'when usage is absent' do
       let(:arguments) { %w[TestApp*] }
 
