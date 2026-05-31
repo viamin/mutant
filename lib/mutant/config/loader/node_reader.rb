@@ -64,7 +64,7 @@ module Mutant
         end
 
         def fail_unknown_key(node, context, key)
-          fail Error, "Unknown config key #{[*context, key].join('.').inspect} at #{location(node)}"
+          fail Error, "Unknown config key #{(context + [key]).join('.').inspect} at #{location(node)}"
         end
 
         def location(node)
