@@ -76,14 +76,26 @@ jobs:
 
           if [ -n "$base_branch_ref" ] && git rev-parse --verify --quiet "$base_branch_ref^{commit}" >/dev/null; then
             base_ref="$base_branch_ref"
-          elif [ -n "$base_sha" ] && [ "$base_sha" != "0000000000000000000000000000000000000000" ] && git rev-parse --verify --quiet "$base_sha^{commit}" >/dev/null; then
-            base_ref="$base_sha"
+
+            if ! mutant_since="$(git merge-base HEAD "$base_ref" 2>/dev/null)"; then
+              mutant_since=""
+            fi
           fi
 
-          if [ -n "$base_ref" ]; then
-            mutant_since="$(git merge-base HEAD "$base_ref")"
-          else
-            mutant_since="HEAD~1"
+          if [ -z "$mutant_since" ] && [ -n "$base_sha" ] && [ "$base_sha" != "0000000000000000000000000000000000000000" ] && git rev-parse --verify --quiet "$base_sha^{commit}" >/dev/null; then
+            base_ref="$base_sha"
+
+            if ! mutant_since="$(git merge-base HEAD "$base_ref" 2>/dev/null)"; then
+              mutant_since=""
+            fi
+          fi
+
+          if [ -z "$mutant_since" ]; then
+            if git rev-parse --verify --quiet 'HEAD~1^{commit}' >/dev/null; then
+              mutant_since="HEAD~1"
+            else
+              mutant_since="HEAD"
+            fi
           fi
 
           MUTANT_SINCE="$mutant_since" bundle exec rake metrics:mutant
