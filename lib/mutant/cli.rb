@@ -76,7 +76,7 @@ module Mutant
       $stdout.puts(message)
     end
 
-    def exit
+    def cli_exit
       config.kernel.public_send(:exit)
     end
 
@@ -87,7 +87,7 @@ module Mutant
         __send__("handle_#{subcommand}", subcommand_arguments)
       elsif arguments.one? && HELP_FLAGS.include?(subcommand)
         print_main_help
-        exit
+        cli_exit
       else
         parse(arguments)
       end

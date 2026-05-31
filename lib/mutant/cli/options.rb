@@ -56,17 +56,19 @@ module Mutant
       end
 
       def add_debug_options(opts)
-        opts.on('--fail-fast', 'Fail fast') do
-          with(fail_fast: true)
-        end
+        opts.on('--fail-fast', 'Fail fast', &method(:enable_fail_fast))
         opts.on('--version', 'Print mutants version') do
           puts("mutant-#{VERSION}")
-          exit
+          cli_exit
         end
         opts.on_tail('-h', '--help', 'Show this message') do
           puts(opts.to_s)
-          exit
+          cli_exit
         end
+      end
+
+      def enable_fail_fast(*)
+        with(fail_fast: true)
       end
     end
   end
