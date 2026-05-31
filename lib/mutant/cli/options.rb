@@ -6,6 +6,8 @@ module Mutant
     module Options
     private
 
+      FAIL_FAST_TOKEN = true
+
       def add_environment_options(opts)
         opts.separator('Environment:')
         opts.on('--zombie', 'Run mutant zombified') do
@@ -56,7 +58,9 @@ module Mutant
       end
 
       def add_debug_options(opts)
-        opts.on('--fail-fast', 'Fail fast', &method(:enable_fail_fast))
+        opts.on('--fail-fast', 'Fail fast') do
+          enable_fail_fast(FAIL_FAST_TOKEN)
+        end
         opts.on('--version', 'Print mutants version') do
           puts("mutant-#{VERSION}")
           cli_exit
@@ -67,7 +71,9 @@ module Mutant
         end
       end
 
-      def enable_fail_fast(*)
+      def enable_fail_fast(token)
+        raise Error, "Unexpected fail fast token: #{token.inspect}" unless token == FAIL_FAST_TOKEN
+
         with(fail_fast: true)
       end
     end

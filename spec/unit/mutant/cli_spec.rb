@@ -1048,6 +1048,16 @@ RSpec.describe Mutant::CLI do
         expect(cli.config.fail_fast).to be(true)
       end
 
+      it 'routes the fail fast callback through the expected token' do
+        block = nil
+        expect(parser).to receive(:on).with('--fail-fast', 'Fail fast') { |*_, &captured| block = captured }
+        cli.send(:add_debug_options, parser)
+
+        expect(cli).to receive(:enable_fail_fast).with(true)
+
+        block.call
+      end
+
       it 'prints version and exits when the version flag is parsed' do
         block = nil
         expect(parser).to receive(:on).with('--version', 'Print mutants version') { |*_, &captured| block = captured }
@@ -1077,9 +1087,15 @@ RSpec.describe Mutant::CLI do
 
     describe '#enable_fail_fast' do
       it 'updates the config to enable fail fast' do
-        cli.send(:enable_fail_fast)
+        cli.send(:enable_fail_fast, true)
 
         expect(cli.config.fail_fast).to be(true)
+      end
+
+      it 'rejects unexpected tokens' do
+        expect do
+          cli.send(:enable_fail_fast, false)
+        end.to raise_error(Mutant::CLI::Error, 'Unexpected fail fast token: false')
       end
     end
 
