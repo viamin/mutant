@@ -157,16 +157,19 @@ RSpec.describe Mutant::Mutation do
       end
 
       context 'with direct mutation-induced exceptions' do
+        signal_exception =
+          Class.new(SignalException) do
+            def initialize
+              super('TERM')
+            end
+          end.new
+
         {
           Interrupt.new => 'interrupt',
           NameError.new('missing constant') => 'name error',
           Class.new(NameError).new('nested missing constant') => 'name error subclass',
           Class.new(ScriptError).new('script error') => 'script error',
-          Class.new(SignalException) do
-            def initialize
-              super('TERM')
-            end
-          end.new => 'signal exception',
+          signal_exception => 'signal exception',
           Class.new(SystemExit).new(1) => 'system exit'
         }.each do |mutation_exception, description|
           context "with #{description}" do
@@ -209,7 +212,7 @@ RSpec.describe Mutant::Mutation do
 
       context 'with a direct non-mutation exception' do
         let(:exception) do
-          Class.new(Exception).new('generic exception')
+          Class.new(FrozenError).new('generic exception')
         end
 
         it { should be(false) }
