@@ -307,7 +307,7 @@ module Mutant
       class SourceIndex
         EMPTY_MAP = {}.freeze
 
-        def initialize(parser)
+        define_method(:initialize) do |parser|
           @cache  = {}
           @parser = parser
         end

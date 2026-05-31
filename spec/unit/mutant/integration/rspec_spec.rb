@@ -246,25 +246,27 @@ end
 
 RSpec.describe Mutant::Integration::RspecSupport do
   describe '.cover_annotation?' do
-    before do
-      stub_const('Example::NamedTarget', Class.new)
-    end
+  before do
+    stub_const('Example::NamedTarget', Class.new)
+  end
 
-    it 'accepts named modules' do
-      expect(described_class.cover_annotation?(Example::NamedTarget)).to be(true)
-    end
+  it 'accepts named modules' do
+    expect(described_class.cover_annotation?(Example::NamedTarget)).to be(true)
+  end
 
-    it 'accepts parsable string expressions' do
-      expect(described_class.cover_annotation?('Example::NamedTarget')).to be_truthy
-    end
+  it 'accepts parsable string expressions' do
+    expect(described_class.cover_annotation?('Example::NamedTarget')).to eql(
+      parse_expression('Example::NamedTarget')
+    )
+  end
 
-    it 'rejects anonymous modules' do
-      expect(described_class.cover_annotation?(Class.new)).to be(false)
-    end
+  it 'rejects anonymous modules' do
+    expect(described_class.cover_annotation?(Class.new)).to be(false)
+  end
 
-    it 'rejects unsupported annotations' do
-      expect(described_class.cover_annotation?(:symbol)).to be(false)
-    end
+  it 'rejects unsupported annotations' do
+    expect(described_class.cover_annotation?(:symbol)).to be(false)
+  end
   end
 end
 
@@ -503,6 +505,25 @@ RSpec.describe Mutant::Integration::RspecSupport::Examples do
       expect(examples.ordered_groups).to eql([example_a, example_b])
     end
   end
+
+  describe '#parse_test' do
+    it 'builds a mutant test with the resolved expression and formatted id' do
+      example = double(
+        'Example',
+        metadata: {
+          location:         'spec/example_spec.rb:12',
+          full_description: 'Example description'
+        }
+      )
+
+      expect(examples.send(:parse_test, example, 3)).to eql(
+        Mutant::Test.new(
+          expression: parse_expression('Example'),
+          id:         'rspec:3:spec/example_spec.rb:12/Example description'
+        )
+      )
+    end
+  end
 end
 
 RSpec.describe Mutant::Integration::RspecSupport::Node do
@@ -525,6 +546,12 @@ RSpec.describe Mutant::Integration::RspecSupport::Node do
 
     it 'returns nil for non-send nodes' do
       expect(described_class.cover_argument(parser.parse("'value'"))).to be(nil)
+    end
+
+    it 'returns nil for non-expectation sends' do
+      node = parser.parse("matcher.cover('Example::Target')")
+
+      expect(described_class.cover_argument(node)).to be(nil)
     end
   end
 
@@ -550,6 +577,13 @@ RSpec.describe Mutant::Integration::RspecSupport::Node do
           parser.parse("'Example::Two'")
         ]
       )
+    end
+
+    it 'accepts parser ast node subclasses' do
+      node_class = Class.new(Parser::AST::Node)
+      node = node_class.new(:begin, [parser.parse("is_expected.to cover('Example::Target')")])
+
+      expect(described_class.cover_arguments(node)).to eql([parser.parse("'Example::Target'")])
     end
   end
 
@@ -633,6 +667,12 @@ RSpec.describe Mutant::Integration::RspecSupport::Node do
 
       expect(described_class.cover_matcher?(matcher)).to be(true)
     end
+
+    it 'rejects send-like parser nodes with the wrong type' do
+      matcher = Parser::AST::Node.new(:lvar, [nil, :cover, parser.parse("'Example::Target'")])
+
+      expect(described_class.cover_matcher?(matcher)).to be(false)
+    end
   end
 end
 
@@ -653,22 +693,29 @@ RSpec.describe Mutant::Integration::RspecSupport::Source do
 end
 
 RSpec.describe Mutant::Integration::RspecSupport::AnnotationParser do
-  subject(:annotation_parser) { described_class.new(Mutant::Config::DEFAULT.expression_parser) }
+  subject(:annotation_parser) { described_class.new(expression_parser) }
+
+  let(:expression_parser) { instance_double(Mutant::Expression::Parser) }
 
   before do
     stub_const('Example::AnnotationTarget', Class.new)
+    allow(expression_parser).to receive(:call) do |input|
+      parse_expression(input)
+    end
   end
 
   it 'parses string annotations' do
     expect(annotation_parser.call('Example::AnnotationTarget')).to eql(
       parse_expression('Example::AnnotationTarget')
     )
+    expect(expression_parser).to have_received(:call).with('Example::AnnotationTarget').once
   end
 
   it 'parses constant annotations' do
     expect(annotation_parser.call(Example::AnnotationTarget)).to eql(
       parse_expression('Example::AnnotationTarget')
     )
+    expect(expression_parser).to have_received(:call).with('Example::AnnotationTarget').once
   end
 
   it 'rejects anonymous modules' do
@@ -763,6 +810,23 @@ RSpec.describe Mutant::Integration::RspecSupport::ExpressionParser do
       'Cannot derive mutant expression from RSpec cover matcher send :subject'
     )
   end
+
+  describe '#const_name', mutant_expression: 'Mutant::Integration::RspecSupport::ExpressionParser#const_name' do
+    it 'returns nested constant names as strings' do
+      node = parser.parse('cover(Example::Outer::Inner)').children.fetch(2)
+
+      expect(expression_parser.send(:const_name, node)).to eql('Example::Outer::Inner')
+    end
+  end
+
+  describe '#parse_described_class',
+           mutant_expression: 'Mutant::Integration::RspecSupport::ExpressionParser#parse_described_class' do
+    it 'returns the described class name string before parsing' do
+      expect(expression_parser.send(:parse_described_class, Example::DescribedClass)).to eql(
+        parse_expression('Example::DescribedClass')
+      )
+    end
+  end
 end
 
 RSpec.describe Mutant::Integration::RspecSupport::ExpressionResolver do
@@ -836,6 +900,23 @@ RSpec.describe Mutant::Integration::RspecSupport::ExpressionResolver do
         .and_return(expression_resolver)
 
       expect(described_class.build(expression_parser)).to be(expression_resolver)
+    end
+  end
+
+  describe '#source_expression',
+           mutant_expression: 'Mutant::Integration::RspecSupport::ExpressionResolver#source_expression' do
+    let(:single_expression) { parse_expression('Example::One') }
+
+    it 'returns nil when no cover annotations are indexed for the example' do
+      allow(source_index).to receive(:expressions).with(metadata).and_return([])
+
+      expect(expression_resolver.send(:source_expression, metadata)).to be(nil)
+    end
+
+    it 'returns the indexed expression when exactly one exists' do
+      allow(source_index).to receive(:expressions).with(metadata).and_return([single_expression])
+
+      expect(expression_resolver.send(:source_expression, metadata)).to be(single_expression)
     end
   end
 
