@@ -90,7 +90,13 @@ jobs:
             since="$(merge_base "origin/${base_ref}")"
           fi
 
-          [[ -n "${since}" ]] || since="HEAD~1"
+          if [[ -n "${since}" ]] && git cat-file -e "${since}^{commit}" 2>/dev/null; then
+            :
+          elif git cat-file -e "HEAD^" 2>/dev/null; then
+            since="HEAD^"
+          else
+            since="HEAD"
+          fi
 
           echo "MUTANT_SINCE=$since" >> "$GITHUB_ENV"
       - run: bundle exec rake metrics:mutant
