@@ -118,6 +118,28 @@ RSpec.describe Mutant::Config::Loader::NodeReader do
         )
       end
     end
+
+    context 'with an invalid node type' do
+      let(:node) { document_root("- RAILS_ENV\n") }
+
+      it 'raises a validation error' do
+        expect { subject }.to raise_error(
+          Mutant::Config::Loader::Error,
+          'Invalid value for environment_variables at /tmp/.mutant.yml:1: expected mapping'
+        )
+      end
+    end
+
+    context 'with a non-string key' do
+      let(:node) { document_root("false: test\n") }
+
+      it 'raises a validation error using the mapping context' do
+        expect { subject }.to raise_error(
+          Mutant::Config::Loader::Error,
+          'Invalid value for environment_variables at /tmp/.mutant.yml:1: expected String'
+        )
+      end
+    end
   end
 
   describe '#integer' do

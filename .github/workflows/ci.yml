@@ -70,20 +70,27 @@ jobs:
 
           git fetch --no-tags --prune --depth=1 origin "${base_ref}:refs/remotes/origin/${base_ref}"
 
+          merge_base() {
+            git merge-base HEAD "$1" 2>/dev/null || true
+          }
+
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
             base_sha="${{ github.event.pull_request.base.sha }}"
 
-            if git cat-file -e "${base_sha}^{commit}" 2>/dev/null; then
-              since="$(git merge-base HEAD "$base_sha")"
-            else
-              since="$(git merge-base HEAD "origin/${base_ref}")"
+            if ! git cat-file -e "${base_sha}^{commit}" 2>/dev/null; then
+              git fetch --no-tags --prune --depth=1 origin "${base_sha}" || true
             fi
+
+            since="$(merge_base "${base_sha}")"
+            [[ -n "${since}" ]] || since="$(merge_base "origin/${base_ref}")"
           elif [[ "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ]] &&
                git cat-file -e "${{ github.event.before }}^{commit}" 2>/dev/null; then
             since="${{ github.event.before }}"
           else
-            since="$(git merge-base HEAD "origin/${base_ref}")"
+            since="$(merge_base "origin/${base_ref}")"
           fi
+
+          [[ -n "${since}" ]] || since="HEAD~1"
 
           echo "MUTANT_SINCE=$since" >> "$GITHUB_ENV"
       - run: bundle exec rake metrics:mutant

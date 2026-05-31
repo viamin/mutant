@@ -388,7 +388,7 @@ RSpec.describe Mutant::CLI do
   end
 
   describe '#enable_zombie' do
-    subject { cli.__send__(:enable_zombie) }
+    subject { cli.__send__(:enable_zombie, :ignored_argument) }
 
     let(:cli) do
       object.allocate.tap do |instance|
@@ -402,9 +402,103 @@ RSpec.describe Mutant::CLI do
       subject
     end
   end
+
+  describe '#initialize', mutant_expression: 'Mutant::CLI#initialize' do
+    let(:cli)       { object.allocate }
+    let(:arguments) { %w[TestApp*] }
+    let(:config)    { Mutant::Config::DEFAULT.with(jobs: 4) }
+
+    it 'loads config before parsing arguments' do
+      expect(cli).to receive(:load_config).ordered.and_return(config)
+      expect(cli).to receive(:parse).ordered.with(arguments) do
+        expect(cli.config).to eql(config)
+      end
+
+      cli.__send__(:initialize, arguments)
+
+      expect(cli.config).to eql(config)
+    end
+  end
+
+  describe '#load_config', mutant_expression: 'Mutant::CLI#load_config' do
+    let(:cli) { object.allocate }
+
+    it 'returns the loaded default config' do
+      loaded_config = Mutant::Config::DEFAULT.with(jobs: 4)
+
+      expect(Mutant::Config::Loader).to receive(:call)
+        .with(Mutant::Config::DEFAULT)
+        .and_return(loaded_config)
+
+      expect(cli.__send__(:load_config)).to eql(loaded_config)
+    end
+
+    it 'wraps loader failures with the original message' do
+      error = Class.new(Mutant::Config::Loader::Error) do
+        def message = 'invalid yaml'
+        def to_s = 'different to_s'
+      end.new
+
+      expect(Mutant::Config::Loader).to receive(:call)
+        .with(Mutant::Config::DEFAULT)
+        .and_raise(error)
+
+      expect { cli.__send__(:load_config) }.to raise_error(Mutant::CLI::Error, 'invalid yaml')
+    end
+  end
+
+  describe '#parse_match_expressions', mutant_expression: 'Mutant::CLI#parse_match_expressions' do
+    let(:cli) { object.allocate }
+
+    before do
+      cli.instance_variable_set(
+        :@config,
+        Mutant::Config::DEFAULT.with(
+          matcher: Mutant::Matcher::Config::DEFAULT.with(
+            match_expressions: [parse_expression('YAMLApp*')]
+          )
+        )
+      )
+    end
+
+    context 'when no cli expressions are provided' do
+      it 'preserves configured matcher expressions' do
+        cli.__send__(:parse_match_expressions, [])
+
+        expect(cli.config.matcher.match_expressions.map(&:syntax)).to eql(%w[YAMLApp*])
+      end
+    end
+
+    context 'when cli expressions are provided' do
+      it 'replaces configured matcher expressions with parsed cli expressions' do
+        cli.__send__(:parse_match_expressions, %w[CLIApp* CLIApp::Thing#call])
+
+        expect(cli.config.matcher.match_expressions.map(&:syntax)).to eql(
+          ['CLIApp*', 'CLIApp::Thing#call']
+        )
+      end
+    end
+  end
 end
 
 RSpec.describe 'Mutant::CLI mutation coverage' do
+  class InitializeProbe < Mutant::CLI
+    attr_reader :events
+
+    def load_config
+      @events << :load_config
+      Mutant::Config::DEFAULT.with(jobs: 4)
+    end
+
+    def parse(arguments)
+      @events << [:parse, arguments, config.jobs]
+    end
+
+    def self.build
+      allocate.tap { |instance| instance.instance_variable_set(:@events, []) }
+    end
+  end
+
   class OptionCollector
     attr_reader :handlers, :separators
 
@@ -455,6 +549,28 @@ RSpec.describe 'Mutant::CLI mutation coverage' do
       expect(cli.config.requires).to eql(['foo/bar'])
       expect(cli.config.jobs).to eql(3)
       expect(cli.config.zombie).to be(true)
+    end
+  end
+
+  describe 'Mutant::CLI#enable_zombie', mutant_expression: 'Mutant::CLI#enable_zombie' do
+    it 'updates the config even when invoked with an unused argument' do
+      cli = Mutant::CLI.allocate
+      cli.instance_variable_set(:@config, Mutant::Config::DEFAULT)
+
+      cli.__send__(:enable_zombie, :ignored)
+
+      expect(cli.config.zombie).to be(true)
+    end
+  end
+
+  describe 'Mutant::CLI#initialize', mutant_expression: 'Mutant::CLI#initialize' do
+    it 'loads config before parsing arguments' do
+      cli = InitializeProbe.build
+
+      cli.__send__(:initialize, %w[TestApp*])
+
+      expect(cli.events).to eql([:load_config, [:parse, %w[TestApp*], 4]])
+      expect(cli.config.jobs).to eql(4)
     end
   end
 end

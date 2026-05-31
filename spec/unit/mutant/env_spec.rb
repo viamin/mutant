@@ -230,6 +230,33 @@ RSpec.describe Mutant::Env, mutant: false do
 end
 
 RSpec.describe 'Mutant::Env mutation coverage' do
+  class IntegrationSpy
+    attr_reader :calls
+
+    def initialize(result = :integration_result)
+      @calls  = []
+      @result = result
+    end
+
+    def call(tests)
+      calls << tests
+      @result
+    end
+  end
+
+  class MutationSpy
+    attr_reader :insert_calls, :subject
+
+    def initialize(subject)
+      @insert_calls = []
+      @subject      = subject
+    end
+
+    def insert(argument)
+      insert_calls << argument
+    end
+  end
+
   def build_env(config:, integration:, selector:, subjects:)
     Mutant::Env.new(
       config:           config,
@@ -244,10 +271,9 @@ RSpec.describe 'Mutant::Env mutation coverage' do
 
   describe 'Mutant::Env#kill', mutant_expression: 'Mutant::Env#kill' do
     let(:mutation_subject) { double('mutation-subject') }
-    let(:mutation)         { double('mutation', subject: mutation_subject) }
+    let(:mutation)         { MutationSpy.new(mutation_subject) }
     let(:selector)         { double('selector', call: []) }
-    let(:test_result)      { double('test-result') }
-    let(:integration)      { double('integration', call: test_result) }
+    let(:integration)      { IntegrationSpy.new(:test_result) }
     let(:config) do
       Mutant::Config::DEFAULT.with(
         isolation: Mutant::Isolation::None.new,
@@ -256,8 +282,9 @@ RSpec.describe 'Mutant::Env mutation coverage' do
     end
 
     it 'returns a successful result' do
-      expect(mutation).to receive(:insert).with(Kernel)
-      expect(integration).to receive(:call).with([])
+      timer_values = [10.0, 12.5].each
+
+      allow(Mutant::Timer).to receive(:now) { timer_values.next }
 
       result = build_env(
         config:      config,
@@ -266,22 +293,32 @@ RSpec.describe 'Mutant::Env mutation coverage' do
         subjects:    [mutation_subject]
       ).kill(mutation)
 
+      expect(mutation.insert_calls).to eql([Kernel])
+      expect(integration.calls).to eql([[]])
+      expect(result).to be_instance_of(Mutant::Result::Mutation)
       expect(result.coverage_criteria).to eql(config.coverage_criteria)
-      expect(result.isolation_result).to eql(Mutant::Isolation::Result::Success.new(test_result))
+      expect(result.isolation_result).to eql(Mutant::Isolation::Result::Success.new(:test_result))
       expect(result.mutation).to be(mutation)
-      expect(result.runtime).to be >= 0.0
+      expect(result.runtime).to eql(2.5)
     end
 
     it 'restores configured environment variables after exceptions' do
       config = self.config.with(environment_variables: { 'MUTANT_ENV_SPEC' => 'configured' })
-      integration = double('integration')
+      insert_values = []
+      integration_values = []
+      integration = Class.new do
+        def call(_tests)
+          raise 'integration failure'
+        end
+      end.new
 
-      expect(mutation).to receive(:insert).with(Kernel) do
-        expect(ENV.fetch('MUTANT_ENV_SPEC')).to eql('configured')
+      mutation.define_singleton_method(:insert) do |argument|
+        insert_calls << argument
+        insert_values << ENV.fetch('MUTANT_ENV_SPEC')
       end
 
-      expect(integration).to receive(:call).with([]) do
-        expect(ENV.fetch('MUTANT_ENV_SPEC')).to eql('configured')
+      integration.define_singleton_method(:call) do |_tests|
+        integration_values << ENV.fetch('MUTANT_ENV_SPEC')
         raise 'integration failure'
       end
 
@@ -299,6 +336,9 @@ RSpec.describe 'Mutant::Env mutation coverage' do
       expect(result.isolation_result.value.message).to eql('integration failure')
       expect(result.mutation).to be(mutation)
       expect(result.runtime).to be >= 0.0
+      expect(mutation.insert_calls).to eql([Kernel])
+      expect(insert_values).to eql(['configured'])
+      expect(integration_values).to eql(['configured'])
       expect(ENV.fetch('MUTANT_ENV_SPEC')).to eql('original')
     ensure
       ENV.delete('MUTANT_ENV_SPEC')
@@ -308,10 +348,10 @@ RSpec.describe 'Mutant::Env mutation coverage' do
   describe 'Mutant::Env#run_mutation_tests', mutant_expression: 'Mutant::Env#run_mutation_tests' do
     let(:mutation_subject) { double('mutation-subject') }
     let(:other_subject)    { double('other-subject') }
-    let(:mutation)         { double('mutation', subject: mutation_subject) }
+    let(:mutation)         { MutationSpy.new(mutation_subject) }
     let(:selected_tests)   { [double('selected-test')] }
     let(:selector)         { double('selector') }
-    let(:integration)      { double('integration') }
+    let(:integration)      { IntegrationSpy.new(:selected_result) }
     let(:coverage_criteria) do
       Mutant::Config::CoverageCriteria.new(
         process_abort: true,
@@ -334,13 +374,6 @@ RSpec.describe 'Mutant::Env mutation coverage' do
     end
 
     it 'sets current coverage criteria and runs integration for the mutated subject' do
-      expect(mutation).to receive(:insert).with(Kernel) do
-        expect(Mutant::Config::CoverageCriteria.current).to eql(coverage_criteria)
-        expect(ENV.fetch('MUTANT_ENV_SPEC')).to eql('configured')
-      end
-
-      expect(integration).to receive(:call).with(selected_tests)
-
       result = build_env(
         config:      config,
         integration: integration,
@@ -348,7 +381,10 @@ RSpec.describe 'Mutant::Env mutation coverage' do
         subjects:    [other_subject, mutation_subject]
       ).__send__(:run_mutation_tests, mutation)
 
+      expect(mutation.insert_calls).to eql([Kernel])
+      expect(integration.calls).to eql([selected_tests])
       expect(result).to be_instance_of(Mutant::Isolation::Result::Success)
+      expect(result.value).to eql(:selected_result)
       expect(Mutant::Config::CoverageCriteria.current).to eql(coverage_criteria)
       expect(ENV.key?('MUTANT_ENV_SPEC')).to be(false)
     end
@@ -366,6 +402,8 @@ RSpec.describe 'Mutant::Env mutation coverage' do
     end
 
     it 'restores missing and existing values after yielding' do
+      yielded = false
+
       ENV['MUTANT_PERSISTENT_SPEC'] = 'original'
 
       env = build_env(
@@ -380,16 +418,66 @@ RSpec.describe 'Mutant::Env mutation coverage' do
         subjects:    []
       )
 
-      env.__send__(:with_environment_variables) do
+      result = env.__send__(:with_environment_variables) do
+        yielded = true
         expect(ENV.fetch('MUTANT_ENV_SPEC')).to eql('configured')
         expect(ENV.fetch('MUTANT_PERSISTENT_SPEC')).to eql('override')
+        :block_result
       end
 
+      expect(yielded).to be(true)
+      expect(result).to eql(:block_result)
       expect(ENV.key?('MUTANT_ENV_SPEC')).to be(false)
       expect(ENV.fetch('MUTANT_PERSISTENT_SPEC')).to eql('original')
     ensure
       ENV.delete('MUTANT_ENV_SPEC')
       ENV.delete('MUTANT_PERSISTENT_SPEC')
+    end
+
+    it 'serializes environment updates across concurrent calls' do
+      queue = Queue.new
+      release = Queue.new
+
+      env_a = build_env(
+        config:      config.with(environment_variables: { 'MUTANT_ENV_SPEC' => 'first' }),
+        integration: integration,
+        selector:    selector,
+        subjects:    []
+      )
+      env_b = build_env(
+        config:      config.with(environment_variables: { 'MUTANT_ENV_SPEC' => 'second' }),
+        integration: integration,
+        selector:    selector,
+        subjects:    []
+      )
+
+      thread_a = Thread.new do
+        env_a.__send__(:with_environment_variables) do
+          queue << ENV.fetch('MUTANT_ENV_SPEC')
+          release.pop
+          queue << ENV.fetch('MUTANT_ENV_SPEC')
+        end
+      end
+
+      expect(queue.pop).to eql('first')
+
+      thread_b = Thread.new do
+        env_b.__send__(:with_environment_variables) do
+          queue << ENV.fetch('MUTANT_ENV_SPEC')
+        end
+      end
+
+      expect(queue.empty?).to be(true)
+
+      release << :continue
+
+      expect(queue.pop).to eql('first')
+      expect(queue.pop).to eql('second')
+
+      thread_a.join
+      thread_b.join
+    ensure
+      ENV.delete('MUTANT_ENV_SPEC')
     end
   end
 

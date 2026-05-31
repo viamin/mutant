@@ -32,7 +32,6 @@ namespace :metrics do
       --include lib
       --require mutant
       --use rspec
-      --zombie
     ]
     arguments.concat(['--since', mutant_since])
     arguments.concat(['--jobs', mutant_jobs]) if mutant_jobs

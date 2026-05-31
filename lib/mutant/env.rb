@@ -68,8 +68,17 @@ module Mutant
     # @return [Object]
     def with_environment_variables
       ENVIRONMENT_VARIABLE_MUTEX.synchronize do
-        original = config.environment_variables.each_with_object({}) do |(key, _value), state|
-          state[key] = ENV[key]
+        original = config.environment_variables.each_with_object(
+          missing: [],
+          present: {}
+        ) do |(key, _value), state|
+          value = ENV[key]
+
+          if value.nil?
+            state[:missing] << key
+          else
+            state[:present][key] = value
+          end
         end
 
         config.environment_variables.each do |key, value|
@@ -78,12 +87,12 @@ module Mutant
 
         yield
       ensure
-        original.each do |key, value|
-          if value.nil?
-            ENV.delete(key)
-          else
-            ENV[key] = value
-          end
+        original.fetch(:missing).each do |key|
+          ENV.delete(key)
+        end
+
+        original.fetch(:present).each do |key, value|
+          ENV[key] = value
         end
       end
     end
