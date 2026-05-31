@@ -4,7 +4,6 @@ module Mutant
   class CLIArgumentSanitizer
     include Adamantium::Flat, Procto.call(:call)
 
-    LEGACY_USAGE_VALUES = %w[opensource commercial].freeze
     WARNING = '--usage is a no-op in viamin/mutant (MIT-licensed)'
 
     def initialize(stderr, arguments)
@@ -32,7 +31,9 @@ module Mutant
     def delete_usage_argument(index)
       argument = arguments.delete_at(index)
 
-      arguments.delete_at(index) if argument == '--usage' && LEGACY_USAGE_VALUES.include?(arguments[index])
+      arguments.delete_at(index) if argument == '--usage' &&
+        arguments[index] &&
+        !arguments[index].start_with?('-')
     end
 
     def usage_argument_index

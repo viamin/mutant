@@ -6,7 +6,7 @@ RSpec.describe Mutant::CLI do
   describe Mutant::CLIArgumentSanitizer do
     subject(:sanitize_arguments) { described_class.call($stderr, arguments) }
 
-    context 'when usage is passed as separate option and legacy value' do
+    context 'when usage is passed as separate option and value' do
       let(:arguments) { %w[--usage opensource TestApp*] }
 
       it 'removes both arguments and warns' do
@@ -26,13 +26,23 @@ RSpec.describe Mutant::CLI do
       end
     end
 
-    context 'when usage is passed with an unsupported value' do
+    context 'when usage is passed with another value' do
       let(:arguments) { %w[--usage proprietary TestApp*] }
 
-      it 'preserves the value as a match expression and warns' do
+      it 'removes both arguments and warns' do
         expect($stderr).to receive(:puts).with(described_class::WARNING)
 
-        expect(sanitize_arguments).to eql(%w[proprietary TestApp*])
+        expect(sanitize_arguments).to eql(%w[TestApp*])
+      end
+    end
+
+    context 'when usage is passed before another option' do
+      let(:arguments) { %w[--usage --help] }
+
+      it 'removes only the usage flag and warns' do
+        expect($stderr).to receive(:puts).with(described_class::WARNING)
+
+        expect(sanitize_arguments).to eql(%w[--help])
       end
     end
 
@@ -123,6 +133,24 @@ RSpec.describe Mutant::CLI do
 
     let(:flags)       { []           }
     let(:expressions) { %w[TestApp*] }
+    let(:help_message) do
+      <<~MESSAGE
+        usage: mutant [options] MATCH_EXPRESSION ...
+        Environment:
+                --zombie                     Run mutant zombified
+            -I, --include DIRECTORY          Add DIRECTORY to $LOAD_PATH
+            -r, --require NAME               Require file with NAME
+            -j, --jobs NUMBER                Number of kill jobs. Defaults to number of processors.
+
+        Options:
+                --use INTEGRATION            Use INTEGRATION to kill mutations
+                --ignore-subject EXPRESSION  Ignore subjects that match EXPRESSION as prefix
+                --since REVISION             Only select subjects touched since REVISION
+                --fail-fast                  Fail fast
+                --version                    Print mutants version
+            -h, --help                       Show this message
+      MESSAGE
+    end
 
     let(:arguments) { flags + expressions }
 
@@ -146,31 +174,12 @@ RSpec.describe Mutant::CLI do
       let(:flags) { %w[--help] }
 
       before do
-        expect(expected_message).not_to include('--usage')
-        expect($stdout).to receive(:puts).with(expected_message)
+        expect(help_message).not_to include('--usage')
+        expect($stdout).to receive(:puts).with(help_message)
         expect(Kernel).to receive(:exit)
       end
 
       it_should_behave_like 'a cli parser'
-
-      let(:expected_message) do
-        <<~MESSAGE
-          usage: mutant [options] MATCH_EXPRESSION ...
-          Environment:
-                  --zombie                     Run mutant zombified
-              -I, --include DIRECTORY          Add DIRECTORY to $LOAD_PATH
-              -r, --require NAME               Require file with NAME
-              -j, --jobs NUMBER                Number of kill jobs. Defaults to number of processors.
-
-          Options:
-                  --use INTEGRATION            Use INTEGRATION to kill mutations
-                  --ignore-subject EXPRESSION  Ignore subjects that match EXPRESSION as prefix
-                  --since REVISION             Only select subjects touched since REVISION
-                  --fail-fast                  Fail fast
-                  --version                    Print mutants version
-              -h, --help                       Show this message
-        MESSAGE
-      end
     end
 
     context 'with include flag' do
@@ -227,29 +236,27 @@ RSpec.describe Mutant::CLI do
         it_should_behave_like 'a cli parser'
       end
 
-      context 'when passed with an unsupported value' do
+      context 'when passed with another value' do
         let(:flags) { %w[--usage proprietary] }
 
-        let(:expected_matcher_config) do
-          default_matcher_config.with(
-            match_expressions: [
-              parse_expression('proprietary'),
-              parse_expression('TestApp*')
-            ]
-          )
+        it_should_behave_like 'a cli parser'
+      end
+
+      context 'when passed before another option' do
+        let(:flags) { %w[--usage --help] }
+
+        before do
+          expect(help_message).not_to include('--usage')
+          expect($stdout).to receive(:puts).with(help_message)
+          expect(Kernel).to receive(:exit)
         end
 
         it_should_behave_like 'a cli parser'
-
-        it 'preserves the value as a match expression' do
-          expect(subject.config.matcher.match_expressions).to eql(
-            [parse_expression('proprietary'), parse_expression('TestApp*')]
-          )
-        end
       end
 
-      context 'when passed without a value' do
+      context 'when passed before a match expression' do
         let(:flags) { %w[--usage] }
+        let(:expected_matcher_config) { Mutant::Matcher::Config::DEFAULT }
 
         it_should_behave_like 'a cli parser'
       end
