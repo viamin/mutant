@@ -45,14 +45,17 @@ module Mutant
         selected_examples = tests.map(&examples.method(:fetch))
         examples.filter(selected_examples)
         start = Timer.now
-        passed = runner.run_specs(examples.ordered_groups).equal?(EXIT_SUCCESS)
+        passed = run_specs.equal?(EXIT_SUCCESS)
         output.rewind
-        Result::Test.new(
+
+        result_attributes = {
           output:  output.read,
           passed:  passed,
           runtime: Timer.now - start,
           tests:   tests
-        ).freeze
+        }
+
+        Result::Test.new(result_attributes)
       end
 
       def all_tests
@@ -74,13 +77,19 @@ module Mutant
         state.examples
       end
 
+      def run_specs
+        runner.run_specs(examples.ordered_groups)
+      rescue SystemExit => exception
+        exception.status
+      end
+
       attr_reader :state
 
     end # Rspec
 
     module RspecSupport
       DEFAULT_EXPRESSION = Expression::Namespace::Recursive.new(scope_name: nil)
-      DESCRIPTION_CANDIDATE = /\A([^ ]+)(?: )?/.freeze
+      DESCRIPTION_CANDIDATE = /\A(?<expression>[^ ]+)(?: )?/.freeze
       EXAMPLE_METHODS     = IceNine.deep_freeze(%i[example it scenario specify])
       EXPECTATION_METHODS = IceNine.deep_freeze(%i[not_to to to_not])
       TEST_ID_FORMAT      = 'rspec:%<index>d:%<location>s/%<description>s'
@@ -172,14 +181,16 @@ module Mutant
         def parse_test(example, example_index)
           metadata = example.metadata
 
-          Test.new(
+          test_attributes = {
             expression: resolver.(metadata),
             id:         TEST_ID_FORMAT % {
               index:       example_index,
               location:    metadata.fetch(:location),
               description: metadata.fetch(:full_description)
             }
-          )
+          }
+
+          Test.new(test_attributes)
         end
       end
 
@@ -204,8 +215,9 @@ module Mutant
 
         def description_expression(metadata)
           match = DESCRIPTION_CANDIDATE.match(metadata.fetch(:full_description))
+          return unless match
 
-          expression_parser.try_parse(match.captures.first) if match
+          expression_parser.try_parse(match[:expression])
         end
 
         def source_expression(metadata)
@@ -221,13 +233,19 @@ module Mutant
         include Concord.new(:expression_parser)
 
         def call(annotation)
+          expression_parser.(target(annotation))
+        end
+
+      private
+
+        def target(annotation)
           case annotation
           when Module
-            return expression_parser.(annotation.name) if annotation.name
+            return annotation.name if annotation.name
 
             fail ArgumentError, 'Unsupported anonymous module/class mutant annotation'
           when String
-            expression_parser.(annotation)
+            annotation
           else
             fail ArgumentError, "Unsupported RSpec mutant annotation: #{annotation.inspect}"
           end
@@ -317,7 +335,7 @@ module Mutant
           Node.each(root).with_object(Hash.new { |hash, key| hash[key] = [] }) do |node, indexed_nodes|
             next unless Node.example_block?(node)
 
-            indexed_nodes[node.loc.expression.line].concat(Node.cover_arguments(node.children.fetch(2, nil)))
+            indexed_nodes[node.loc.expression.line].concat(Node.cover_arguments(node.children[2]))
           end
         end
 
@@ -344,7 +362,9 @@ module Mutant
           when :send
             parse_send(node, described_class)
           when :str
-            expression_parser.(node.children.fetch(0))
+            value, = node.children
+
+            expression_parser.(value)
           else
             fail(
               ArgumentError,
@@ -357,8 +377,11 @@ module Mutant
 
         def const_name(node)
           parent, name = *node
+          parent = parent_name(parent)
 
-          [parent_name(parent), name.to_s].compact.join('::')
+          return name.to_s unless parent
+
+          "#{parent}::#{name}"
         end
 
         def parent_name(node)

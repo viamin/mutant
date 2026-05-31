@@ -63,15 +63,16 @@ describe Mutant::Repository::Diff do
       let(:git_ls_success?) { true                                                 }
       let(:status)          { instance_double(Process::Status, success?: success?) }
       let(:stdout)          { instance_double(String, empty?: stdout_empty?)       }
+      let(:stderr)          { ''                                                   }
       let(:stdout_empty?)   { false                                                }
 
       include_context 'test if git tracks the file'
 
       before do
-        expect(config.open3).to receive(:capture2)
+        expect(config.open3).to receive(:capture3)
           .ordered
           .with(*expected_git_log_command, binmode: true)
-          .and_return([stdout, status])
+          .and_return([stdout, stderr, status])
       end
 
       let(:expected_git_log_command) do
@@ -103,6 +104,13 @@ describe Mutant::Repository::Diff do
 
           it { should be(true) }
         end
+      end
+
+      context 'when git log reports a missing line range' do
+        let(:success?) { false }
+        let(:stderr)   { "fatal: file #{path} has only 1 lines\n" }
+
+        it { should be(true) }
       end
     end
   end
