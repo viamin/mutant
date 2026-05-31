@@ -48,17 +48,13 @@ module Mutant
 
         stdout, stderr, status = config.open3.capture3(*command, binmode: true)
 
-        return true if line_range_missing?(stderr)
+        return true if stderr.match?(LINE_RANGE_MISSING)
         fail RepositoryError, "Command #{command} failed!" unless status.success?
 
         !stdout.empty?
       end
 
     private
-
-      def line_range_missing?(stderr)
-        stderr.match?(LINE_RANGE_MISSING)
-      end
 
       # Test if path is tracked in repository
       #
