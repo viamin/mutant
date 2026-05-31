@@ -20,7 +20,8 @@ updates:
           - patch
 
 # NOTE: /test_app contains only non-standard Gemfiles (Gemfile.minitest,
-# Gemfile.rspec3.13, Gemfile.rspec3.7, Gemfile.rspec3.8). Dependabot's bundler
+# Gemfile.rspec3.10, Gemfile.rspec3.13, Gemfile.rspec3.7, Gemfile.rspec3.8,
+# Gemfile.rspec4.0). Dependabot's bundler
 # ecosystem only discovers standard Gemfile/gems.rb filenames, so no update
 # PRs would be generated for this directory until a standard Gemfile exists.
 # Consider adding a Gemfile that requires the variant Gemfiles if desired.

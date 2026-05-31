@@ -27,12 +27,17 @@ RSpec.describe Mutant::Parallel::Driver do
     instance_double(Mutant::Variable::IVar, 'sink')
   end
 
+  let(:var_source) do
+    instance_double(Mutant::Variable::MVar, 'source')
+  end
+
   subject do
     described_class.new(
       threads:         threads,
       var_active_jobs: var_active_jobs,
       var_final:       var_final,
-      var_sink:        var_sink
+      var_sink:        var_sink,
+      var_source:      var_source
     )
   end
 
@@ -121,6 +126,71 @@ RSpec.describe Mutant::Parallel::Driver do
       end
 
       include_examples 'returns expected status'
+    end
+  end
+
+  describe '#stop' do
+    def apply
+      subject.stop
+    end
+
+    let(:raw_expectations) do
+      [
+        {
+          receiver: var_source,
+          selector: :modify,
+          reaction: { return: nil }
+        },
+        {
+          receiver: thread_a,
+          selector: :join
+        },
+        {
+          receiver: thread_b,
+          selector: :join
+        },
+        {
+          receiver: var_active_jobs,
+          selector: :with,
+          reaction: { yields: [active_jobs] }
+        },
+        {
+          receiver: var_sink,
+          selector: :with,
+          reaction: { yields: [sink] }
+        }
+      ]
+    end
+
+    before do
+      allow(thread_a).to receive_messages(alive?: false)
+      allow(thread_b).to receive_messages(alive?: false)
+    end
+
+    it 'drains source, waits for workers to finish, then returns final status' do
+      verify_events do
+        expect(apply).to eql(
+          Mutant::Parallel::Status.new(
+            active_jobs: active_jobs,
+            done:        true,
+            payload:     sink_status
+          )
+        )
+      end
+    end
+
+    it 'replaces the source with an empty array source before joining workers' do
+      expect(var_source).to receive(:modify) do |&block|
+        expect(block.call).to eql(Mutant::Parallel::Source::Array.new(Mutant::EMPTY_ARRAY))
+      end
+      expect(thread_a).to receive(:join)
+      expect(thread_b).to receive(:join)
+      allow(thread_a).to receive_messages(alive?: false)
+      allow(thread_b).to receive_messages(alive?: false)
+      expect(var_active_jobs).to receive(:with).and_yield(active_jobs)
+      expect(var_sink).to receive(:with).and_yield(sink)
+
+      apply
     end
   end
 end

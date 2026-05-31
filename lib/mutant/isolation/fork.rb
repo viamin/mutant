@@ -59,7 +59,7 @@ module Mutant
         def read_child_result(pid)
           writer.close
 
-          add_result(Result::Success.new(marshal.load(reader)))
+          add_result(load_child_result)
         rescue ArgumentError, EOFError => exception
           add_result(Result::Exception.new(exception))
         ensure
@@ -77,6 +77,12 @@ module Mutant
           add_result(ChildError.new(status)) unless status.success?
         end
 
+        def load_child_result
+          result = marshal.load(reader)
+
+          result.is_a?(Result) ? result : Result::Success.new(result)
+        end
+
         # Add a result
         #
         # @param [Result]
@@ -92,16 +98,35 @@ module Mutant
           Procto.call
         )
 
+        def self.with_default_signal_handlers
+          Signal.trap('INT', 'DEFAULT')
+          Signal.trap('TERM', 'DEFAULT')
+
+          yield
+        end
+
         # Handle child process
         #
         # @return [undefined]
         def call
           reader.close
-          writer.write(marshal.dump(result(&block)))
+          writer.write(marshal.dump(execute))
           writer.close
         end
 
       private
+
+        def execute
+          self.class.with_default_signal_handlers { result(&block) }
+        rescue SignalException, ScriptError, StandardError, SystemExit => exception
+          Result::Exception.new(
+            Result::SerializedException.new(
+              exception.backtrace || EMPTY_ARRAY,
+              exception.class.name,
+              exception.inspect
+            )
+          )
+        end
 
         # The block result computed under silencing
         #
