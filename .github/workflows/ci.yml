@@ -87,7 +87,8 @@ jobs:
         shell: bash
         run: |
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            echo "MUTANT_SINCE=$(git merge-base HEAD ${{ github.event.pull_request.base.sha }})" >> "$GITHUB_ENV"
+            git fetch --no-tags origin "refs/heads/${{ github.event.pull_request.base.ref }}"
+            echo "MUTANT_SINCE=$(git merge-base HEAD FETCH_HEAD)" >> "$GITHUB_ENV"
           else
             echo "MUTANT_SINCE=${{ github.event.before }}" >> "$GITHUB_ENV"
           fi
