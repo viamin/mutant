@@ -6,7 +6,7 @@ updates:
       interval: daily
     cooldown:
       default-days: 7
-
+ 
   - package-ecosystem: bundler
     directory: /
     schedule:
