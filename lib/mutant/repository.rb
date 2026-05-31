@@ -42,10 +42,6 @@ module Mutant
       def touches?(line_range)
         all || ranges.any? { |range| range.begin <= line_range.end && line_range.begin <= range.end }
       end
-
-      def touches_location?(location)
-        touches?(location.line_range)
-      end
     end
     ChangedLineRanges::ALL = ChangedLineRanges.new(true, EMPTY_ARRAY).freeze
 
@@ -54,13 +50,13 @@ module Mutant
       HUNK_HEADER = /\A@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/
 
       def self.call(output)
-        State.new({}, nil, :normal).tap do |state|
+        State.new(files: {}).tap do |state|
           output.each_line { |line| state.parse_line(line) }
         end.files
       end
 
       # Mutable parse state while walking unified diff output.
-      State = Struct.new(:files, :current_file, :file_type) do
+      State = Struct.new(:files, :current_file, :file_type, keyword_init: true) do
         def parse_line(line)
           handle_new_file(line) ||
             handle_existing_file(line) ||
@@ -134,9 +130,7 @@ module Mutant
       # @raise [RepositoryError]
       #   when git command failed
       def touches?(path, line_range)
-        location = SubjectLocation.new(path, line_range)
-
-        touched_ranges(path)&.touches_location?(location) || false
+        touched_ranges(path)&.touches?(line_range) || false
       end
 
       def diff_hunks
