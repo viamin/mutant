@@ -4,10 +4,14 @@ require 'mutant/integration/rspec'
 
 RSpec.describe Mutant::Integration::Rspec do
   let(:object) { described_class.new(Mutant::Config::DEFAULT) }
+  let(:example_collection_class) { Mutant::Integration::RspecSupport::Examples }
+  let(:runner_class)             { RSpec::Core::Runner }
+  let(:output_class)             { StringIO }
 
   let(:rspec_options) { Object.new }
   let(:rspec_runner)  { RSpec::Core::Runner.allocate }
   let(:example_collection) { Mutant::Integration::RspecSupport::Examples.allocate }
+  let(:expression_resolver) { instance_double(Mutant::Integration::RspecSupport::ExpressionResolver) }
   let(:tests) do
     [
       Mutant::Test.new(
@@ -28,76 +32,139 @@ RSpec.describe Mutant::Integration::Rspec do
       .with(rspec_options)
       .and_return(rspec_runner)
 
-    allow(Mutant::Integration::RspecSupport::Examples).to receive(:build)
-      .with(expression_parser: Mutant::Config::DEFAULT.expression_parser, world: RSpec.world)
+    allow(Mutant::Integration::RspecSupport::ExpressionResolver).to receive(:build)
+      .with(Mutant::Config::DEFAULT.expression_parser)
+      .and_return(expression_resolver)
+
+    allow(Mutant::Integration::RspecSupport::Examples).to receive(:new)
+      .with(expression_resolver, RSpec.world)
       .and_return(example_collection)
 
     allow(Mutant::Timer).to receive_messages(now: Mutant::Timer.now)
   end
 
-  describe '.new' do
+  describe '.new', mutant_expression: 'Mutant::Integration::Rspec#initialize' do
     subject(:instance) { object }
 
     it 'initializes the collaborator cache' do
       instance
       expect(RSpec::Core::ConfigurationOptions).to have_received(:new).once
       expect(RSpec::Core::Runner).to have_received(:new).once
-      expect(Mutant::Integration::RspecSupport::Examples).to have_received(:build).once
-      state = instance.instance_variable_get(:@state)
-      expect(state.fetch(:examples)).to be(example_collection)
-      expect(state.fetch(:output)).to be_a(StringIO)
-      expect(state.fetch(:runner)).to be(rspec_runner)
+      expect(Mutant::Integration::RspecSupport::ExpressionResolver).to have_received(:build).once
+      expect(Mutant::Integration::RspecSupport::Examples).to have_received(:new).once
+      expect(instance.instance_variable_get(:@examples)).to be(example_collection)
+      expect(instance.instance_variable_get(:@output)).to be_a(StringIO)
+      expect(instance.instance_variable_get(:@runner)).to be(rspec_runner)
     end
   end
 
   describe 'fallback helpers' do
-    let(:state) { object.instance_variable_get(:@state) }
+    let(:mutable_object) do
+      described_class.allocate.tap { |instance| instance.send(:initialize, Mutant::Config::DEFAULT) }
+    end
 
-    describe '#examples' do
+    describe '#examples', mutant_expression: 'Mutant::Integration::Rspec#examples' do
       it 'returns the cached collection when it is still valid' do
-        expect(object.send(:examples)).to be(example_collection)
-        expect(Mutant::Integration::RspecSupport::Examples).to have_received(:build).once
+        expect(mutable_object.send(:examples)).to be(example_collection)
+        expect(Mutant::Integration::RspecSupport::Examples).to have_received(:new).once
+      end
+
+      it 'accepts subclasses of the cached collection type' do
+        subclass_instance = Class.new(example_collection_class).allocate
+        mutable_object.instance_variable_set(:@examples, subclass_instance)
+
+        expect(mutable_object.send(:examples)).to be(subclass_instance)
+        expect(Mutant::Integration::RspecSupport::Examples).to have_received(:new).once
       end
 
       it 'rebuilds the collection when the cached collaborator is invalid' do
-        state[:examples] = Object.new
+        mutable_object.instance_variable_set(:@examples, Object.new)
 
-        expect(object.send(:examples)).to be(example_collection)
-        expect(Mutant::Integration::RspecSupport::Examples).to have_received(:build).twice
+        expect(mutable_object.send(:examples)).to be(example_collection)
+        expect(mutable_object.instance_variable_get(:@examples)).to be(example_collection)
+        expect(Mutant::Integration::RspecSupport::Examples).to have_received(:new).twice
       end
     end
 
-    describe '#output' do
+    describe '#output', mutant_expression: 'Mutant::Integration::Rspec#output' do
       it 'returns the cached output when it is still valid' do
-        expect(object.send(:output)).to be(state.fetch(:output))
+        expect(mutable_object.send(:output)).to be(mutable_object.instance_variable_get(:@output))
+      end
+
+      it 'accepts subclasses of StringIO as valid cached output' do
+        subclass_instance = Class.new(output_class).new
+        mutable_object.instance_variable_set(:@output, subclass_instance)
+
+        expect(mutable_object.send(:output)).to be(subclass_instance)
       end
 
       it 'creates a fresh StringIO when the cached output is invalid' do
-        state[:output] = Object.new
+        mutable_object.instance_variable_set(:@output, Object.new)
 
-        expect(object.send(:output)).to be_a(StringIO)
-        expect(state.fetch(:output)).to be(object.send(:output))
+        expect(mutable_object.send(:output)).to be_a(StringIO)
+        expect(mutable_object.instance_variable_get(:@output)).to be(mutable_object.send(:output))
       end
     end
 
-    describe '#runner' do
+    describe '#runner', mutant_expression: 'Mutant::Integration::Rspec#runner' do
       it 'returns the cached runner when it is still valid' do
-        expect(object.send(:runner)).to be(rspec_runner)
+        expect(mutable_object.send(:runner)).to be(rspec_runner)
+        expect(RSpec::Core::ConfigurationOptions).to have_received(:new).once
+        expect(RSpec::Core::Runner).to have_received(:new).once
+      end
+
+      it 'accepts subclasses of the runner type' do
+        subclass_instance = Class.new(runner_class).allocate
+        mutable_object.instance_variable_set(:@runner, subclass_instance)
+
+        expect(mutable_object.send(:runner)).to be(subclass_instance)
         expect(RSpec::Core::ConfigurationOptions).to have_received(:new).once
         expect(RSpec::Core::Runner).to have_received(:new).once
       end
 
       it 'rebuilds the runner when the cached runner is invalid' do
-        state[:runner] = Object.new
+        mutable_object.instance_variable_set(:@runner, Object.new)
 
-        expect(object.send(:runner)).to be(rspec_runner)
+        expect(mutable_object.send(:runner)).to be(rspec_runner)
+        expect(mutable_object.instance_variable_get(:@runner)).to be(rspec_runner)
         expect(RSpec::Core::ConfigurationOptions).to have_received(:new).twice
         expect(RSpec::Core::Runner).to have_received(:new).twice
       end
     end
   end
 
-  describe '#all_tests' do
+  describe '#build_examples', mutant_expression: 'Mutant::Integration::Rspec#build_examples' do
+    it 'builds the example collection from the resolver and rspec world' do
+      bare_object = described_class.allocate
+      bare_object.instance_variable_set(:@config, Mutant::Config::DEFAULT)
+
+      expect(bare_object.send(:build_examples)).to be(example_collection)
+      expect(Mutant::Integration::RspecSupport::ExpressionResolver).to have_received(:build)
+        .with(Mutant::Config::DEFAULT.expression_parser)
+        .once
+      expect(Mutant::Integration::RspecSupport::Examples).to have_received(:new)
+        .with(expression_resolver, RSpec.world)
+        .once
+    end
+  end
+
+  describe '#build_result_test', mutant_expression: 'Mutant::Integration::Rspec#build_result_test' do
+    it 'builds a frozen test result' do
+      result = object.send(:build_result_test, 'output', true, 1.5, tests)
+
+      expect(result).to eql(
+        Mutant::Result::Test.new(
+          output:  'output',
+          passed:  true,
+          runtime: 1.5,
+          tests:   tests
+        )
+      )
+      expect(result).to be_frozen
+    end
+  end
+
+  describe '#all_tests', mutant_expression: 'Mutant::Integration::Rspec#all_tests' do
     subject(:all_tests) { object.all_tests }
 
     before do
@@ -107,7 +174,7 @@ RSpec.describe Mutant::Integration::Rspec do
     it { should eql(tests) }
   end
 
-  describe '#setup' do
+  describe '#setup', mutant_expression: 'Mutant::Integration::Rspec#setup' do
     subject { object.setup }
 
     before do
@@ -120,7 +187,7 @@ RSpec.describe Mutant::Integration::Rspec do
     it { should be(object) }
   end
 
-  describe '#call' do
+  describe '#call', mutant_expression: 'Mutant::Integration::Rspec#call' do
     subject { object.call(tests) }
 
     before do
@@ -152,7 +219,7 @@ RSpec.describe Mutant::Integration::Rspec do
             tests:   tests
           )
         )
-        expect(result.tests).to be(tests)
+        expect(result).to be_frozen
       end
     end
 
@@ -170,6 +237,7 @@ RSpec.describe Mutant::Integration::Rspec do
             tests:   tests
           )
         )
+        expect(result).to be_frozen
         expect(object.send(:output).pos).to eql('the-test-output'.length)
       end
     end
@@ -515,6 +583,19 @@ RSpec.describe Mutant::Integration::RspecSupport::Node do
     it 'returns false for non-block nodes' do
       expect(described_class.example_block?(parser.parse("it('works')"))).to be(false)
     end
+
+    it 'returns false when the block receiver is not a send node' do
+      block_node = Parser::AST::Node.new(
+        :block,
+        [
+          Parser::AST::Node.new(:lvar, [:it]),
+          Parser::AST::Node.new(:args, []),
+          nil
+        ]
+      )
+
+      expect(described_class.example_block?(block_node)).to be(false)
+    end
   end
 
   describe '.cover_matcher?' do
@@ -538,6 +619,19 @@ RSpec.describe Mutant::Integration::RspecSupport::Node do
 
     it 'returns false for non-send nodes' do
       expect(described_class.cover_matcher?(parser.parse("'Example::Target'"))).to be(false)
+    end
+
+    it 'returns false for non-ast objects that look send-like' do
+      send_like_matcher = Struct.new(:type, :children).new(:send, [nil, :cover])
+
+      expect(described_class.cover_matcher?(send_like_matcher)).to be(false)
+    end
+
+    it 'accepts parser ast node subclasses' do
+      matcher_class = Class.new(Parser::AST::Node)
+      matcher = matcher_class.new(:send, [nil, :cover, parser.parse("'Example::Target'")])
+
+      expect(described_class.cover_matcher?(matcher)).to be(true)
     end
   end
 end
@@ -862,6 +956,10 @@ RSpec.describe Mutant::Integration::RspecSupport::SourceIndex do
     expect(source_index.expressions(absolute_file_path: '/tmp/does-not-exist.rb', line_number: 1)).to eql([])
   end
 
+  it 'returns no expressions when no source path metadata is present' do
+    expect(source_index.expressions(line_number: 1)).to eql([])
+  end
+
   it 'returns cover expressions indexed by the example line number' do
     file = Tempfile.new(['mutant-rspec-valid', '.rb'])
     file.write(
@@ -962,5 +1060,30 @@ RSpec.describe Mutant::Integration::RspecSupport::SourceIndex do
     expect(File).to have_received(:read).with(file.path).once
   ensure
     File.unlink(file.path) if file && File.exist?(file.path)
+  end
+
+  it 'indexes cover annotations by the example expression line' do
+    index = described_class.new(
+      Mutant::Integration::RspecSupport::ExpressionParser.new(Mutant::Config::DEFAULT.expression_parser)
+    )
+    cover_node = Parser::AST::Node.new(:str, ['Example::Covered'])
+    example_body = Parser::AST::Node.new(:begin, [])
+    example_node = instance_double(
+      Parser::AST::Node,
+      loc: Struct.new(:line, :expression).new(nil, Struct.new(:line).new(7)),
+      children: [nil, nil, example_body]
+    )
+    parsed_root = Parser::AST::Node.new(:begin, [])
+
+    allow(index).to receive(:parse).with('/tmp/example.rb').and_return(parsed_root)
+    allow(Mutant::Integration::RspecSupport::Node).to receive(:each)
+      .with(parsed_root)
+      .and_return([example_node].to_enum)
+    allow(Mutant::Integration::RspecSupport::Node).to receive(:example_block?).with(example_node).and_return(true)
+    allow(Mutant::Integration::RspecSupport::Node).to receive(:cover_arguments)
+      .with(example_body)
+      .and_return([cover_node])
+
+    expect(index.send(:index, '/tmp/example.rb')).to eql({ 7 => [cover_node] })
   end
 end

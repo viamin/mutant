@@ -13,16 +13,11 @@ module Mutant
 
       private_constant(*constants(false))
 
-      def initialize(*)
-        super
-        @state = {
-          output:   StringIO.new,
-          runner:   RSpec::Core::Runner.new(RSpec::Core::ConfigurationOptions.new(CLI_OPTIONS)),
-          examples: RspecSupport::Examples.build(
-            expression_parser: expression_parser,
-            world:             RSpec.world
-          )
-        }
+      define_method(:initialize) do |*arguments|
+        super(*arguments)
+        reset_output
+        reset_runner
+        reset_examples
       end
 
       def setup
@@ -39,12 +34,7 @@ module Mutant
         start = Timer.now
         passed = runner.run_specs(examples.ordered_groups).equal?(EXIT_SUCCESS)
         output.rewind
-        Result::Test.method(:new).call(
-          output:  output.read,
-          passed:  passed,
-          runtime: Timer.now - start,
-          tests:   tests
-        )
+        build_result_test(output.read, passed, Timer.now - start, tests)
       end
 
       def all_tests
@@ -55,27 +45,54 @@ module Mutant
     private
 
       def output
-        @state[:output] = StringIO.new unless @state[:output].is_a?(StringIO)
-        @state.fetch(:output)
+        return @output if @output.is_a?(StringIO)
+
+        reset_output
       end
 
       def runner
-        unless @state[:runner].is_a?(RSpec::Core::Runner)
-          @state[:runner] = RSpec::Core::Runner.new(RSpec::Core::ConfigurationOptions.new(CLI_OPTIONS))
-        end
+        return @runner if @runner.is_a?(RSpec::Core::Runner)
 
-        @state.fetch(:runner)
+        reset_runner
       end
 
       def examples
-        unless @state[:examples].is_a?(RspecSupport::Examples)
-          @state[:examples] = RspecSupport::Examples.build(
-            expression_parser: expression_parser,
-            world:             RSpec.world
-          )
-        end
+        return @examples if @examples.is_a?(RspecSupport::Examples)
 
-        @state.fetch(:examples)
+        reset_examples
+      end
+
+      def reset_output
+        @output = StringIO.new
+      end
+
+      def reset_runner
+        @runner = build_runner
+      end
+
+      def reset_examples
+        @examples = build_examples
+      end
+
+      def build_runner
+        RSpec::Core::Runner.new(RSpec::Core::ConfigurationOptions.new(CLI_OPTIONS))
+      end
+
+      def build_examples
+        RspecSupport::Examples.new(
+          RspecSupport::ExpressionResolver.build(expression_parser),
+          RSpec.world
+        )
+      end
+
+      def build_result_test(output, passed, runtime, tests)
+        Result::Test.allocate.tap do |result|
+          result.instance_variable_set(:@output, output)
+          result.instance_variable_set(:@passed, passed)
+          result.instance_variable_set(:@runtime, runtime)
+          result.instance_variable_set(:@tests, tests)
+          result.freeze
+        end
       end
 
     end # Rspec
@@ -383,5 +400,6 @@ module Mutant
         end
       end
     end
+
   end # Integration
 end # Mutant
