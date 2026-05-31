@@ -1,20 +1,25 @@
 require 'spec_helper'
 
 RSpec.describe TestApp::Literal do
+  subject(:object) { described_class.new }
 
   describe '#command' do
-    subject { object.command(double) }
+    it { is_expected.to cover('TestApp::Literal#command') }
 
-    let(:object) { described_class.new }
-
-    it { should be(object) }
+    specify do
+      expect(object.command(double)).to be(object)
+    end
   end
 
   describe '#string' do
-    subject { object.string }
+    it { is_expected.to cover('TestApp::Literal#string') }
 
-    let(:object) { described_class.new }
-
-    it { should eql('string') }
+    specify do
+      expect(object.string).to eql('string')
+    end
   end
+end
+
+RSpec.describe TestApp::Empty do
+  it { is_expected.to cover(described_class) }
 end

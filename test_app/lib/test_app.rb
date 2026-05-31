@@ -106,4 +106,5 @@ module TestApp
 end
 
 require 'test_app/literal'
+require 'test_app/subjects'
 $VERBOSE = original

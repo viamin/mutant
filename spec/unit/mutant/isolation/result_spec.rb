@@ -1,6 +1,18 @@
 # frozen_string_literal: true
 
 RSpec.describe Mutant::Isolation::Result do
+  describe Mutant::Isolation::Result::SerializedException do
+    subject(:serialized_exception) do
+      described_class.new(Mutant::EMPTY_ARRAY, 'RuntimeError', '#<RuntimeError: boom>')
+    end
+
+    describe '#inspect' do
+      it 'returns the stored inspection string' do
+        expect(serialized_exception.inspect).to eql('#<RuntimeError: boom>')
+      end
+    end
+  end
+
   describe '#success?' do
     let(:value) { double('Object') }
 

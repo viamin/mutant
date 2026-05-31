@@ -47,11 +47,8 @@ module Mutant
 
     # Error failed when CLI argv is invalid
     Error = Class.new(RuntimeError)
-
     # Run cli with arguments
-    #
     # @param [Array<String>] arguments
-    #
     # @return [Boolean]
     def self.run(arguments)
       Runner.call(Env::Bootstrap.call(call(arguments))).success?
@@ -60,23 +57,13 @@ module Mutant
       false
     end
 
-    # Initialize object
-    #
-    # @param [Array<String>]
-    #
-    # @return [undefined]
-    def initialize(arguments)
-      @config = Config::DEFAULT
-
-      parse(arguments)
-    end
-
-    # Config parsed from CLI
-    #
-    # @return [Config]
     attr_reader :config
 
   private
+
+    attr_reader :state
+
+    def apply_env_defaults = (env_jobs = ENV['MUTANT_JOBS']) && with(jobs: ParseJobs.(env_jobs, 'MUTANT_JOBS'))
 
     # Parse the command-line options
     #
@@ -89,22 +76,20 @@ module Mutant
     # @return [undefined]
     def parse(arguments)
       parse_match_expressions(option_parser.parse!(CLIArgumentSanitizer.call($stderr, arguments)))
+      apply_env_defaults if apply_jobs_env_defaults?
     rescue OptionParser::ParseError => error
       raise(Error, error)
     end
 
-    def option_parser
-      OptionParser.new do |builder|
-        builder.banner = 'usage: mutant [options] MATCH_EXPRESSION ...'
-        add_options(builder)
-      end
-    end
+    def option_parser = OptionParser.new(&method(:configure_option_parser))
 
-    def add_options(builder)
-      add_environment_options(builder)
-      add_mutation_options(builder)
-      add_filter_options(builder)
-      add_debug_options(builder)
+    def apply_jobs_env_defaults? = !state.fetch(:jobs_explicit) && !state.fetch(:exit_requested)
+
+    def configure_option_parser(builder)
+      builder.banner = 'usage: mutant [options] MATCH_EXPRESSION ...'
+      %i[add_environment_options add_mutation_options add_filter_options add_debug_options].each do |name|
+        __send__(name, builder)
+      end
     end
 
     # Parse matchers
@@ -121,9 +106,6 @@ module Mutant
     # Add environmental options
     #
     # @param [Object] opts
-    #
-    # @return [undefined]
-    #
     # rubocop:disable MethodLength
     def add_environment_options(opts)
       opts.separator('Environment:')
@@ -136,8 +118,9 @@ module Mutant
       opts.on('-r', '--require NAME', 'Require file with NAME') do |name|
         add(:requires, name)
       end
-      opts.on('-j', '--jobs NUMBER', 'Number of kill jobs. Defaults to number of processors.') do |number|
-        with(jobs: Integer(number))
+      opts.on('-j', '--jobs NUMBER', 'Number of kill jobs. Defaults to MUTANT_JOBS or 1.') do |number|
+        state[:jobs_explicit] = true
+        with(jobs: ParseJobs.(number, '--jobs'))
       end
     end
 
@@ -170,6 +153,9 @@ module Mutant
     #
     # @return [undefined]
     def add_filter_options(opts)
+      opts.on('--include-subject EXPRESSION', 'Add EXPRESSION to the configured subject matcher list') do |pattern|
+        add_matcher(:match_expressions, config.expression_parser.(pattern))
+      end
       opts.on('--ignore-subject EXPRESSION', 'Ignore subjects that match EXPRESSION as prefix') do |pattern|
         add_matcher(:ignore_expressions, config.expression_parser.(pattern))
       end
@@ -179,8 +165,8 @@ module Mutant
           Repository::SubjectFilter.new(
             Repository::Diff.new(
               config: config,
-              from:   Repository::Diff::HEAD,
-              to:     revision
+              from:   revision,
+              to:     Repository::Diff::HEAD
             )
           )
         )
@@ -197,10 +183,12 @@ module Mutant
         with(fail_fast: true)
       end
       opts.on('--version', 'Print mutants version') do
+        state[:exit_requested] = true
         puts("mutant-#{VERSION}")
         config.kernel.exit
       end
       opts.on_tail('-h', '--help', 'Show this message') do
+        state[:exit_requested] = true
         puts(opts.to_s)
         config.kernel.exit
       end
@@ -211,9 +199,7 @@ module Mutant
     # @param [Hash<Symbol, Object>] attributes
     #
     # @return [undefined]
-    def with(attributes)
-      @config = config.with(attributes)
-    end
+    def with(attributes) = @config = config.with(attributes)
 
     # Add configuration
     #
@@ -224,9 +210,7 @@ module Mutant
     #   the value to add
     #
     # @return [undefined]
-    def add(attribute, value)
-      with(attribute => config.public_send(attribute) + [value])
-    end
+    def add(attribute, value) = with(attribute => config.public_send(attribute) + [value])
 
     # Add matcher configuration
     #
@@ -237,9 +221,33 @@ module Mutant
     #   the value to add
     #
     # @return [undefined]
-    def add_matcher(attribute, value)
-      with(matcher: config.matcher.add(attribute, value))
-    end
+    def add_matcher(attribute, value) = with(matcher: config.matcher.add(attribute, value))
 
   end # CLI
+
+  class CLI
+  private
+
+    def setup(arguments)
+      @config = Config::DEFAULT
+      @state = {
+        exit_requested: false,
+        jobs_explicit: false
+      }
+      parse(arguments)
+    end
+
+    alias_method :initialize, :setup
+    private :initialize, :setup
+  end
+
+  class CLI
+    ParseJobs = lambda do |input, source|
+      jobs = Integer(input)
+      raise Error, "#{source} must be >= 1" if jobs < 1
+      jobs
+    rescue ArgumentError
+      raise Error, "#{source} must be an integer"
+    end
+  end
 end # Mutant

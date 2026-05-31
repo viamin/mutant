@@ -15,7 +15,8 @@ detectors:
     - Mutant::Expression#match_length
   DataClump:
     enabled: true
-    exclude: []
+    exclude:
+    - Mutant::Matcher::SourcePath
     max_copies: 2
     min_clump_size: 2
   DuplicateMethodCall:
@@ -33,6 +34,7 @@ detectors:
     enabled: true
     exclude:
     - Mutant::Matcher::Method::Instance#self.build
+    - Mutant::Matcher::SourcePath#subject_methods
     - Mutant::Meta::Example::DSL # 3 vars
     max_params: 2
   LongYieldList:
@@ -59,6 +61,7 @@ detectors:
     exclude:
     - Mutant::Mutator
     - Mutant::Meta::Example::DSL
+    - Mutant::SinceRevisionResolver
     max_ifs: 1
   TooManyInstanceVariables:
     enabled: true
@@ -128,6 +131,7 @@ detectors:
     - Mutant::Integration::Null#call
     - Mutant::Integration::Rspec#parse_example
     - Mutant::Integration::Rspec#parse_expression # intentional, private
+    - Mutant::Matcher::SourcePath#candidate_method_names # intentional
     - Mutant::Meta::Example::Verification#format_mutations # intentional, private
     - Mutant::Reporter::CLI::Format::Progressive#new_buffer
     - Mutant::Reporter::CLI::Printer::StatusProgressive#object # False positive calls super
