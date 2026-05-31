@@ -299,6 +299,30 @@ RSpec.describe Mutant::Runner do
 
       expect(runner.send(:with_signal_handlers) { :ok }).to eql(:ok)
     end
+
+    it 'installs both handlers before yielding' do
+      expect(Signal).to receive(:trap).with('INT').ordered.and_return('DEFAULT')
+      expect(Signal).to receive(:trap).with('TERM').ordered.and_return('IGNORE')
+      expect(Signal).to receive(:trap).with('INT', 'DEFAULT').ordered
+      expect(Signal).to receive(:trap).with('TERM', 'IGNORE').ordered
+
+      expect { runner.send(:with_signal_handlers) { :ok } }.not_to raise_error
+    end
+  end
+
+  describe '#mutation_test_config' do
+    let(:runner) do
+      described_class.allocate.tap do |object|
+        object.send(:initialize, env)
+      end
+    end
+
+    it 'builds the expected parallel config' do
+      expect(env).to receive(:method).with(:kill).and_return(processor)
+      expect(Mutant::Runner::Sink).to receive(:new).with(env).and_return(sink)
+
+      expect(runner.send(:mutation_test_config)).to eql(parallel_config)
+    end
   end
 
   describe '#run' do

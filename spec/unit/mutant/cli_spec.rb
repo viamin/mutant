@@ -405,4 +405,73 @@ RSpec.describe Mutant::CLI do
       end
     end
   end
+
+  describe '#setup' do
+    subject(:setup_cli) { cli.send(:setup, arguments) }
+
+    let(:cli)       { described_class.allocate }
+    let(:arguments) { %w[foo] }
+
+    before do
+      allow(cli).to receive(:parse)
+    end
+
+    it 'sets defaults and parses the provided arguments' do
+      setup_cli
+
+      expect(cli.config).to eql(Mutant::Config::DEFAULT)
+      expect(cli.send(:state)).to eql(
+        exit_requested: false,
+        jobs_explicit: false
+      )
+      expect(cli.send(:apply_jobs_env_defaults?)).to be(true)
+      expect(cli).to have_received(:parse).with(arguments)
+    end
+  end
+
+  describe 'private helpers' do
+    subject(:cli) do
+      described_class.allocate.tap do |object|
+        object.send(:initialize, [])
+      end
+    end
+
+    describe '#add' do
+      it 'appends the value to the selected configuration attribute' do
+          expect { cli.send(:add, :includes, 'foo') }
+          .to change { cli.config.includes }
+          .from(Mutant::EMPTY_ARRAY)
+          .to(%w[foo])
+      end
+    end
+
+    describe '#add_debug_options' do
+      let(:option_parser) { OptionParser.new }
+
+      before do
+        cli.send(:add_debug_options, option_parser)
+      end
+
+      it 'enables fail-fast via the configured option handler' do
+        expect { option_parser.parse!(%w[--fail-fast]) }
+          .to change { cli.config.fail_fast }
+          .from(false)
+          .to(true)
+      end
+
+      it 'uses the configured kernel for --version exits' do
+        expect($stdout).to receive(:puts).with("mutant-#{Mutant::VERSION}")
+        expect(cli.config.kernel).to receive(:exit)
+
+        option_parser.parse!(%w[--version])
+      end
+
+      it 'uses the configured kernel for --help exits' do
+        expect($stdout).to receive(:puts).with(option_parser.to_s)
+        expect(cli.config.kernel).to receive(:exit)
+
+        option_parser.parse!(%w[--help])
+      end
+    end
+  end
 end

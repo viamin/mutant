@@ -7,11 +7,8 @@ module Mutant
 
     # Error failed when CLI argv is invalid
     Error = Class.new(RuntimeError)
-
     # Run cli with arguments
-    #
     # @param [Array<String>] arguments
-    #
     # @return [Boolean]
     def self.run(arguments)
       Runner.call(Env::Bootstrap.call(call(arguments))).success?
@@ -20,16 +17,11 @@ module Mutant
       false
     end
 
-    def initialize(arguments)
-      @config = Config::DEFAULT
-      @exit_requested = @jobs_explicit = false
-      parse(arguments)
-      apply_env_defaults unless @jobs_explicit || @exit_requested
-    end
-
     attr_reader :config
 
   private
+
+    attr_reader :state
 
     def apply_env_defaults = (env_jobs = ENV['MUTANT_JOBS']) && with(jobs: ParseJobs.(env_jobs, 'MUTANT_JOBS'))
 
@@ -43,16 +35,21 @@ module Mutant
     #
     # @return [undefined]
     def parse(arguments)
-      opts = OptionParser.new do |builder|
-        builder.banner = 'usage: mutant [options] MATCH_EXPRESSION ...'
-        %i[add_environment_options add_mutation_options add_filter_options add_debug_options].each do |name|
-          __send__(name, builder)
-        end
-      end
-
-      parse_match_expressions(opts.parse!(arguments))
+      parse_match_expressions(option_parser.parse!(arguments))
+      apply_env_defaults if apply_jobs_env_defaults?
     rescue OptionParser::ParseError => error
       raise(Error, error)
+    end
+
+    def option_parser = OptionParser.new(&method(:configure_option_parser))
+
+    def apply_jobs_env_defaults? = !state.fetch(:jobs_explicit) && !state.fetch(:exit_requested)
+
+    def configure_option_parser(builder)
+      builder.banner = 'usage: mutant [options] MATCH_EXPRESSION ...'
+      %i[add_environment_options add_mutation_options add_filter_options add_debug_options].each do |name|
+        __send__(name, builder)
+      end
     end
 
     # Parse matchers
@@ -82,7 +79,7 @@ module Mutant
         add(:requires, name)
       end
       opts.on('-j', '--jobs NUMBER', 'Number of kill jobs. Defaults to MUTANT_JOBS or 1.') do |number|
-        @jobs_explicit = true
+        state[:jobs_explicit] = true
         with(jobs: ParseJobs.(number, '--jobs'))
       end
     end
@@ -143,12 +140,12 @@ module Mutant
         with(fail_fast: true)
       end
       opts.on('--version', 'Print mutants version') do
-        @exit_requested = true
+        state[:exit_requested] = true
         puts("mutant-#{VERSION}")
         config.kernel.exit
       end
       opts.on_tail('-h', '--help', 'Show this message') do
-        @exit_requested = true
+        state[:exit_requested] = true
         puts(opts.to_s)
         config.kernel.exit
       end
@@ -184,6 +181,22 @@ module Mutant
     def add_matcher(attribute, value) = with(matcher: config.matcher.add(attribute, value))
 
   end # CLI
+
+  class CLI
+  private
+
+    def setup(arguments)
+      @config = Config::DEFAULT
+      @state = {
+        exit_requested: false,
+        jobs_explicit: false
+      }
+      parse(arguments)
+    end
+
+    alias_method :initialize, :setup
+    private :initialize, :setup
+  end
 
   class CLI
     ParseJobs = lambda do |input, source|

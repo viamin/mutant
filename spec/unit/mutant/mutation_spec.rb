@@ -122,6 +122,46 @@ RSpec.describe Mutant::Mutation do
     end
   end
 
+  describe '.exception_success?' do
+    subject { mutation_class.exception_success?(exception) }
+
+    let(:exception) { SyntaxError.new('broken mutation') }
+
+    context 'on mutation with positive pass expectation' do
+      it { should be(false) }
+    end
+
+    context 'on mutation with negative pass expectation' do
+      let(:mutation_class) do
+        Class.new(super()) do
+          const_set(:TEST_PASS_SUCCESS, false)
+        end
+      end
+
+      context 'with mutation-induced exceptions' do
+        it { should be(true) }
+      end
+
+      context 'with a serialized mutation-induced exception' do
+        let(:exception) do
+          Mutant::Isolation::Result::SerializedException.new(
+            Mutant::EMPTY_ARRAY,
+            'SystemExit',
+            '#<SystemExit: exit>'
+          )
+        end
+
+        it { should be(true) }
+      end
+
+      context 'with a non-mutation exception' do
+        let(:exception) { RuntimeError.new('app bug') }
+
+        it { should be(false) }
+      end
+    end
+  end
+
   describe '#identification' do
 
     subject { object.identification }

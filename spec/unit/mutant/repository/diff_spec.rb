@@ -1,28 +1,29 @@
 # frozen_string_literal: true
 
 describe Mutant::Repository::Diff do
+  let(:object) do
+    described_class.new(
+      config: config,
+      from:   'from_rev',
+      to:     'to_rev'
+    )
+  end
+
+  let(:config) do
+    instance_double(
+      Mutant::Config,
+      kernel:   kernel,
+      open3:    open3,
+      pathname: pathname
+    )
+  end
+
+  let(:pathname) { class_double(Pathname, pwd: pwd) }
+  let(:open3)    { class_double(Open3)              }
+  let(:kernel)   { class_double(Kernel)             }
+  let(:pwd)      { Pathname.new('/foo')             }
+
   describe '#touches?' do
-    let(:object) do
-      described_class.new(
-        config: config,
-        from:   'from_rev',
-        to:     'to_rev'
-      )
-    end
-
-    let(:config) do
-      instance_double(
-        Mutant::Config,
-        kernel:   kernel,
-        open3:    open3,
-        pathname: pathname
-      )
-    end
-
-    let(:pathname)   { class_double(Pathname, pwd: pwd) }
-    let(:open3)      { class_double(Open3)              }
-    let(:kernel)     { class_double(Kernel)             }
-    let(:pwd)        { Pathname.new('/foo')             }
     let(:path)       { Pathname.new('/foo/bar.rb')      }
     let(:line_range) { 1..2                             }
 
@@ -104,6 +105,29 @@ describe Mutant::Repository::Diff do
           end
 
           it { should be(true) }
+
+          context 'when git diff also fails' do
+            let(:diff_status) { instance_double(Process::Status, success?: false) }
+
+            it 'raises error' do
+              expect { subject }.to raise_error(
+                Mutant::Repository::RepositoryError,
+                "Command #{expected_git_diff_command} failed!"
+              )
+            end
+          end
+
+          context 'when fallback diff only contains zero-length hunks' do
+            let(:diff_stdout) { "@@ -1,0 +1,0 @@\n" }
+
+            it { should be(false) }
+          end
+
+          context 'when fallback diff includes non-hunk lines before a matching hunk' do
+            let(:diff_stdout) { "diff --git a/foo b/foo\n@@ -1,0 +1,2 @@\n+foo\n+bar\n" }
+
+            it { should be(true) }
+          end
         end
       end
 
@@ -121,6 +145,33 @@ describe Mutant::Repository::Diff do
 
           it { should be(true) }
         end
+      end
+    end
+  end
+
+  describe '#parse_hunk' do
+    subject { object.send(:parse_hunk, line) }
+
+    context 'with an explicit line count' do
+      let(:line) { '@@ -4,0 +7,2 @@' }
+
+      it { should eql([7, 2]) }
+    end
+
+    context 'without an explicit line count' do
+      let(:line) { '@@ -4 +7 @@' }
+
+      it { should eql([7, 1]) }
+    end
+
+    context 'with a malformed hunk header' do
+      let(:line) { 'not a hunk header' }
+
+      it 'raises an error' do
+        expect { subject }.to raise_error(
+          Mutant::Repository::RepositoryError,
+          'Cannot parse diff hunk: "not a hunk header"'
+        )
       end
     end
   end

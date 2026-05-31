@@ -5,6 +5,40 @@ module Mutant
     # Error raised on repository interaction problems
     RepositoryError = Class.new(RuntimeError)
 
+    DiffCommandResult = Struct.new(:command, :stdout, :stderr, :status) do
+      def self.capture(open3_module, command)
+        stdout, stderr, status = open3_module.capture3(*command, binmode: true)
+
+        new(command, stdout, stderr, status)
+      end
+
+      def fetch_stdout
+        return stdout if success?
+
+        fail RepositoryError, "Command #{command} failed!"
+      end
+
+      def output? = success? && !stdout.empty?
+
+      def invalid_line_range?
+        Diff::INVALID_LINE_RANGE_PATTERN.match?(stderr)
+      end
+
+      def success? = status.success?
+    end
+
+    DiffLocation = Struct.new(:path, :line_range) do
+      def line_argument = "#{line_range.begin},#{line_range.end}:#{path}"
+
+      def touched_by_hunk?(start_line, line_count)
+        return false if line_count.zero?
+
+        hunk_end = start_line + line_count - 1
+
+        line_range.begin <= hunk_end && start_line <= line_range.end
+      end
+    end
+
     # Subject filter based on repository diff
     class SubjectFilter
       include Adamantium, Concord.new(:diff)
@@ -37,45 +71,36 @@ module Mutant
       # @raise [RepositoryError]
       #   when git command failed
       def touches?(path, line_range)
-        return false unless within_working_directory?(path) && tracks?(path)
+        location = DiffLocation.new(path, line_range)
 
-        stdout, stderr, status = config.open3.capture3(*log_command(path, line_range), binmode: true)
+        return false unless within_working_directory?(location.path) && tracks?(location.path)
 
-        return !stdout.empty? if status.success?
-        return diff_touches?(path, line_range) if invalid_line_range?(stderr)
+        result = DiffCommandResult.capture(config.open3, log_command(location))
 
-        fail RepositoryError, "Command #{log_command(path, line_range)} failed!"
+        return result.output? if result.success?
+        return diff_touches?(location) if result.invalid_line_range?
+
+        fail RepositoryError, "Command #{result.command} failed!"
       end
 
     private
 
-      def log_command(path, line_range)
+      def log_command(location)
         %W[
           git log
           #{to}..#{from}
           --ignore-all-space
-          -L #{line_range.begin},#{line_range.end}:#{path}
+          -L #{location.line_argument}
         ]
       end
 
-      def diff_touches?(path, line_range)
-        command = %W[git diff --unified=0 #{to}..#{from} -- #{path}]
-        stdout, _stderr, status = config.open3.capture3(*command, binmode: true)
-
-        fail RepositoryError, "Command #{command} failed!" unless status.success?
-
-        stdout.each_line.grep(/\A@@/).any? do |line|
-          start_line, line_count = parse_hunk(line)
-          next false if line_count.zero?
-
-          hunk_end = start_line + line_count - 1
-
-          line_range.begin <= hunk_end && start_line <= line_range.end
-        end
-      end
-
-      def invalid_line_range?(stderr)
-        INVALID_LINE_RANGE_PATTERN.match?(stderr)
+      def diff_touches?(location)
+        DiffCommandResult
+          .capture(config.open3, %W[git diff --unified=0 #{to}..#{from} -- #{location.path}])
+          .fetch_stdout
+          .each_line
+          .grep(/\A@@/)
+          .any? { |line| location.touched_by_hunk?(*parse_hunk(line)) }
       end
 
       def parse_hunk(line)

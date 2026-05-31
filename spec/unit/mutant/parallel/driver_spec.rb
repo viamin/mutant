@@ -178,5 +178,19 @@ RSpec.describe Mutant::Parallel::Driver do
         )
       end
     end
+
+    it 'replaces the source with an empty array source before joining workers' do
+      expect(var_source).to receive(:modify) do |&block|
+        expect(block.call).to eql(Mutant::Parallel::Source::Array.new(Mutant::EMPTY_ARRAY))
+      end
+      expect(thread_a).to receive(:join)
+      expect(thread_b).to receive(:join)
+      allow(thread_a).to receive_messages(alive?: false)
+      allow(thread_b).to receive_messages(alive?: false)
+      expect(var_active_jobs).to receive(:with).and_yield(active_jobs)
+      expect(var_sink).to receive(:with).and_yield(sink)
+
+      apply
+    end
   end
 end
