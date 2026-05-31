@@ -56,10 +56,13 @@ describe Mutant::Repository::Diff do
   end
 
   describe '#touches?' do
-    subject { object.touches?(path, line_range) }
+    subject { object.touches?(location) }
 
     let(:path)       { Pathname.new('/foo/lib/bar.rb') }
     let(:line_range) { 1..2 }
+    let(:location) do
+      Mutant::Repository::SubjectLocation.new(path, line_range)
+    end
 
     context 'when file is in a different subdirectory' do
       let(:path) { Pathname.new('/baz/bar.rb') }

@@ -15,9 +15,7 @@ module Mutant
       #
       # @return [Boolean]
       def call(subject)
-        source_path, source_lines = SubjectLocation.from_subject(subject).to_a
-
-        diff.touches?(source_path, source_lines)
+        diff.touches?(SubjectLocation.from_subject(subject))
       end
 
     end # SubjectFilter
@@ -122,15 +120,14 @@ module Mutant
 
       # Test if diff changes file at line range
       #
-      # @param [Pathname] path
-      # @param [Range<Integer>] line_range
+      # @param [SubjectLocation] location
       #
       # @return [Boolean]
       #
       # @raise [RepositoryError]
       #   when git command failed
-      def touches?(path, line_range)
-        touched_ranges(path)&.touches?(line_range) || false
+      def touches?(location)
+        touched_ranges(location.path)&.touches?(location.line_range) || false
       end
 
       def diff_hunks
