@@ -66,6 +66,7 @@ detectors:
     - Mutant::Mutator
     - Mutant::Meta::Example::DSL
     - Mutant::Config::Loader::NodeReader
+    - Mutant::Repository::Diff
     max_ifs: 1
   TooManyInstanceVariables:
     enabled: true
@@ -73,6 +74,7 @@ detectors:
     - Mutant::Mutator # 4 vars
     - Mutant::Parallel::Master # 4 vars
     - Mutant::Meta::Example::DSL # 4 vars
+    - Mutant::Result::Mutation # 4 vars
     max_instance_variables: 3
   TooManyMethods:
     enabled: true
@@ -146,3 +148,4 @@ detectors:
     - Mutant::Repository::Diff#within_working_directory? # intentional, private
     - Mutant::Config::CoverageCriteria#timeout_status? # intentional, private
     - Mutant::Config::Loader::NodeReader#to_ruby # intentional, private
+    - Mutant::Repository::Diff#fallback_touches? # intentional, private

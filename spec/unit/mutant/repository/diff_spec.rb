@@ -80,60 +80,46 @@ describe Mutant::Repository::Diff do
 
       context 'on failure of git log command' do
         let(:success?) { false }
+        let(:stdout)   { 'fatal: some error' }
 
-        context 'when git reports an invalid line range' do
-          let(:stdout) { 'fatal: file /foo/bar.rb has only 1 lines' }
-
-          before do
-            expect(config.open3).to receive(:capture2e)
-              .ordered
-              .with(*expected_fallback_command, binmode: true)
-              .and_return([fallback_stdout, fallback_status])
-          end
-
-          let(:expected_fallback_command) do
-            %W[git log from_rev...to_rev -- #{path}]
-          end
-
-          let(:fallback_status) do
-            instance_double(Process::Status, success?: fallback_success?)
-          end
-
-          let(:fallback_stdout)  { instance_double(String, empty?: fallback_empty?) }
-          let(:fallback_empty?)  { false }
-          let(:fallback_success?) { true }
-
-          context 'and the fallback succeeds with changes' do
-            let(:fallback_empty?) { false }
-
-            it { should be(true) }
-          end
-
-          context 'and the fallback succeeds without changes' do
-            let(:fallback_empty?) { true }
-
-            it { should be(false) }
-          end
-
-          context 'and the fallback fails' do
-            let(:fallback_success?) { false }
-
-            it 'raises error' do
-              expect { subject }.to raise_error(
-                Mutant::Repository::RepositoryError,
-                "Command #{expected_fallback_command} failed!"
-              )
-            end
-          end
+        before do
+          expect(config.open3).to receive(:capture2e)
+            .ordered
+            .with(*expected_fallback_command, binmode: true)
+            .and_return([fallback_stdout, fallback_status])
         end
 
-        context 'when git fails for another reason' do
-          let(:stdout) { 'fatal: bad revision' }
+        let(:expected_fallback_command) do
+          %W[git log from_rev...to_rev -- #{path}]
+        end
+
+        let(:fallback_status) do
+          instance_double(Process::Status, success?: fallback_success?)
+        end
+
+        let(:fallback_stdout)   { instance_double(String, empty?: fallback_empty?) }
+        let(:fallback_empty?)   { false }
+        let(:fallback_success?) { true }
+
+        context 'and the fallback succeeds with changes' do
+          let(:fallback_empty?) { false }
+
+          it { should be(true) }
+        end
+
+        context 'and the fallback succeeds without changes' do
+          let(:fallback_empty?) { true }
+
+          it { should be(false) }
+        end
+
+        context 'and the fallback fails' do
+          let(:fallback_success?) { false }
 
           it 'raises error' do
             expect { subject }.to raise_error(
               Mutant::Repository::RepositoryError,
-              "Command #{expected_git_log_command} failed!"
+              "Command #{expected_fallback_command} failed!"
             )
           end
         end

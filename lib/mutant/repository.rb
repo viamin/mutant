@@ -49,10 +49,8 @@ module Mutant
 
         if status.success?
           !stdout.empty?
-        elsif line_range_failure?(stdout)
-          fallback_touches?(path)
         else
-          fail RepositoryError, "Command #{command} failed!"
+          fallback_touches?(path)
         end
       end
 
@@ -66,10 +64,6 @@ module Mutant
       end
 
     private
-
-      def line_range_failure?(output)
-        output.include?('has only') && output.include?(' lines')
-      end
 
       # Test if path is tracked in repository
       #
