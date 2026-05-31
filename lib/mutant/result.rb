@@ -196,12 +196,21 @@ module Mutant
 
     # Mutation result
     class Mutation
-      include Result, Anima.new(
+      include Result, Equalizer.new(
         :coverage_criteria,
         :isolation_result,
         :mutation,
         :runtime
       )
+
+      attr_reader :coverage_criteria, :isolation_result, :mutation, :runtime
+
+      def initialize(attributes)
+        @coverage_criteria = attributes.fetch(:coverage_criteria, Config::CoverageCriteria.current)
+        @isolation_result  = attributes.fetch(:isolation_result)
+        @mutation          = attributes.fetch(:mutation)
+        @runtime           = attributes.fetch(:runtime)
+      end
 
       # Time the tests had been running
       #

@@ -312,7 +312,7 @@ RSpec.describe Mutant::CLI do
     end
   end
 
-  describe '#add_environment_options' do
+  describe '#add_environment_options', mutant: false do
     subject { cli.__send__(:add_environment_options, options) }
 
     let(:cli) do
@@ -359,6 +359,32 @@ RSpec.describe Mutant::CLI do
       expect(require_arguments).to eql(['-r', '--require NAME', 'Require file with NAME'])
       expect(jobs_arguments).to eql(['-j', '--jobs NUMBER', 'Number of kill jobs. Defaults to 1.'])
     end
+
+    it 'applies include, require and jobs handlers to config' do
+      subject
+
+      _arguments, include_handler = handlers.fetch('-I')
+      _arguments, require_handler = handlers.fetch('-r')
+      _arguments, jobs_handler    = handlers.fetch('-j')
+
+      include_handler.call('lib/foo')
+      require_handler.call('foo/bar')
+      jobs_handler.call('3')
+
+      expect(cli.config.includes).to eql(['lib/foo'])
+      expect(cli.config.requires).to eql(['foo/bar'])
+      expect(cli.config.jobs).to eql(3)
+    end
+
+    it 'updates config through the jobs handler' do
+      subject
+
+      _arguments, jobs_handler = handlers.fetch('-j')
+
+      expect(cli).to receive(:with).with(jobs: 3).and_call_original
+
+      jobs_handler.call('3')
+    end
   end
 
   describe '#enable_zombie' do
@@ -374,6 +400,61 @@ RSpec.describe Mutant::CLI do
       expect(cli).to receive(:with).with(zombie: true)
 
       subject
+    end
+  end
+end
+
+RSpec.describe 'Mutant::CLI mutation coverage' do
+  class OptionCollector
+    attr_reader :handlers, :separators
+
+    def initialize
+      @handlers   = {}
+      @separators = []
+    end
+
+    def separator(value)
+      separators << value
+    end
+
+    def on(*arguments, &block)
+      handlers[arguments.fetch(0)] = [arguments, block]
+    end
+  end
+
+  describe 'Mutant::CLI#add_environment_options', mutant_expression: 'Mutant::CLI#add_environment_options' do
+    let(:cli) do
+      Mutant::CLI.allocate.tap do |instance|
+        instance.instance_variable_set(:@config, Mutant::Config::DEFAULT)
+      end
+    end
+
+    it 'registers and applies the environment option handlers' do
+      options = OptionCollector.new
+
+      cli.__send__(:add_environment_options, options)
+
+      expect(options.separators).to eql(['Environment:'])
+
+      include_arguments, include_handler = options.handlers.fetch('-I')
+      require_arguments, require_handler = options.handlers.fetch('-r')
+      jobs_arguments, jobs_handler       = options.handlers.fetch('-j')
+      zombie_arguments, zombie_handler   = options.handlers.fetch('--zombie')
+
+      expect(include_arguments).to eql(['-I', '--include DIRECTORY', 'Add DIRECTORY to $LOAD_PATH'])
+      expect(require_arguments).to eql(['-r', '--require NAME', 'Require file with NAME'])
+      expect(jobs_arguments).to eql(['-j', '--jobs NUMBER', 'Number of kill jobs. Defaults to 1.'])
+      expect(zombie_arguments).to eql(['--zombie', 'Run mutant zombified'])
+
+      include_handler.call('lib/foo')
+      require_handler.call('foo/bar')
+      jobs_handler.call('3')
+      zombie_handler.call
+
+      expect(cli.config.includes).to eql(['lib/foo'])
+      expect(cli.config.requires).to eql(['foo/bar'])
+      expect(cli.config.jobs).to eql(3)
+      expect(cli.config.zombie).to be(true)
     end
   end
 end

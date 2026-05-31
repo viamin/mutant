@@ -4,6 +4,7 @@ module Mutant
   class Config
     # Mutation coverage classification criteria
     class CoverageCriteria
+      THREAD_KEY = :mutant_coverage_criteria
       TIMEOUT_SIGNALS = %w[KILL TERM].filter_map { |name| Signal.list[name] }.freeze
 
       include Adamantium, Anima.new(
@@ -17,6 +18,14 @@ module Mutant
         test_result:   true,
         timeout:       false
       )
+
+      def self.current
+        Thread.current.fetch(THREAD_KEY, DEFAULT)
+      end
+
+      def self.current=(value)
+        Thread.current[THREAD_KEY] = value
+      end
 
       # Determine if a mutation counts as killed
       #

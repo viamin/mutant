@@ -45,7 +45,20 @@ module Mutant
           -L #{line_range.begin},#{line_range.end}:#{path}
         ]
 
-        stdout, status = config.open3.capture2(*command, binmode: true)
+        stdout, status = config.open3.capture2e(*command, binmode: true)
+
+        if status.success?
+          !stdout.empty?
+        elsif line_range_failure?(stdout)
+          fallback_touches?(path)
+        else
+          fail RepositoryError, "Command #{command} failed!"
+        end
+      end
+
+      def fallback_touches?(path)
+        command = %W[git log #{from}...#{to} -- #{path}]
+        stdout, status = config.open3.capture2e(*command, binmode: true)
 
         fail RepositoryError, "Command #{command} failed!" unless status.success?
 
@@ -53,6 +66,10 @@ module Mutant
       end
 
     private
+
+      def line_range_failure?(output)
+        output.include?('has only') && output.include?(' lines')
+      end
 
       # Test if path is tracked in repository
       #

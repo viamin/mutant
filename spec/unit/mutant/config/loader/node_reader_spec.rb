@@ -79,6 +79,17 @@ RSpec.describe Mutant::Config::Loader::NodeReader do
         )
       end
     end
+
+    context 'with a non-string child value' do
+      let(:node) { document_root("- false\n") }
+
+      it 'raises a validation error using the list context' do
+        expect { subject }.to raise_error(
+          Mutant::Config::Loader::Error,
+          'Invalid value for requires at /tmp/.mutant.yml:1: expected String'
+        )
+      end
+    end
   end
 
   describe '#string_hash' do

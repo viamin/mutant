@@ -3,8 +3,6 @@
 module Mutant
   # Abstract base class for mutant environments
   class Env
-    ENVIRONMENT_VARIABLE_MUTEX = Mutex.new
-
     include Adamantium::Flat, Anima.new(
       :config,
       :integration,
@@ -28,7 +26,6 @@ module Mutant
       start = Timer.now
 
       Result::Mutation.new(
-        coverage_criteria: config.coverage_criteria,
         isolation_result: run_mutation_tests(mutation),
         mutation:         mutation,
         runtime:          Timer.now - start
@@ -47,6 +44,8 @@ module Mutant
 
   private
 
+    ENVIRONMENT_VARIABLE_MUTEX = Mutex.new
+
     # Kill mutation under isolation with integration
     #
     # @param [Isolation] isolation
@@ -54,6 +53,8 @@ module Mutant
     #
     # @return [Result::Isolation]
     def run_mutation_tests(mutation)
+      Config::CoverageCriteria.current = config.coverage_criteria
+
       config.isolation.call do
         with_environment_variables do
           mutation.insert(config.kernel)
