@@ -92,7 +92,7 @@ module Mutant
       def log_command(location)
         %W[
           git log
-          #{to}..#{from}
+          #{from}..#{to}
           --ignore-all-space
           -L #{location.line_argument}
         ]
@@ -100,7 +100,7 @@ module Mutant
 
       def diff_touches?(location)
         DiffCommandResult
-          .capture(config.open3, %W[git diff --unified=0 #{to}..#{from} -- #{location.path}])
+          .capture(config.open3, %W[git diff --unified=0 #{from}..#{to} -- #{location.path}])
           .fetch_stdout
           .each_line
           .grep(/\A@@/)

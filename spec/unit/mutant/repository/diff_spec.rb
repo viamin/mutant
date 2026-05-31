@@ -157,7 +157,7 @@ describe Mutant::Repository::Diff do
       end
 
       let(:expected_git_log_command) do
-        %W[git log to_rev..from_rev --ignore-all-space -L 1,2:#{path}]
+        %W[git log from_rev..to_rev --ignore-all-space -L 1,2:#{path}]
       end
 
       context 'on failure of git log command' do
@@ -175,7 +175,7 @@ describe Mutant::Repository::Diff do
           let(:stderr)                { 'fatal: file /foo/bar.rb has only 1 lines'          }
           let(:diff_status)           { instance_double(Process::Status, success?: true)    }
           let(:diff_stdout)           { "@@ -1,0 +1,2 @@\n+foo\n+bar\n"                     }
-          let(:expected_git_diff_command) { %W[git diff --unified=0 to_rev..from_rev -- #{path}] }
+          let(:expected_git_diff_command) { %W[git diff --unified=0 from_rev..to_rev -- #{path}] }
 
           before do
             expect(config.open3).to receive(:capture3)
