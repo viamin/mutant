@@ -55,7 +55,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       MUTANT_JOBS: 4
-      MUTANT_SINCE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -64,4 +63,11 @@ jobs:
         with:
           ruby-version: '3.3'
           bundler-cache: true
+      - name: Determine mutant baseline
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "MUTANT_SINCE=$(git merge-base HEAD ${{ github.event.pull_request.base.sha }})" >> "$GITHUB_ENV"
+          else
+            echo "MUTANT_SINCE=${{ github.event.before }}" >> "$GITHUB_ENV"
+          fi
       - run: bundle exec rake metrics:mutant
