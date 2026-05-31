@@ -197,12 +197,11 @@ module Mutant
     # Mutation result
     class Mutation
       include Result, Anima.new(
+        :coverage_criteria,
         :isolation_result,
         :mutation,
         :runtime
       )
-
-      def coverage_criteria = Config::CoverageCriteria.current
 
       # Time the tests had been running
       #

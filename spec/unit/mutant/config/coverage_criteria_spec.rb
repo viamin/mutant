@@ -50,10 +50,75 @@ RSpec.describe Mutant::Config::CoverageCriteria do
   end
 
   describe '.current=' do
-    it 'stores the value in the current thread' do
-      described_class.current = object
+    let(:current_value) do
+      described_class.new(
+        process_abort: true,
+        test_result:   false,
+        timeout:       true
+      )
+    end
 
-      expect(Thread.current[described_class::THREAD_KEY]).to eql(object)
+    it 'stores the value in the current thread' do
+      Thread.current[described_class::THREAD_KEY] = nil
+
+      result = described_class.send(:current=, current_value)
+
+      expect(result).to eql(current_value)
+      expect(described_class.current).to eql(current_value)
+      expect(Thread.current[described_class::THREAD_KEY]).to eql(current_value)
+    end
+  end
+
+  describe '.with_current' do
+    let(:original) do
+      described_class.new(
+        process_abort: true,
+        test_result:   true,
+        timeout:       true
+      )
+    end
+
+    let(:other) do
+      described_class.new(
+        process_abort: true,
+        test_result:   false,
+        timeout:       true
+      )
+    end
+
+    it 'sets and restores the value in the current thread' do
+      described_class.current = original
+
+      result = described_class.with_current(other) do
+        expect(described_class.current).to eql(other)
+        :block_result
+      end
+
+      expect(result).to eql(:block_result)
+      expect(described_class.current).to eql(original)
+    end
+
+    it 'restores the original value after an exception' do
+      described_class.current = original
+
+      expect do
+        described_class.with_current(other) do
+          raise 'boom'
+        end
+      end.to raise_error(RuntimeError, 'boom')
+
+      expect(described_class.current).to eql(original)
+    end
+
+    it 'restores a missing original value after yielding' do
+      Thread.current[described_class::THREAD_KEY] = nil
+
+      described_class.with_current(other) do
+        expect(described_class.current).to eql(other)
+      end
+
+      expect(Thread.current[described_class::THREAD_KEY]).to be(nil)
+      expect(described_class.current).to eql(described_class::DEFAULT)
     end
   end
 

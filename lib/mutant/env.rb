@@ -26,6 +26,7 @@ module Mutant
       start = Timer.now
 
       Result::Mutation.new(
+        coverage_criteria: config.coverage_criteria,
         isolation_result: run_mutation_tests(mutation),
         mutation:         mutation,
         runtime:          Timer.now - start
@@ -53,10 +54,12 @@ module Mutant
     #
     # @return [Result::Isolation]
     def run_mutation_tests(mutation)
-      config.isolation.call do
-        with_environment_variables do
-          mutation.insert(config.kernel)
-          integration.call(selections.fetch(mutation.subject))
+      Config::CoverageCriteria.with_current(config.coverage_criteria) do
+        config.isolation.call do
+          with_environment_variables do
+            mutation.insert(config.kernel)
+            integration.call(selections.fetch(mutation.subject))
+          end
         end
       end
     end

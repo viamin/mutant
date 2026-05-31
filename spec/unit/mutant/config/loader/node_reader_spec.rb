@@ -25,7 +25,25 @@ RSpec.describe Mutant::Config::Loader::NodeReader do
       end
 
       it 'returns key node pairs' do
+        expect(subject).to all(have_attributes(size: 2))
         expect(subject.map(&:first)).to eql(%w[subjects ignore])
+        expect(subject.map(&:last)).to all(be_instance_of(Psych::Nodes::Sequence))
+      end
+    end
+
+    context 'with a non-string key' do
+      let(:node) do
+        document_root(<<~YAML)
+          false:
+            - TestApp*
+        YAML
+      end
+
+      it 'raises a validation error using the mapping context' do
+        expect { subject }.to raise_error(
+          Mutant::Config::Loader::Error,
+          'Invalid value for matcher at /tmp/.mutant.yml:1: expected String'
+        )
       end
     end
 
@@ -46,6 +64,22 @@ RSpec.describe Mutant::Config::Loader::NodeReader do
       end
     end
 
+    context 'with an unknown key in nested context' do
+      let(:context) { %w[config matcher] }
+      let(:node) do
+        document_root(<<~YAML)
+          invalid: true
+        YAML
+      end
+
+      it 'raises a line-aware error with the full nested path' do
+        expect { subject }.to raise_error(
+          Mutant::Config::Loader::Error,
+          'Unknown config key "config.matcher.invalid" at /tmp/.mutant.yml:1'
+        )
+      end
+    end
+
     context 'with an invalid node type' do
       let(:node) { document_root("- TestApp*\n") }
 
@@ -53,6 +87,18 @@ RSpec.describe Mutant::Config::Loader::NodeReader do
         expect { subject }.to raise_error(
           Mutant::Config::Loader::Error,
           'Invalid value for matcher at /tmp/.mutant.yml:1: expected mapping'
+        )
+      end
+    end
+
+    context 'with an invalid node type for nested context' do
+      let(:context) { %w[config matcher] }
+      let(:node)    { document_root("- TestApp*\n") }
+
+      it 'raises a validation error with the full nested path' do
+        expect { subject }.to raise_error(
+          Mutant::Config::Loader::Error,
+          'Invalid value for config.matcher at /tmp/.mutant.yml:1: expected mapping'
         )
       end
     end
@@ -156,6 +202,19 @@ RSpec.describe Mutant::Config::Loader::NodeReader do
         expect { subject }.to raise_error(
           Mutant::Config::Loader::Error,
           'Invalid value for jobs at /tmp/.mutant.yml:1: expected Integer'
+        )
+      end
+    end
+
+    context 'when the value is not an integer for nested context' do
+      subject { object.integer(node, %w[coverage_criteria timeout]) }
+
+      let(:node) { document_root("1.0\n") }
+
+      it 'raises a validation error with the full nested path' do
+        expect { subject }.to raise_error(
+          Mutant::Config::Loader::Error,
+          'Invalid value for coverage_criteria.timeout at /tmp/.mutant.yml:1: expected Integer'
         )
       end
     end

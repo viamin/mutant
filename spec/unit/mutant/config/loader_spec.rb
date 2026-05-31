@@ -38,6 +38,17 @@ RSpec.describe Mutant::Config::Loader do
       it { should eql(base_config) }
     end
 
+    context 'when yaml parsing returns a non-document node' do
+      before do
+        config_path.write("integration: rspec\n")
+        allow(Psych).to receive(:parse_file).with(config_path).and_return(Psych::Nodes::Scalar.new('value'))
+      end
+
+      it 'ignores the config file contents' do
+        expect(subject).to eql(base_config)
+      end
+    end
+
     context 'when config file has invalid yaml syntax' do
       before do
         config_path.write("integration: [\n")
@@ -184,6 +195,19 @@ RSpec.describe Mutant::Config::Loader do
         expect { subject }.to raise_error(
           Mutant::Config::Loader::Error,
           %r{\AInvalid value for fail_fast at .*/\.mutant\.yml:1: expected Boolean\z}
+        )
+      end
+    end
+
+    context 'when integration has an invalid value type' do
+      before do
+        config_path.write("integration: true\n")
+      end
+
+      it 'raises a validation error for integration' do
+        expect { subject }.to raise_error(
+          Mutant::Config::Loader::Error,
+          %r{\AInvalid value for integration at .*/\.mutant\.yml:1: expected String\z}
         )
       end
     end

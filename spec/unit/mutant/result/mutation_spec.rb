@@ -17,6 +17,7 @@ RSpec.describe Mutant::Result::Mutation do
 
   let(:object) do
     described_class.new(
+      coverage_criteria: coverage_criteria,
       isolation_result: isolation_result,
       mutation:         mutation,
       runtime:          2.0
@@ -24,7 +25,7 @@ RSpec.describe Mutant::Result::Mutation do
   end
 
   let(:mutation) { instance_double(Mutant::Mutation) }
-  let(:success) { true }
+  let(:success)  { true }
   let(:coverage_criteria) do
     CoverageCriteriaSpy.new(isolation_result, mutation, success)
   end
@@ -38,14 +39,6 @@ RSpec.describe Mutant::Result::Mutation do
 
   let(:isolation_result) do
     Mutant::Isolation::Result::Success.new(test_result)
-  end
-
-  before do
-    Mutant::Config::CoverageCriteria.current = coverage_criteria
-  end
-
-  after do
-    Mutant::Config::CoverageCriteria.current = Mutant::Config::CoverageCriteria::DEFAULT
   end
 
   shared_examples_for 'unsuccessful isolation' do

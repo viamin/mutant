@@ -25,6 +25,14 @@ module Mutant
         Thread.current[THREAD_KEY] = value
       end
 
+      def self.with_current(value)
+        previous = Thread.current[THREAD_KEY]
+        self.current = value
+        yield
+      ensure
+        Thread.current[THREAD_KEY] = previous
+      end
+
       # Determine if a mutation counts as killed
       #
       # @param [Mutation] mutation
