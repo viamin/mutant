@@ -39,6 +39,15 @@ module Mutant
         include Concord::Public.new(:value)
       end # Error
 
+      # Serializable exception proxy for fork transport
+      class SerializedException
+        include Concord::Public.new(:backtrace, :exception_class_name, :inspection)
+
+        def inspect
+          inspection
+        end
+      end
+
       # Result when there where many results
       class ErrorChain < Result
         include Concord::Public.new(:value, :next)

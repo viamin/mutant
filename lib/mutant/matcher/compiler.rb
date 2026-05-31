@@ -43,7 +43,7 @@ module Mutant
       def ignored_subjects
         Morpher::Evaluator::Predicate::Boolean::Negation.new(
           Morpher::Evaluator::Predicate::Boolean::Or.new(
-            config.ignore_expressions.map(&SubjectPrefix.method(:new))
+            config.ignore_expressions.map(&:subject_predicate)
           )
         )
       end
