@@ -89,11 +89,7 @@ module Mutant
         #
         # @return [Integer]
         def match_length(expression)
-          if eql?(expression)
-            syntax.length
-          else
-            prefix_match_length(expression)
-          end
+          prefix_match_length(expression)
         end
 
       end # Exact
