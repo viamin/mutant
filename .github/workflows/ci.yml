@@ -64,4 +64,7 @@ jobs:
         with:
           ruby-version: '3.3'
           bundler-cache: true
+      - if: github.event_name == 'pull_request'
+        name: Fetch pull request base commit
+        run: git fetch --no-tags --depth=1 origin ${{ github.event.pull_request.base.sha }}
       - run: bundle exec rake metrics:mutant
