@@ -69,11 +69,8 @@ module Mutant
         end
 
         def body_uses_arguments?
-          arguments.children.any? do |argument|
-            extract_argument_names(argument).any? do |name|
-              local_variable_used_in_node?(body, name)
-            end
-          end
+          argument_names = arguments.children.flat_map { |arg| extract_argument_names(arg) }
+          argument_names.any? { |name| local_variable_used_in_node?(body, name) }
         end
 
       end # Block
