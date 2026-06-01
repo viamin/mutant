@@ -404,6 +404,10 @@ RSpec.describe Mutant::AST::Regexp::Transformer::Text do
       expect(expression.class).to eql(::Regexp::Expression::EscapeSequence::UTF8Hex)
       expect(expression.text).to eql('\\xFF')
     end
+
+    it 'round trips the original ast type' do
+      expect(Mutant::AST::Regexp.to_ast(Mutant::AST::Regexp.to_expression(ast))).to eql(ast)
+    end
   end
 end
 

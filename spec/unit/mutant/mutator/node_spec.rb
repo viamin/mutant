@@ -221,8 +221,20 @@ RSpec.describe Mutant::Mutator::Node do
         expect(mutator.send(:local_variable_used_in_node?, parse('foo { |value| value }'), :value)).to be(false)
       end
 
+      it 'still traverses a shadowing block send in the outer scope' do
+        candidate = s(:block, s(:send, s(:lvar, :value), :each), s(:args, s(:arg, :value)), s(:lvar, :value))
+
+        expect(mutator.send(:local_variable_used_in_node?, candidate, :value)).to be(true)
+      end
+
       it 'returns false when a numblock parameter shadows the name' do
         expect(mutator.send(:local_variable_used_in_node?, parse('foo { _1 }'), :_1)).to be(false)
+      end
+
+      it 'still traverses a shadowing numblock send in the outer scope' do
+        candidate = s(:numblock, s(:send, s(:lvar, :value), :then), 1, s(:lvar, :_1))
+
+        expect(mutator.send(:local_variable_used_in_node?, candidate, :value)).to be(true)
       end
     end
   end
@@ -399,6 +411,12 @@ RSpec.describe Mutant::Mutator::Node::Argument do
         s(:block, s(:send, nil, :foo), s(:args, s(:procarg0, s(:arg, :_value))), body)
       )
     end
+
+    it 'does not rename a required argument used in a default expression' do
+      expect(Mutant::Mutator.mutate(parse('def foo(a, b = a); end'))).not_to include(
+        s(:def, :foo, s(:args, s(:arg, :_a), s(:optarg, :b, s(:lvar, :a))), nil)
+      )
+    end
   end
 end
 
@@ -445,6 +463,22 @@ RSpec.describe Mutant::Mutator::Node::Arguments do
         s(:block, s(:send, nil, :foo), s(:args), body)
       )
     end
+
+    it 'does not remove a required argument used in a default expression' do
+      expect(Mutant::Mutator.mutate(parse('def foo(a, b = a); end'))).not_to include(
+        s(:def, :foo, s(:args, s(:optarg, :b, s(:lvar, :a))), nil)
+      )
+    end
+
+    it 'does not remove a destructured block argument used in the body' do
+      input  = parse('foo { |(value)| value }')
+      body   = input.children.fetch(2)
+      result = Mutant::Mutator.mutate(input)
+
+      expect(result).not_to include(
+        s(:block, s(:send, nil, :foo), s(:args), body)
+      )
+    end
   end
 end
 
@@ -480,6 +514,30 @@ RSpec.describe Mutant::Mutator::Node::Block do
       result = described_class.call(input)
 
       expect(result).to include(body)
+    end
+
+    it 'does not emit a standalone body when a shadowing inner block send still uses the argument' do
+      input  = parse('foo { |value| value.each { |value| value } }')
+      body   = input.children.fetch(2)
+      result = described_class.call(input)
+
+      expect(result).not_to include(body)
+    end
+
+    it 'does not emit a standalone body when a shadowing inner numblock send still uses the argument' do
+      input  = parse('foo { |value| value.then { _1 } }')
+      body   = input.children.fetch(2)
+      result = described_class.call(input)
+
+      expect(result).not_to include(body)
+    end
+
+    it 'does not emit a standalone body that still uses a destructured block argument' do
+      input  = parse('foo { |(value)| value }')
+      body   = input.children.fetch(2)
+      result = described_class.call(input)
+
+      expect(result).not_to include(body)
     end
   end
 end

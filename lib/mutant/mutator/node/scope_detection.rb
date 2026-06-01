@@ -9,11 +9,9 @@ module Mutant
     private
 
       def local_variable_used_in_scope?(name)
-        local_variable_used_in_node?(scope_body_node, name)
-      end
-
-      def scope_body_node
-        scope_owner_node&.children&.last
+        scope_nodes_for_local_variable_lookup(scope_owner_node).any? do |node|
+          local_variable_used_in_node?(node, name)
+        end
       end
 
       def local_variable_used_in_node?(candidate, name)
@@ -24,15 +22,57 @@ module Mutant
 
       def local_variable_used_in_node_uncached?(candidate, name)
         return false unless candidate.is_a?(::Parser::AST::Node)
-        return false if hard_scope_boundary?(candidate)
-        return false if scope_shadows_name?(candidate, name)
         return true if n_lvar?(candidate) && candidate.children.eql?([name])
 
-        candidate.children.any? { |child| local_variable_used_in_node?(child, name) }
+        visible_children_for_local_variable_lookup(candidate, name).any? do |child|
+          local_variable_used_in_node?(child, name)
+        end
       end
 
       def local_variable_usage_cache
         LOCAL_VARIABLE_USAGE_CACHE[self] ||= {}
+      end
+
+      def scope_nodes_for_local_variable_lookup(node)
+        return [] unless node.is_a?(::Parser::AST::Node)
+
+        case node.type
+        when :block
+          [node.children[1], node.children[2]]
+        when :numblock
+          [node.children[2]]
+        when :def
+          [node.children[1], node.children[2]]
+        when :defs
+          [node.children[2], node.children[3]]
+        else
+          []
+        end.compact
+      end
+
+      def visible_children_for_local_variable_lookup(node, name)
+        return [] if hard_scope_boundary?(node)
+
+        case node.type
+        when :block
+          send_node, args_node, body_node = node.children
+
+          if scope_shadows_name?(node, name)
+            [send_node]
+          else
+            [send_node, args_node, body_node]
+          end
+        when :numblock
+          send_node, = node.children
+
+          if scope_shadows_name?(node, name)
+            [send_node]
+          else
+            [send_node, node.children[2]]
+          end
+        else
+          node.children
+        end.compact
       end
 
       def hard_scope_boundary?(node)
@@ -57,17 +97,21 @@ module Mutant
       def scope_argument_names(args_node)
         return [] unless args_node.is_a?(::Parser::AST::Node) && n_args?(args_node)
 
-        args_node.children.filter_map { |arg| extract_argument_name(arg) }
+        args_node.children.flat_map { |arg| extract_argument_names(arg) }
       end
 
-      def extract_argument_name(node)
-        return unless node.is_a?(::Parser::AST::Node)
+      def extract_argument_names(node)
+        return [] unless node.is_a?(::Parser::AST::Node)
 
         case node.type
         when :procarg0
-          extract_argument_name(node.children.first)
+          extract_argument_names(node.children.first)
+        when :mlhs
+          node.children.flat_map { |child| extract_argument_names(child) }
         when :arg, :optarg, :kwarg, :kwoptarg, :restarg, :kwrestarg, :blockarg
-          node.children.first
+          [node.children.first]
+        else
+          []
         end
       end
 

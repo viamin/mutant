@@ -70,9 +70,9 @@ module Mutant
 
         def body_uses_arguments?
           arguments.children.any? do |argument|
-            name = extract_argument_name(argument)
-
-            name && local_variable_used_in_node?(body, name)
+            extract_argument_names(argument).any? do |name|
+              local_variable_used_in_node?(body, name)
+            end
           end
         end
 

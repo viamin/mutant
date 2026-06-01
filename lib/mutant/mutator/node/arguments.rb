@@ -71,13 +71,13 @@ module Mutant
         def removed_argument_names(mutated_children)
           removed_children = children - mutated_children
 
-          removed_children.filter_map(&method(:extract_argument_name))
+          removed_children.flat_map(&method(:extract_argument_names))
         end
 
         def local_variable_used_argument?(child)
-          name = extract_argument_name(child)
-
-          name && local_variable_used_in_scope?(name)
+          extract_argument_names(child).any? do |name|
+            local_variable_used_in_scope?(name)
+          end
         end
 
         # Emit mlhs expansions
