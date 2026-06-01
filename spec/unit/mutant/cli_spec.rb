@@ -29,10 +29,10 @@ RSpec.describe Mutant::CLI do
     context 'when usage is passed with another value' do
       let(:arguments) { %w[--usage proprietary TestApp*] }
 
-      it 'removes both arguments and warns' do
+      it 'removes only the flag and warns' do
         expect($stderr).to receive(:puts).with(described_class::WARNING)
 
-        expect(sanitize_arguments).to eql(%w[TestApp*])
+        expect(sanitize_arguments).to eql(%w[proprietary TestApp*])
       end
     end
 
@@ -272,6 +272,14 @@ RSpec.describe Mutant::CLI do
 
       context 'when passed with another value' do
         let(:flags) { %w[--usage proprietary] }
+        let(:expected_matcher_config) do
+          Mutant::Matcher::Config::DEFAULT.with(
+            match_expressions: [
+              parse_expression('proprietary'),
+              parse_expression('TestApp*')
+            ]
+          )
+        end
 
         it_should_behave_like 'a cli parser'
       end
@@ -290,7 +298,6 @@ RSpec.describe Mutant::CLI do
 
       context 'when passed before a match expression' do
         let(:flags) { %w[--usage] }
-        let(:expected_matcher_config) { Mutant::Matcher::Config::DEFAULT }
 
         it_should_behave_like 'a cli parser'
       end

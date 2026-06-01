@@ -5,6 +5,7 @@ module Mutant
     include Adamantium::Flat, Procto.call(:call)
 
     WARNING = '--usage is a no-op in viamin/mutant (MIT-licensed)'
+    USAGE_VALUES = %w[opensource commercial].freeze
 
     def initialize(stderr, arguments)
       @stderr    = stderr
@@ -32,7 +33,7 @@ module Mutant
 
       arguments.delete_at(index) if argument == '--usage' &&
         arguments[index] &&
-        !arguments[index].start_with?('-')
+        USAGE_VALUES.include?(arguments[index])
     end
 
     def usage_argument_index
