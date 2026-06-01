@@ -12,14 +12,13 @@ module Mutant
     end
 
     def call
-      warned = false
+      original = arguments.dup
 
       while (index = usage_argument_index)
-        warned = true
         delete_usage_argument(index)
       end
 
-      stderr.puts(WARNING) if warned
+      stderr.puts(WARNING) unless arguments == original
 
       arguments
     end
