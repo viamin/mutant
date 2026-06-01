@@ -5,44 +5,6 @@ module Mutant
     # Error raised on repository interaction problems
     RepositoryError = Class.new(RuntimeError)
 
-    class DiffCommandResult
-      include Adamantium::Flat, Anima.new(:command, :stdout, :stderr, :status)
-
-      def self.capture(open3_module, command)
-        stdout, stderr, status = open3_module.capture3(*command, binmode: true)
-
-        new(command: command, stdout: stdout, stderr: stderr, status: status)
-      end
-
-      def fetch_stdout
-        return stdout if success?
-
-        fail RepositoryError, "Command #{command} failed!"
-      end
-
-      def output? = success? && !stdout.empty?
-
-      def invalid_line_range?
-        Diff::INVALID_LINE_RANGE_PATTERN.match?(stderr)
-      end
-
-      def success? = status.success?
-    end
-
-    class DiffLocation
-      include Adamantium::Flat, Anima.new(:path, :line_range)
-
-      def line_argument = "#{line_range.begin},#{line_range.end}:#{path}"
-
-      def touched_by_hunk?(start_line, line_count)
-        return false if line_count.zero?
-
-        hunk_end = start_line + line_count - 1
-
-        line_range.begin <= hunk_end && start_line <= line_range.end
-      end
-    end
-
     # Subject filter based on repository diff
     class SubjectFilter
       include Adamantium, Concord.new(:diff)
@@ -53,82 +15,154 @@ module Mutant
       #
       # @return [Boolean]
       def call(subject)
-        diff.touches?(subject.source_path, subject.source_lines)
+        diff.touches?(SubjectLocation.from_subject(subject))
       end
 
     end # SubjectFilter
+
+    # Source location of a subject within the repository.
+    SubjectLocation = Struct.new(:path, :line_range) do
+      def self.from_subject(subject)
+        new(subject.source_path, subject.source_lines)
+      end
+    end
+
+    # Changed line ranges for a file, or an all-lines match for new files.
+    ChangedLineRanges = Struct.new(:all, :ranges) do
+      def self.empty
+        new(false, [])
+      end
+
+      def add(range)
+        ranges << range
+      end
+
+      def touches?(line_range)
+        all || ranges.any? { |range| range.begin <= line_range.end && line_range.begin <= range.end }
+      end
+    end
+    ChangedLineRanges::ALL = ChangedLineRanges.new(true, EMPTY_ARRAY).freeze
+
+    # Parser for unified diff output that groups changed line ranges by file path.
+    class DiffHunkParser
+      HUNK_HEADER = /\A@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/
+
+      def self.call(output)
+        State.new(files: {}).tap do |state|
+          output.each_line { |line| state.parse_line(line) }
+        end.files
+      end
+
+      # Mutable parse state while walking unified diff output.
+      State = Struct.new(:files, :current_file, :file_type, keyword_init: true) do
+        def parse_line(line)
+          handle_new_file(line) ||
+            handle_existing_file(line) ||
+            handle_deleted_file(line) ||
+            handle_current_file(line) ||
+            register_hunk(line)
+        end
+
+        def register_hunk(line)
+          match = HUNK_HEADER.match(line)
+          return unless match && current_file && !all_subjects_file?
+
+          range = hunk_range(match)
+          file_ranges << range if range
+        end
+
+        def handle_new_file(line)
+          self.file_type = :new if line.start_with?('--- /dev/null')
+        end
+
+        def handle_existing_file(line)
+          self.file_type = :normal if line.start_with?('--- a/')
+        end
+
+        def handle_deleted_file(line)
+          return unless line.start_with?('+++ /dev/null')
+
+          self.current_file = nil
+          self.file_type    = :deleted
+        end
+
+        def handle_current_file(line)
+          return unless %r{\A\+\+\+ b/(.*)}.match(line)
+
+          self.current_file = Regexp.last_match(1).strip
+          files[current_file] = Repository::ChangedLineRanges::ALL if file_type.equal?(:new)
+          self.file_type = :normal
+        end
+
+        def all_subjects_file?
+          files[current_file].equal?(Repository::ChangedLineRanges::ALL)
+        end
+
+        def hunk_range(match)
+          count = Integer(match[2] || 1)
+          return if count.zero?
+
+          start_line = Integer(match[1])
+          start_line..(start_line + count - 1)
+        end
+
+        def file_ranges
+          (files[current_file] ||= Repository::ChangedLineRanges.empty).ranges
+        end
+      end
+    end
 
     # Diff between two objects in repository
     class Diff
       include Adamantium, Anima.new(:config, :from, :to)
 
       HEAD = 'HEAD'
-      INVALID_LINE_RANGE_PATTERN = /has only \d+ lines/.freeze
 
       # Test if diff changes file at line range
       #
-      # @param [Pathname] path
-      # @param [Range<Integer>] line_range
+      # @param [SubjectLocation] location
       #
       # @return [Boolean]
       #
       # @raise [RepositoryError]
       #   when git command failed
-      def touches?(path, line_range)
-        location = DiffLocation.new(path: path, line_range: line_range)
+      def touches?(location)
+        touched_ranges(location.path)&.touches?(location.line_range) || false
+      end
 
-        return false unless within_working_directory?(location.path) && tracks?(location.path)
+      def diff_hunks
+        DiffHunkParser.call(command_output(%W[git diff #{resolved_from}...#{resolved_to}]))
+      end
+      memoize :diff_hunks
 
-        result = DiffCommandResult.capture(config.open3, log_command(location))
+      def touched_ranges(path)
+        return unless within_working_directory?(path)
 
-        return result.output? if result.success?
-        return diff_touches?(location) if result.invalid_line_range?
-
-        fail RepositoryError, "Command #{result.command} failed!"
+        diff_hunks.fetch(path.relative_path_from(config.pathname.pwd).to_s, nil)
       end
 
     private
 
-      def log_command(location)
-        %W[
-          git log
-          #{from}..#{to}
-          --ignore-all-space
-          -L #{location.line_argument}
-        ]
+      def resolved_from
+        resolve_ref(from)
+      end
+      memoize :resolved_from
+
+      def resolved_to
+        resolve_ref(to)
+      end
+      memoize :resolved_to
+
+      def resolve_ref(ref)
+        command_output(%W[git rev-parse --verify #{ref}]).strip
       end
 
-      def diff_touches?(location)
-        DiffCommandResult
-          .capture(config.open3, %W[git diff --unified=0 #{from}..#{to} -- #{location.path}])
-          .fetch_stdout
-          .each_line
-          .grep(/\A@@/)
-          .any? { |line| location.touched_by_hunk?(*parse_hunk(line)) }
-      end
+      def command_output(command)
+        stdout, status = config.open3.capture2(*command, binmode: true)
 
-      def parse_hunk(line)
-        match = /\A@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/.match(line)
+        fail RepositoryError, "Command #{command} failed!" unless status.success?
 
-        fail RepositoryError, "Cannot parse diff hunk: #{line.inspect}" unless match
-
-        [Integer(match[1]), Integer(match[2] || 1)]
-      end
-
-      # Test if path is tracked in repository
-      #
-      # FIXME: Cache results, to avoid spending time on producing redundant results.
-      #
-      # @param [Pathname] path
-      #
-      # @return [Boolean]
-      def tracks?(path)
-        command = %W[git ls-files --error-unmatch -- #{path}]
-        config.kernel.system(
-          *command,
-          out: File::NULL,
-          err: File::NULL
-        )
+        stdout
       end
 
       # Test if the path is within the current working directory

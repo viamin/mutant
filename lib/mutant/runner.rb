@@ -5,6 +5,15 @@ module Mutant
   class Runner
     include Adamantium::Flat, Concord.new(:env)
 
+    EMPTY_RESULT_BUILDER = lambda do |env|
+      Result::Env.new(
+        env:             env,
+        runtime:         0.0,
+        subject_results: []
+      )
+    end
+    private_constant :EMPTY_RESULT_BUILDER
+
     # Run mutation analysis for an environment before freezing the runner
     def self.call(env)
       build(env).freeze.result
@@ -29,6 +38,12 @@ module Mutant
     end
 
     def run_mutation_analysis
+      return EMPTY_RESULT_BUILDER.call(env).tap { |result| reporter.report(result) } if env.mutations.empty?
+
+      run_parallel_analysis
+    end
+
+    def run_parallel_analysis
       result = nil
       driver = Parallel.async(mutation_test_config)
 
