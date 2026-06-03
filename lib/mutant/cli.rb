@@ -1,11 +1,9 @@
 # frozen_string_literal: true
 
 module Mutant
-  # Commandline parser / runner
   class CLI
     include Adamantium::Flat, Equalizer.new(:config)
 
-    # Error failed when CLI argv is invalid
     Error = Class.new(RuntimeError)
 
     SUBCOMMANDS = %w[run environment session help].freeze
@@ -16,11 +14,6 @@ module Mutant
       This compatibility alias will be removed in a future release.
     MESSAGE
 
-    # Run cli with arguments
-    #
-    # @param [Array<String>] arguments
-    #
-    # @return [Boolean]
     def self.run(arguments)
       Runner.call(Env::Bootstrap.call(call(arguments))).success?
     rescue Error => exception
@@ -28,20 +21,12 @@ module Mutant
       false
     end
 
-    # Instantiate cli and process arguments
-    #
-    # @param [Array<String>] arguments
-    #
-    # @return [Config]
     def self.call(arguments)
       allocate.tap do |instance|
         instance.__send__(:process, arguments)
       end.config
     end
 
-    # Config parsed from CLI
-    #
-    # @return [Config]
     def config
       return instance_variable_get(:@config) if instance_variable_defined?(:@config)
 
@@ -52,6 +37,12 @@ module Mutant
 
     GLOBAL_FLAGS = %w[--help -h --version].freeze
     HELP_FLAGS   = %w[--help -h].freeze
+
+    attr_reader :state
+
+    def apply_env_defaults = (env_jobs = ENV['MUTANT_JOBS']) && with(jobs: ParseJobs.(env_jobs, 'MUTANT_JOBS'))
+
+    def apply_jobs_env_defaults? = !state.fetch(:jobs_explicit) && !state.fetch(:exit_requested)
 
     def normalize_arguments(arguments)
       return arguments if arguments.empty?
@@ -98,16 +89,19 @@ module Mutant
     end
 
     def parse(arguments)
-      opts = OptionParser.new do |builder|
+      parse_match_expressions(option_parser.parse!(arguments))
+      apply_env_defaults if apply_jobs_env_defaults?
+    rescue OptionParser::ParseError => error
+      raise(Error, error)
+    end
+
+    def option_parser
+      OptionParser.new do |builder|
         builder.banner = 'usage: mutant run [options] MATCH_EXPRESSION ...'
         %i[add_environment_options add_mutation_options add_filter_options add_debug_options].each do |name|
           __send__(name, builder)
         end
       end
-
-      parse_match_expressions(opts.parse!(arguments))
-    rescue OptionParser::ParseError => error
-      raise(Error, error)
     end
 
     def parse_match_expressions(expressions)
@@ -129,4 +123,30 @@ module Mutant
     end
 
   end # CLI
+
+  class CLI
+  private
+
+    def setup(arguments)
+      @config = Config::DEFAULT
+      @state = {
+        exit_requested: false,
+        jobs_explicit: false
+      }
+      process(arguments)
+    end
+
+    alias_method :initialize, :setup
+    private :initialize, :setup
+  end
+
+  class CLI
+    ParseJobs = lambda do |input, source|
+      jobs = Integer(input)
+      raise Error, "#{source} must be >= 1" if jobs < 1
+      jobs
+    rescue ArgumentError
+      raise Error, "#{source} must be an integer"
+    end
+  end
 end # Mutant

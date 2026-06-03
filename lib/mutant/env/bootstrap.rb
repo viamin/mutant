@@ -56,6 +56,11 @@ module Mutant
       #
       def env
         subjects = matched_subjects
+
+        if subjects.empty? && diff_filter_configured?
+          warn('No subjects matched the configured diff filter. No mutations to test.')
+        end
+
         Env.new(
           config:           config,
           integration:      integration,
@@ -108,6 +113,13 @@ module Mutant
       # @return [Enumerable<Subject>]
       def matched_subjects
         Matcher::Compiler.call(config.matcher).call(self)
+      end
+
+      # Test if matcher has a repository diff filter configured.
+      #
+      # @return [Boolean]
+      def diff_filter_configured?
+        config.matcher.subject_filters.any?(Repository::SubjectFilter)
       end
 
       # Initialize matchable scopes

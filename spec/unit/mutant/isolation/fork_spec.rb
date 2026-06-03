@@ -75,6 +75,16 @@ RSpec.describe Mutant::Isolation::Fork do
         selector: :close
       },
       {
+        receiver:  Signal,
+        selector:  :trap,
+        arguments: ['INT', 'DEFAULT']
+      },
+      {
+        receiver:  Signal,
+        selector:  :trap,
+        arguments: ['TERM', 'DEFAULT']
+      },
+      {
         receiver: devnull,
         selector: :call,
         reaction: {
@@ -150,6 +160,275 @@ RSpec.describe Mutant::Isolation::Fork do
       specify do
         XSpec::ExpectationVerifier.verify(self, expectations) do
           expect(subject).to eql(Mutant::Isolation::Result::Success.new(block_return))
+        end
+      end
+    end
+
+    context 'when the isolated block raises an exception' do
+      let(:exception) do
+        RuntimeError.new('boom').tap do |error|
+          error.set_backtrace(%w[line-a line-b])
+        end
+      end
+      let(:exception_result) do
+        Mutant::Isolation::Result::Exception.new(
+          Mutant::Isolation::Result::SerializedException.new(
+            exception.backtrace || Mutant::EMPTY_ARRAY,
+            exception.class.name,
+            exception.inspect
+          )
+        )
+      end
+      let(:exception_result_blob) { instance_double(String, :exception_result_blob) }
+      let(:isolated_block) { -> { raise exception } }
+
+      let(:expectations) do
+        [
+          *prefork_expectations,
+          fork_success,
+          {
+            receiver: reader,
+            selector: :close
+          },
+          {
+            receiver:  Signal,
+            selector:  :trap,
+            arguments: ['INT', 'DEFAULT']
+          },
+          {
+            receiver:  Signal,
+            selector:  :trap,
+            arguments: ['TERM', 'DEFAULT']
+          },
+          {
+            receiver: devnull,
+            selector: :call,
+            reaction: {
+              yields: [nullio]
+            }
+          },
+          {
+            receiver:  stderr,
+            selector:  :reopen,
+            arguments: [nullio]
+          },
+          {
+            receiver:  stdout,
+            selector:  :reopen,
+            arguments: [nullio]
+          },
+          {
+            receiver:  marshal,
+            selector:  :dump,
+            arguments: [exception_result],
+            reaction:  {
+              return: exception_result_blob
+            }
+          },
+          {
+            receiver:  writer,
+            selector:  :write,
+            arguments: [exception_result_blob]
+          },
+          writer_close,
+          writer_close,
+          {
+            receiver:  marshal,
+            selector:  :load,
+            arguments: [reader],
+            reaction:  {
+              return: exception_result
+            }
+          },
+          child_wait
+        ].map(&XSpec::MessageExpectation.method(:parse))
+      end
+
+      specify do
+        XSpec::ExpectationVerifier.verify(self, expectations) do
+          expect(subject).to eql(exception_result)
+        end
+      end
+    end
+
+    context 'when the isolated block exits' do
+      let(:exception) do
+        SystemExit.new(1).tap do |error|
+          error.set_backtrace(%w[line-a line-b])
+        end
+      end
+      let(:exception_result) do
+        Mutant::Isolation::Result::Exception.new(
+          Mutant::Isolation::Result::SerializedException.new(
+            exception.backtrace || Mutant::EMPTY_ARRAY,
+            exception.class.name,
+            exception.inspect
+          )
+        )
+      end
+      let(:exception_result_blob) { instance_double(String, :exception_result_blob) }
+      let(:isolated_block) { -> { raise exception } }
+
+      let(:expectations) do
+        [
+          *prefork_expectations,
+          fork_success,
+          {
+            receiver: reader,
+            selector: :close
+          },
+          {
+            receiver:  Signal,
+            selector:  :trap,
+            arguments: ['INT', 'DEFAULT']
+          },
+          {
+            receiver:  Signal,
+            selector:  :trap,
+            arguments: ['TERM', 'DEFAULT']
+          },
+          {
+            receiver: devnull,
+            selector: :call,
+            reaction: {
+              yields: [nullio]
+            }
+          },
+          {
+            receiver:  stderr,
+            selector:  :reopen,
+            arguments: [nullio]
+          },
+          {
+            receiver:  stdout,
+            selector:  :reopen,
+            arguments: [nullio]
+          },
+          {
+            receiver:  marshal,
+            selector:  :dump,
+            arguments: [exception_result],
+            reaction:  {
+              return: exception_result_blob
+            }
+          },
+          {
+            receiver:  writer,
+            selector:  :write,
+            arguments: [exception_result_blob]
+          },
+          writer_close,
+          writer_close,
+          {
+            receiver:  marshal,
+            selector:  :load,
+            arguments: [reader],
+            reaction:  {
+              return: exception_result
+            }
+          },
+          child_wait
+        ].map(&XSpec::MessageExpectation.method(:parse))
+      end
+
+      specify do
+        XSpec::ExpectationVerifier.verify(self, expectations) do
+          expect(subject).to eql(exception_result)
+        end
+      end
+    end
+
+    context 'when the isolated block raises an exception that cannot be marshaled' do
+      let(:exception_class) do
+        Class.new(StandardError) do
+          def backtrace
+            nil
+          end
+
+          def initialize
+            @io = $stdout
+            super('boom')
+          end
+        end
+      end
+
+      let(:exception) { exception_class.new }
+      let(:serialized_exception) do
+        Mutant::Isolation::Result::SerializedException.new(
+          exception.backtrace || Mutant::EMPTY_ARRAY,
+          exception.class.name,
+          exception.inspect
+        )
+      end
+      let(:exception_result) { Mutant::Isolation::Result::Exception.new(serialized_exception) }
+      let(:exception_result_blob) { instance_double(String, :exception_result_blob) }
+      let(:isolated_block) { -> { raise exception } }
+
+      let(:expectations) do
+        [
+          *prefork_expectations,
+          fork_success,
+          {
+            receiver: reader,
+            selector: :close
+          },
+          {
+            receiver:  Signal,
+            selector:  :trap,
+            arguments: ['INT', 'DEFAULT']
+          },
+          {
+            receiver:  Signal,
+            selector:  :trap,
+            arguments: ['TERM', 'DEFAULT']
+          },
+          {
+            receiver: devnull,
+            selector: :call,
+            reaction: {
+              yields: [nullio]
+            }
+          },
+          {
+            receiver:  stderr,
+            selector:  :reopen,
+            arguments: [nullio]
+          },
+          {
+            receiver:  stdout,
+            selector:  :reopen,
+            arguments: [nullio]
+          },
+          {
+            receiver:  marshal,
+            selector:  :dump,
+            arguments: [exception_result],
+            reaction:  {
+              return: exception_result_blob
+            }
+          },
+          {
+            receiver:  writer,
+            selector:  :write,
+            arguments: [exception_result_blob]
+          },
+          writer_close,
+          writer_close,
+          {
+            receiver:  marshal,
+            selector:  :load,
+            arguments: [reader],
+            reaction:  {
+              return: exception_result
+            }
+          },
+          child_wait
+        ].map(&XSpec::MessageExpectation.method(:parse))
+      end
+
+      specify do
+        XSpec::ExpectationVerifier.verify(self, expectations) do
+          expect(subject).to eql(exception_result)
         end
       end
     end

@@ -1,152 +1,307 @@
 # frozen_string_literal: true
 
 describe Mutant::Repository::Diff do
+  let(:object) do
+    described_class.new(
+      config: config,
+      from:   'from_rev',
+      to:     'HEAD'
+    )
+  end
+
+  let(:config) do
+    instance_double(
+      Mutant::Config,
+      open3:    open3,
+      pathname: pathname
+    )
+  end
+
+  let(:pathname) { class_double(Pathname, pwd: pwd) }
+  let(:open3)    { class_double(Open3)              }
+  let(:pwd)      { Pathname.new('/foo')             }
+  let(:status)   { instance_double(Process::Status, success?: true) }
+
+  let(:rev_parse_from_stdout) { instance_double(String, strip: 'sha_from') }
+  let(:rev_parse_to_stdout)   { instance_double(String, strip: 'sha_to')   }
+  let(:rev_parse_status)      { instance_double(Process::Status, success?: true) }
+
+  let(:expected_diff_command) do
+    %w[git diff sha_from...sha_to]
+  end
+
+  shared_context 'setup rev-parse commands' do
+    before do
+      expect(config.open3).to receive(:capture2)
+        .ordered
+        .with(*%w[git rev-parse --verify from_rev], binmode: true)
+        .and_return([rev_parse_from_stdout, rev_parse_status])
+
+      expect(config.open3).to receive(:capture2)
+        .ordered
+        .with(*%w[git rev-parse --verify HEAD], binmode: true)
+        .and_return([rev_parse_to_stdout, rev_parse_status])
+    end
+  end
+
+  shared_context 'setup diff command' do
+    include_context 'setup rev-parse commands'
+
+    before do
+      expect(config.open3).to receive(:capture2)
+        .ordered
+        .with(*expected_diff_command, binmode: true)
+        .and_return([diff_output, status])
+    end
+  end
+
   describe '#touches?' do
-    let(:object) do
-      described_class.new(
-        config: config,
-        from:   'from_rev',
-        to:     'to_rev'
-      )
-    end
+    subject { object.touches?(location) }
 
-    let(:config) do
-      instance_double(
-        Mutant::Config,
-        kernel:   kernel,
-        open3:    open3,
-        pathname: pathname
-      )
-    end
-
-    let(:pathname)   { class_double(Pathname, pwd: pwd) }
-    let(:open3)      { class_double(Open3)              }
-    let(:kernel)     { class_double(Kernel)             }
-    let(:pwd)        { Pathname.new('/foo')             }
-    let(:path)       { Pathname.new('/foo/bar.rb')      }
-    let(:line_range) { 1..2                             }
-
-    subject { object.touches?(path, line_range) }
-
-    shared_context 'test if git tracks the file' do
-      before do
-        # rubocop:disable Lint/UnneededSplatExpansion
-        expect(config.kernel).to receive(:system)
-          .ordered
-          .with(
-            *%W[git ls-files --error-unmatch -- #{path}],
-            out: File::NULL,
-            err: File::NULL
-          ).and_return(git_ls_success?)
-      end
+    let(:path)       { Pathname.new('/foo/lib/bar.rb') }
+    let(:line_range) { 1..2 }
+    let(:location) do
+      Mutant::Repository::SubjectLocation.new(path, line_range)
     end
 
     context 'when file is in a different subdirectory' do
       let(:path) { Pathname.new('/baz/bar.rb') }
 
-      before do
-        expect(config.kernel).to_not receive(:system)
+      it 'does not run git commands' do
+        expect(config.open3).to_not receive(:capture2)
+
+        expect(subject).to be(false)
       end
-
-      it { should be(false) }
     end
 
-    context 'when file is NOT tracked in repository' do
-      let(:git_ls_success?) { false }
-
-      include_context 'test if git tracks the file'
-
-      it { should be(false) }
-    end
-
-    context 'when file is tracked in repository' do
-      let(:git_ls_success?) { true                                                 }
-      let(:status)          { instance_double(Process::Status, success?: success?) }
-      let(:stdout)          { instance_double(String, empty?: stdout_empty?)       }
-      let(:stdout_empty?)   { false                                                }
-
-      include_context 'test if git tracks the file'
+    context 'when git rev-parse fails for "from" ref' do
+      let(:rev_parse_status) { instance_double(Process::Status, success?: false) }
 
       before do
-        expect(config.open3).to receive(:capture3)
+        expect(config.open3).to receive(:capture2)
           .ordered
-          .with(*expected_git_log_command, binmode: true)
-          .and_return([stdout, stderr, status])
+          .with(*%w[git rev-parse --verify from_rev], binmode: true)
+          .and_return([rev_parse_from_stdout, rev_parse_status])
       end
 
-      let(:expected_git_log_command) do
-        %W[git log from_rev...to_rev --ignore-all-space -L 1,2:#{path}]
+      it 'raises error' do
+        expect { subject }.to raise_error(
+          Mutant::Repository::RepositoryError,
+          'Command ["git", "rev-parse", "--verify", "from_rev"] failed!'
+        )
       end
-      let(:stderr) { '' }
+    end
 
-      context 'on failure of git log command' do
-        let(:success?) { false }
+    context 'when git diff command fails' do
+      let(:diff_output) { '' }
+      let(:status)      { instance_double(Process::Status, success?: false) }
 
-        it 'raises error' do
-          expect { subject }.to raise_error(
-            Mutant::Repository::RepositoryError,
-            "Command #{expected_git_log_command} failed!"
-          )
-        end
+      include_context 'setup diff command'
 
-        context 'when git cannot resolve the requested line range' do
-          let(:stderr) { "fatal: file #{path} has only 1 lines" }
-          let(:fallback_stdout) { instance_double(String, empty?: fallback_stdout_empty?) }
-          let(:fallback_stdout_empty?) { false }
+      it 'raises error' do
+        expect { subject }.to raise_error(
+          Mutant::Repository::RepositoryError,
+          "Command #{expected_diff_command} failed!"
+        )
+      end
+    end
 
-          before do
-            expect(config.open3).to receive(:capture2)
-              .ordered
-              .with(*expected_git_diff_command, binmode: true)
-              .and_return([fallback_stdout, fallback_status])
-          end
+    context 'when diff is empty' do
+      let(:diff_output) { '' }
 
-          let(:fallback_status) { instance_double(Process::Status, exitstatus: fallback_exitstatus) }
-          let(:fallback_exitstatus) { 0 }
-          let(:expected_git_diff_command) do
-            %W[git diff --name-only from_rev...to_rev -- #{path}]
-          end
+      include_context 'setup diff command'
 
-          context 'and the file is touched in the diff' do
-            let(:fallback_stdout_empty?) { false }
+      it { should be(false) }
+    end
 
-            it { should be(true) }
-          end
-
-          context 'and the file is not touched in the diff' do
-            let(:fallback_stdout_empty?) { true }
-
-            it { should be(false) }
-          end
-
-          context 'and the fallback git diff command fails' do
-            let(:fallback_exitstatus) { 1 }
-
-            it 'raises error' do
-              expect { subject }.to raise_error(
-                Mutant::Repository::RepositoryError,
-                "Command #{expected_git_diff_command} failed!"
-              )
-            end
-          end
-        end
+    context 'when file is not in the diff' do
+      let(:diff_output) do
+        <<~DIFF
+          diff --git a/lib/other.rb b/lib/other.rb
+          --- a/lib/other.rb
+          +++ b/lib/other.rb
+          @@ -10,3 +10,4 @@ context
+          +new line
+        DIFF
       end
 
-      context 'on suuccess of git command' do
-        let(:success?) { true }
+      include_context 'setup diff command'
 
-        context 'on empty stdout' do
-          let(:stdout_empty?) { true }
+      it { should be(false) }
+    end
 
-          it { should be(false) }
-        end
-
-        context 'on non empty stdout' do
-          let(:stdout_empty?) { false }
-
-          it { should be(true) }
-        end
+    context 'when file is in diff with overlapping hunk' do
+      let(:diff_output) do
+        <<~DIFF
+          diff --git a/lib/bar.rb b/lib/bar.rb
+          --- a/lib/bar.rb
+          +++ b/lib/bar.rb
+          @@ -1,3 +1,4 @@
+          context
+          +new line
+          context
+        DIFF
       end
+
+      include_context 'setup diff command'
+
+      it { should be(true) }
+    end
+
+    context 'when file is in diff but hunks do not overlap' do
+      let(:line_range) { 50..60 }
+
+      let(:diff_output) do
+        <<~DIFF
+          diff --git a/lib/bar.rb b/lib/bar.rb
+          --- a/lib/bar.rb
+          +++ b/lib/bar.rb
+          @@ -10,3 +10,4 @@
+          context
+          +new line
+          context
+        DIFF
+      end
+
+      include_context 'setup diff command'
+
+      it { should be(false) }
+    end
+
+    context 'when file range ends immediately before diff hunk starts' do
+      let(:line_range) { 1..9 }
+
+      let(:diff_output) do
+        <<~DIFF
+          diff --git a/lib/bar.rb b/lib/bar.rb
+          --- a/lib/bar.rb
+          +++ b/lib/bar.rb
+          @@ -10,3 +10,4 @@
+          context
+          +new line
+        DIFF
+      end
+
+      include_context 'setup diff command'
+
+      it { should be(false) }
+    end
+
+    context 'when file range touches the diff hunk boundary' do
+      let(:line_range) { 13..20 }
+
+      let(:diff_output) do
+        <<~DIFF
+          diff --git a/lib/bar.rb b/lib/bar.rb
+          --- a/lib/bar.rb
+          +++ b/lib/bar.rb
+          @@ -10,3 +10,4 @@
+          context
+          +new line
+        DIFF
+      end
+
+      include_context 'setup diff command'
+
+      it { should be(true) }
+    end
+
+    context 'when file is newly added' do
+      let(:line_range) { 100..200 }
+
+      let(:diff_output) do
+        <<~DIFF
+          diff --git a/lib/bar.rb b/lib/bar.rb
+          new file mode 100644
+          --- /dev/null
+          +++ b/lib/bar.rb
+          @@ -0,0 +1,5 @@
+          +line 1
+          +line 2
+        DIFF
+      end
+
+      include_context 'setup diff command'
+
+      it { should be(true) }
+    end
+
+    context 'when hunk has an implicit one-line count' do
+      let(:line_range) { 20..20 }
+
+      let(:diff_output) do
+        <<~DIFF
+          diff --git a/lib/bar.rb b/lib/bar.rb
+          --- a/lib/bar.rb
+          +++ b/lib/bar.rb
+          @@ -10 +20 @@
+          +new line
+        DIFF
+      end
+
+      include_context 'setup diff command'
+
+      it { should be(true) }
+    end
+
+    context 'when file is deleted' do
+      let(:diff_output) do
+        <<~DIFF
+          diff --git a/lib/bar.rb b/lib/bar.rb
+          deleted file mode 100644
+          --- a/lib/bar.rb
+          +++ /dev/null
+          @@ -1,3 +0,0 @@
+          -old line
+        DIFF
+      end
+
+      include_context 'setup diff command'
+
+      it { should be(false) }
+    end
+
+    context 'with multiple hunks in same file' do
+      let(:line_range) { 30..35 }
+
+      let(:diff_output) do
+        <<~DIFF
+          diff --git a/lib/bar.rb b/lib/bar.rb
+          --- a/lib/bar.rb
+          +++ b/lib/bar.rb
+          @@ -10,3 +10,4 @@
+          context
+          +new line
+          @@ -30,3 +31,4 @@
+          context
+          +other new line
+        DIFF
+      end
+
+      include_context 'setup diff command'
+
+      it { should be(true) }
+    end
+
+    context 'with multiple files in diff' do
+      let(:diff_output) do
+        <<~DIFF
+          diff --git a/lib/other.rb b/lib/other.rb
+          --- a/lib/other.rb
+          +++ b/lib/other.rb
+          @@ -10,3 +10,4 @@
+          +new line
+          diff --git a/lib/bar.rb b/lib/bar.rb
+          --- a/lib/bar.rb
+          +++ b/lib/bar.rb
+          @@ -1,3 +1,4 @@
+          +added
+        DIFF
+      end
+
+      include_context 'setup diff command'
+
+      it { should be(true) }
     end
   end
 end

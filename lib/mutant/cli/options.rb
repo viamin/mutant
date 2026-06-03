@@ -19,8 +19,9 @@ module Mutant
         opts.on('-r', '--require NAME', 'Require file with NAME') do |name|
           add(:requires, name)
         end
-        opts.on('-j', '--jobs NUMBER', 'Number of kill jobs. Defaults to number of processors.') do |number|
-          with(jobs: Integer(number))
+        opts.on('-j', '--jobs NUMBER', 'Number of kill jobs. Defaults to MUTANT_JOBS or 1.') do |number|
+          state[:jobs_explicit] = true
+          with(jobs: ParseJobs.(number, '--jobs'))
         end
       end
 
@@ -40,6 +41,9 @@ module Mutant
       end
 
       def add_filter_options(opts)
+        opts.on('--include-subject EXPRESSION', 'Add EXPRESSION to the configured subject matcher list') do |pattern|
+          add_matcher(:match_expressions, config.expression_parser.(pattern))
+        end
         opts.on('--ignore-subject EXPRESSION', 'Ignore subjects that match EXPRESSION as prefix') do |pattern|
           add_matcher(:ignore_expressions, config.expression_parser.(pattern))
         end
@@ -49,8 +53,8 @@ module Mutant
             Repository::SubjectFilter.new(
               Repository::Diff.new(
                 config: config,
-                from:   Repository::Diff::HEAD,
-                to:     revision
+                from:   revision,
+                to:     Repository::Diff::HEAD
               )
             )
           )
@@ -62,10 +66,12 @@ module Mutant
           enable_fail_fast(FAIL_FAST_TOKEN)
         end
         opts.on('--version', 'Print mutants version') do
+          state[:exit_requested] = true
           puts("mutant-#{VERSION}")
           cli_exit
         end
         opts.on_tail('-h', '--help', 'Show this message') do
+          state[:exit_requested] = true
           puts(opts.to_s)
           cli_exit
         end

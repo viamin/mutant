@@ -7,6 +7,12 @@ RSpec.describe Mutant::Repository::SubjectFilter do
     let(:object) { described_class.new(diff)                 }
     let(:diff)   { instance_double(Mutant::Repository::Diff) }
     let(:value)  { instance_double(Object, 'value')          }
+    let(:location) do
+      Mutant::Repository::SubjectLocation.new(
+        mutant_subject.source_path,
+        mutant_subject.source_lines
+      )
+    end
 
     let(:mutant_subject) do
       double(
@@ -17,10 +23,7 @@ RSpec.describe Mutant::Repository::SubjectFilter do
     end
 
     before do
-      expect(diff).to receive(:touches?).with(
-        mutant_subject.source_path,
-        mutant_subject.source_lines
-      ).and_return(value)
+      expect(diff).to receive(:touches?).with(location).and_return(value)
     end
 
     it 'connects return value to repository diff API' do

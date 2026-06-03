@@ -3,6 +3,26 @@
 RSpec.describe Mutant::Expression do
   let(:parser) { Mutant::Config::DEFAULT.expression_parser }
 
+  describe '#subject_predicate' do
+    let(:expression_class) do
+      Class.new(described_class) do
+        include Anima.new(:foo)
+
+        const_set(:REGEXP, /(?<foo>foo)/)
+
+        def syntax
+          foo
+        end
+      end
+    end
+
+    let(:object) { expression_class.new(foo: 'foo') }
+
+    subject { object.subject_predicate }
+
+    it { should eql(Mutant::Matcher::Compiler::SubjectPrefix.new(object)) }
+  end
+
   describe '#prefix?' do
     let(:object) { parser.call('Foo*') }
 
