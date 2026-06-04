@@ -23,7 +23,7 @@ module Mutant
 
     def self.call(arguments)
       allocate.tap do |instance|
-        instance.__send__(:process, arguments)
+        instance.__send__(:setup, arguments)
       end.config
     end
 
@@ -98,9 +98,13 @@ module Mutant
     def option_parser
       OptionParser.new do |builder|
         builder.banner = 'usage: mutant run [options] MATCH_EXPRESSION ...'
-        %i[add_environment_options add_mutation_options add_filter_options add_debug_options].each do |name|
-          __send__(name, builder)
-        end
+        add_option_groups(builder)
+      end
+    end
+
+    def add_option_groups(builder)
+      %i[add_environment_options add_mutation_options add_filter_options add_debug_options].each do |name|
+        __send__(name, builder)
       end
     end
 
