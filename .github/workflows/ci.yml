@@ -16,7 +16,7 @@ jobs:
       matrix:
         ruby-version: ['3.3']
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v6.0.2
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: ${{ matrix.ruby-version }}
@@ -40,7 +40,7 @@ jobs:
           - suite: generation
             command: bundle exec rspec spec/integration/mutant/corpus_spec.rb
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v6.0.2
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: '3.3'
@@ -50,7 +50,7 @@ jobs:
   metrics:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v6.0.2
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: '3.3'
@@ -63,7 +63,7 @@ jobs:
     env:
       MUTANT_JOBS: 4
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v6.0.2
         with:
           fetch-depth: 0
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
