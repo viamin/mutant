@@ -950,6 +950,56 @@ RSpec.describe Mutant::CLI do
           expect(normalized_arguments).to eql(%w[session list])
         end
       end
+
+      context 'with the run subcommand' do
+        let(:arguments) { %w[run TestApp*] }
+
+        it 'does not warn or rewrite arguments' do
+          expect(cli).not_to receive(:warn_deprecation)
+
+          expect(normalized_arguments).to eql(%w[run TestApp*])
+        end
+      end
+
+      context 'with a single global help flag' do
+        let(:arguments) { %w[--help] }
+
+        it 'does not warn or rewrite arguments' do
+          expect(cli).not_to receive(:warn_deprecation)
+
+          expect(normalized_arguments).to eql(%w[--help])
+        end
+      end
+
+      context 'with a single global short help flag' do
+        let(:arguments) { %w[-h] }
+
+        it 'does not warn or rewrite arguments' do
+          expect(cli).not_to receive(:warn_deprecation)
+
+          expect(normalized_arguments).to eql(%w[-h])
+        end
+      end
+
+      context 'with a single global version flag' do
+        let(:arguments) { %w[--version] }
+
+        it 'does not warn or rewrite arguments' do
+          expect(cli).not_to receive(:warn_deprecation)
+
+          expect(normalized_arguments).to eql(%w[--version])
+        end
+      end
+
+      context 'without a subcommand' do
+        let(:arguments) { %w[TestApp* --fail-fast] }
+
+        it 'warns and prefixes the run subcommand' do
+          expect(cli).to receive(:warn_deprecation)
+
+          expect(normalized_arguments).to eql(%w[run TestApp* --fail-fast])
+        end
+      end
     end
 
     describe '#puts' do
@@ -989,6 +1039,50 @@ RSpec.describe Mutant::CLI do
       subject(:dispatch) { cli.send(:dispatch, arguments) }
 
       let(:cli) { build_cli }
+
+      context 'with the run subcommand' do
+        let(:arguments) { %w[run TestApp*] }
+
+        it 'forwards the remaining arguments to the run handler' do
+          expect(cli).to receive(:handle_run).with(%w[TestApp*])
+          expect(cli).not_to receive(:parse)
+
+          dispatch
+        end
+      end
+
+      context 'with the environment subcommand' do
+        let(:arguments) { %w[environment --zombie] }
+
+        it 'forwards the remaining arguments to the environment handler' do
+          expect(cli).to receive(:handle_environment).with(%w[--zombie])
+          expect(cli).not_to receive(:parse)
+
+          dispatch
+        end
+      end
+
+      context 'with the session subcommand' do
+        let(:arguments) { %w[session list] }
+
+        it 'forwards the remaining arguments to the session handler' do
+          expect(cli).to receive(:handle_session).with(%w[list])
+          expect(cli).not_to receive(:parse)
+
+          dispatch
+        end
+      end
+
+      context 'with the help subcommand' do
+        let(:arguments) { %w[help run] }
+
+        it 'forwards the remaining arguments to the help handler' do
+          expect(cli).to receive(:handle_help).with(%w[run])
+          expect(cli).not_to receive(:parse)
+
+          dispatch
+        end
+      end
 
       context 'with a bare help flag' do
         let(:arguments) { %w[--help] }
@@ -1068,6 +1162,19 @@ RSpec.describe Mutant::CLI do
           expect(cli).to receive(:print_session_help)
           handle_session
         end
+      end
+    end
+
+    describe '#handle_run' do
+      subject(:handle_run) { cli.send(:handle_run, arguments) }
+
+      let(:cli) { build_cli }
+      let(:arguments) { %w[TestApp* --fail-fast] }
+
+      it 'delegates directly to parse' do
+        expect(cli).to receive(:parse).with(arguments)
+
+        handle_run
       end
     end
 
@@ -1349,6 +1456,251 @@ RSpec.describe Mutant::CLI do
           .to change { cli.config.includes }
           .from(Mutant::EMPTY_ARRAY)
           .to(%w[foo])
+      end
+    end
+
+    describe '#print_environment' do
+      let(:matcher) { instance_double(Mutant::Matcher::Config, inspect: 'matcher-inspect') }
+      let(:integration) { Class.new }
+      let(:config) do
+        Mutant::Config::DEFAULT.with(
+          integration: integration,
+          jobs:        4,
+          includes:    %w[lib spec],
+          requires:    %w[mutant test_app],
+          fail_fast:   true,
+          zombie:      true,
+          matcher:     matcher
+        )
+      end
+
+      subject(:cli) do
+        described_class.allocate.tap do |object|
+          object.instance_variable_set(:@config, config)
+        end
+      end
+
+      it 'prints each resolved configuration field' do
+        expect($stdout).to receive(:puts).with('Mutant environment:')
+        expect($stdout).to receive(:puts).with("  Integration:     #{integration}")
+        expect($stdout).to receive(:puts).with('  Jobs:            4')
+        expect($stdout).to receive(:puts).with('  Includes:        ["lib", "spec"]')
+        expect($stdout).to receive(:puts).with('  Requires:        ["mutant", "test_app"]')
+        expect($stdout).to receive(:puts).with('  Fail fast:       true')
+        expect($stdout).to receive(:puts).with('  Zombie:          true')
+        expect($stdout).to receive(:puts).with('  Matcher:         matcher-inspect')
+
+        cli.send(:print_environment)
+      end
+    end
+
+    describe '#print_session_list' do
+      let(:tmpdir) { Dir.mktmpdir }
+      let(:results_dir) { File.join(tmpdir, '.mutant', 'results') }
+
+      around do |example|
+        Dir.chdir(tmpdir) { example.run }
+      end
+
+      after do
+        FileUtils.rm_rf(tmpdir)
+      end
+
+      it 'raises on unexpected arguments' do
+        expect do
+          cli.send(:print_session_list, %w[extra])
+        end.to raise_error(Mutant::CLI::Error, 'session list does not accept arguments: extra')
+      end
+
+      it 'prints a message when no session files exist' do
+        expect($stdout).to receive(:puts).with('No sessions found in .mutant/results/')
+
+        cli.send(:print_session_list, [])
+      end
+
+      it 'prints each discovered session with fallback coverage and status' do
+        FileUtils.mkdir_p(results_dir)
+        File.write(File.join(results_dir, 'abc123.yml'), YAML.dump({ success: true, coverage: '100%' }))
+        File.write(File.join(results_dir, 'def456.yml'), YAML.dump({ 'success' => false }))
+
+        expect($stdout).to receive(:puts).with('Sessions (2):')
+        expect($stdout).to receive(:puts).with('  abc123  coverage: 100%  status: pass')
+        expect($stdout).to receive(:puts).with('  def456  coverage: ?  status: fail')
+
+        cli.send(:print_session_list, [])
+      end
+    end
+
+    describe '#print_session_show' do
+      let(:tmpdir) { Dir.mktmpdir }
+      let(:results_dir) { File.join(tmpdir, '.mutant', 'results') }
+
+      around do |example|
+        Dir.chdir(tmpdir) { example.run }
+      end
+
+      after do
+        FileUtils.rm_rf(tmpdir)
+      end
+
+      it 'raises on unexpected arguments' do
+        expect do
+          cli.send(:print_session_show, 'abc123', %w[extra])
+        end.to raise_error(Mutant::CLI::Error, 'session show does not accept arguments: extra')
+      end
+
+      it 'prints session details with fallback expression and coverage' do
+        FileUtils.mkdir_p(results_dir)
+        File.write(
+          File.join(results_dir, 'abc123.yml'),
+          YAML.dump(
+            success: false,
+            subject_results: [
+              { expression: 'Foo#bar' },
+              {}
+            ]
+          )
+        )
+
+        expect($stdout).to receive(:puts).with('Session: abc123')
+        expect($stdout).to receive(:puts).with('  Status:   fail')
+        expect($stdout).to receive(:puts).with('  Coverage: unknown')
+        expect($stdout).to receive(:puts).with('  Subjects: 2')
+        expect($stdout).to receive(:puts).with('    Foo#bar')
+        expect($stdout).to receive(:puts).with('    <unknown>')
+
+        cli.send(:print_session_show, 'abc123', [])
+      end
+    end
+
+    describe '#load_session' do
+      let(:tmpdir) { Dir.mktmpdir }
+      let(:results_dir) { File.join(tmpdir, '.mutant', 'results') }
+
+      around do |example|
+        Dir.chdir(tmpdir) { example.run }
+      end
+
+      after do
+        FileUtils.rm_rf(tmpdir)
+      end
+
+      it 'returns parsed hash data' do
+        FileUtils.mkdir_p(results_dir)
+        path = Pathname.new(File.join(results_dir, 'abc123.yml'))
+        File.write(path, YAML.dump({ success: true }))
+
+        expect(cli.send(:load_session, path)).to eql(success: true)
+      end
+
+      it 'raises on non-hash payloads' do
+        FileUtils.mkdir_p(results_dir)
+        path = Pathname.new(File.join(results_dir, 'abc123.yml'))
+        File.write(path, YAML.dump(['not-a-hash']))
+
+        expect do
+          cli.send(:load_session, path)
+        end.to raise_error(
+          Mutant::CLI::Error,
+          "Could not load session 'abc123': expected a hash payload"
+        )
+      end
+    end
+
+    describe '#session_value' do
+      let(:key) { :coverage }
+
+      it 'uses hash access instead of fetch for string keys' do
+        data = instance_double('SessionData')
+
+        expect(data).to receive(:key?).with('coverage').and_return(true)
+        expect(data).to receive(:[]).with('coverage').and_return('100%')
+        expect(data).not_to receive(:fetch)
+
+        expect(cli.send(:session_value, data, key)).to eql('100%')
+      end
+
+      it 'uses hash access instead of fetch for symbol keys' do
+        data = instance_double('SessionData')
+
+        expect(data).to receive(:key?).with('coverage').and_return(false)
+        expect(data).to receive(:key?).with(:coverage).and_return(true)
+        expect(data).to receive(:[]).with(:coverage).and_return('75%')
+        expect(data).not_to receive(:fetch)
+
+        expect(cli.send(:session_value, data, key)).to eql('75%')
+      end
+
+      it 'returns nil when the string key is present with a nil value' do
+        expect(cli.send(:session_value, { 'coverage' => nil, coverage: '75%' }, :coverage)).to be_nil
+      end
+
+      it 'returns a value stored under the string key first' do
+        expect(cli.send(:session_value, { 'coverage' => '100%', coverage: '75%' }, :coverage)).to eql('100%')
+      end
+
+      it 'falls back to the symbol key when needed' do
+        expect(cli.send(:session_value, { coverage: '75%' }, :coverage)).to eql('75%')
+      end
+
+      it 'returns nil without using the hash default when the key is missing' do
+        data = Hash.new { |_hash, missing_key| "default-for-#{missing_key}" }
+
+        expect(cli.send(:session_value, data, key)).to be_nil
+      end
+
+      it 'returns nil when data is nil' do
+        expect(cli.send(:session_value, nil, :coverage)).to be_nil
+      end
+
+      it 'returns nil when the key is missing' do
+        expect(cli.send(:session_value, {}, :coverage)).to be_nil
+      end
+    end
+
+    describe '#session_subject_results' do
+      it 'returns subject results when present' do
+        expect(cli.send(:session_subject_results, { subject_results: %w[a b] })).to eql(%w[a b])
+      end
+
+      it 'returns an empty array when subject results are missing' do
+        expect(cli.send(:session_subject_results, {})).to eql(Mutant::EMPTY_ARRAY)
+      end
+    end
+
+    describe '#session_expression' do
+      it 'returns the stored expression when present' do
+        expect(cli.send(:session_expression, { expression: 'Foo#bar' })).to eql('Foo#bar')
+      end
+
+      it 'returns a fallback when the expression is missing' do
+        expect(cli.send(:session_expression, {})).to eql('<unknown>')
+      end
+    end
+
+    describe '#resolve_session_path' do
+      let(:tmpdir) { Dir.mktmpdir }
+      let(:results_dir) { File.join(tmpdir, '.mutant', 'results') }
+
+      subject(:cli) do
+        described_class.allocate.tap do |object|
+          object.send(:initialize, [])
+        end
+      end
+
+      around do |example|
+        Dir.chdir(tmpdir) { example.run }
+      end
+
+      after do
+        FileUtils.rm_rf(tmpdir)
+      end
+
+      it 'returns the matching yaml path for a valid session id' do
+        FileUtils.mkdir_p(results_dir)
+        File.write(File.join(results_dir, 'abc123.yml'), YAML.dump({ success: true }))
+
+        expect(cli.send(:resolve_session_path, 'abc123').to_s).to eql('.mutant/results/abc123.yml')
       end
     end
 
