@@ -6,18 +6,24 @@ RSpec.describe Mutant::CLI do
   describe Mutant::CLIArgumentSanitizer do
     subject(:sanitize_arguments) { described_class.call($stderr, arguments) }
 
+    let(:arguments) { original_arguments.dup }
+
     context 'when usage is passed as separate option and value' do
-      let(:arguments) { %w[--usage opensource TestApp*] }
+      let(:original_arguments) { %w[--usage opensource TestApp*] }
 
       it 'removes both arguments and warns' do
         expect($stderr).to receive(:puts).with(described_class::WARNING)
 
         expect(sanitize_arguments).to eql(%w[TestApp*])
       end
+
+      it 'does not mutate the original arguments' do
+        expect { sanitize_arguments }.not_to(change { arguments })
+      end
     end
 
     context 'when usage is passed as inline assignment' do
-      let(:arguments) { %w[--usage=commercial TestApp*] }
+      let(:original_arguments) { %w[--usage=commercial TestApp*] }
 
       it 'removes the option and warns' do
         expect($stderr).to receive(:puts).with(described_class::WARNING)
@@ -27,7 +33,7 @@ RSpec.describe Mutant::CLI do
     end
 
     context 'when usage is passed with another value' do
-      let(:arguments) { %w[--usage proprietary TestApp*] }
+      let(:original_arguments) { %w[--usage proprietary TestApp*] }
 
       it 'removes only the flag and warns' do
         expect($stderr).to receive(:puts).with(described_class::WARNING)
@@ -37,7 +43,7 @@ RSpec.describe Mutant::CLI do
     end
 
     context 'when usage is passed before another option' do
-      let(:arguments) { %w[--usage --help] }
+      let(:original_arguments) { %w[--usage --help] }
 
       it 'removes only the usage flag and warns' do
         expect($stderr).to receive(:puts).with(described_class::WARNING)
@@ -47,7 +53,7 @@ RSpec.describe Mutant::CLI do
     end
 
     context 'when usage is passed multiple times' do
-      let(:arguments) { %w[--usage opensource --usage=commercial TestApp*] }
+      let(:original_arguments) { %w[--usage opensource --usage=commercial TestApp*] }
 
       it 'removes every usage flag and warns once' do
         expect($stderr).to receive(:puts).with(described_class::WARNING).once
@@ -57,7 +63,7 @@ RSpec.describe Mutant::CLI do
     end
 
     context 'when usage is absent' do
-      let(:arguments) { %w[TestApp*] }
+      let(:original_arguments) { %w[TestApp*] }
 
       it 'returns arguments unchanged without warning' do
         expect($stderr).not_to receive(:puts)

@@ -1110,6 +1110,32 @@ RSpec.describe Mutant::Integration::RspecSupport::SourceIndex do
     expect(source_index.expressions(absolute_file_path: source_file, line_number: 1)).to eql([])
   end
 
+  it 'returns no expressions when the parser gem crashes while parsing source' do
+    parser = instance_double(Mutant::Integration::RspecSupport::ExpressionParser)
+    index  = described_class.new(parser)
+    file   = Tempfile.new(['mutant-rspec-parser-crash', '.rb'])
+    file.write("it { is_expected.to cover('Example::Covered') }\n")
+    file.close
+
+    [
+      NoMethodError.new("undefined method `b' for nil"),
+      ArgumentError.new('Parser::Source::Range: end_pos must not be less than begin_pos')
+    ].each do |parser_error|
+      parser_error.set_backtrace(
+        ['/workspace/vendor/bundle/ruby/3.4.0/gems/parser-3.3.11.1/lib/parser/lexer/literal.rb:260']
+      )
+
+      ruby_parser = double('ruby parser')
+
+      allow(index).to receive(:ruby_parser).and_return(ruby_parser)
+      allow(ruby_parser).to receive(:parse).and_raise(parser_error)
+
+      expect(index.expressions(absolute_file_path: file.path, line_number: 1)).to eql([])
+    end
+  ensure
+    File.unlink(file.path) if file && File.exist?(file.path)
+  end
+
   it 'stores the parser collaborator during initialization' do
     parser = Mutant::Integration::RspecSupport::ExpressionParser.new(Mutant::Config::DEFAULT.expression_parser)
     index = described_class.new(parser)
@@ -1214,6 +1240,14 @@ RSpec.describe Mutant::Integration::RspecSupport::SourceIndex do
     expect(node.loc.expression.source_buffer.name).to eql(file.path)
   ensure
     File.unlink(file.path) if file && File.exist?(file.path)
+  end
+
+  it 'builds a fresh ruby parser for each parse to avoid cross-thread parser state' do
+    parser_a = source_index.send(:ruby_parser)
+    parser_b = source_index.send(:ruby_parser)
+
+    expect(parser_a).to be_instance_of(parser_b.class)
+    expect(parser_a).not_to be(parser_b)
   end
 
   it 'caches parsed source indexes by path' do
