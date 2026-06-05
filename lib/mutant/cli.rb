@@ -13,36 +13,24 @@ module Mutant
     end
 
     def call
-      sanitized = []
-      changed   = false
-      index     = 0
-
-      while index < arguments.length
-        argument = arguments[index]
-
-        if usage_argument?(argument)
-          changed = true
-          index += 1
-          index += 1 if argument == '--usage' && usage_value?(arguments[index])
-          next
-        end
-
-        sanitized << argument
-        index += 1
-      end
-
-      stderr.puts(WARNING) if changed
-
-      sanitized
+      indices = usage_flag_indices
+      stderr.puts(WARNING) unless indices.empty?
+      arguments.reject.with_index { |_arg, index| indices.include?(index) }
     end
 
   private
 
     attr_reader :arguments, :stderr
 
-    def usage_argument?(argument) = argument == '--usage' || argument.start_with?('--usage=')
-
-    def usage_value?(argument) = USAGE_VALUES.include?(argument)
+    def usage_flag_indices
+      indices = []
+      arguments.each_with_index do |argument, index|
+        next unless argument == '--usage' || argument.start_with?('--usage=')
+        indices << index
+        indices << index + 1 if argument == '--usage' && USAGE_VALUES.include?(arguments[index + 1])
+      end
+      indices
+    end
   end
 
   # Commandline parser / runner

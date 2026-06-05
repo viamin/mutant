@@ -131,6 +131,8 @@ detectors:
     - Mutant::Integration::Null#call
     - Mutant::Integration::Rspec#parse_example
     - Mutant::Integration::Rspec#parse_expression # intentional, private
+    - Mutant::Integration::RspecSupport::SourceIndex#ruby_parser # intentional, private
+    - Mutant::Integration::RspecSupport::SourceIndex#parser_internal_error? # intentional, private
     - Mutant::Matcher::SourcePath#candidate_method_names # intentional
     - Mutant::Meta::Example::Verification#format_mutations # intentional, private
     - Mutant::Reporter::CLI::Format::Progressive#new_buffer
