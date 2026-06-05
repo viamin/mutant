@@ -74,7 +74,7 @@ module Mutant
         def self.relative_meta_path(example)
           path = Pathname.new(example.file).expand_path
 
-          unless path.to_s.start_with?("#{META_PATH}/")
+          unless path.ascend.include?(META_PATH)
             fail ArgumentError, "Example file is outside #{META_PATH}: #{path}"
           end
 

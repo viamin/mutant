@@ -34,5 +34,14 @@ RSpec.describe Mutant::Meta::Example::Documentation do
           .to raise_error(ArgumentError, %r{\AExample file is outside .*/meta: .*/tmp/example\.rb\z})
       end
     end
+
+    context 'when the file only shares the meta prefix' do
+      let(:file) { '/workspace/meta2/example.rb' }
+
+      it 'rejects the path' do
+        expect { relative_meta_path }
+          .to raise_error(ArgumentError, %r{\AExample file is outside .*/meta: /workspace/meta2/example\.rb\z})
+      end
+    end
   end
 end
