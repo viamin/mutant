@@ -5,6 +5,8 @@ module Mutant
     class Example
       # Renders documentation for shipped mutator families
       class Documentation
+        META_DIRECTORY_NAME = 'meta'
+
         HEADER = <<~MARKDOWN.freeze
           # Mutators
 
@@ -68,9 +70,13 @@ module Mutant
         end
 
         def self.relative_meta_path(example)
-          _before, after = example.file.split('/meta/', 2)
+          path       = Pathname.new(example.file).cleanpath
+          filenames  = path.each_filename.to_a
+          meta_index = filenames.rindex(META_DIRECTORY_NAME)
 
-          "meta/#{after || File.basename(example.file)}"
+          return filenames.drop(meta_index).join('/') if meta_index
+
+          "#{META_DIRECTORY_NAME}/#{path.basename}"
         end
 
         def self.singleton_mutation?(node)
