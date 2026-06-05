@@ -303,5 +303,30 @@ describe Mutant::Repository::Diff do
 
       it { should be(true) }
     end
+
+    context 'when parsing the current file after unrelated matches' do
+      let(:line_range) { 1..1 }
+
+      let(:diff_output) do
+        <<~DIFF
+          diff --git a/lib/other.rb b/lib/other.rb
+          --- a/lib/other.rb
+          +++ b/lib/other.rb
+          @@ -10,3 +10,4 @@
+          +new line
+          diff --git a/lib/bar.rb b/lib/bar.rb
+          --- a/lib/bar.rb
+          +++ b/lib/bar.rb
+          @@ -1,3 +1,4 @@
+          +added
+        DIFF
+      end
+
+      include_context 'setup diff command'
+
+      it 'uses the current line match data' do
+        expect(subject).to be(true)
+      end
+    end
   end
 end
