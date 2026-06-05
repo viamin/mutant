@@ -7,18 +7,34 @@ module Mutant
         include Concord.new(:env_result)
 
         def call
-          config.pathname.new(results_dir.to_s).mkpath
-          config.pathname.new(results_dir.to_s).join(filename).write(YAML.dump(to_h))
+          ref = git_ref
+          ts  = Time.now.utc
+          dir = config.pathname.new(results_dir.to_s)
+          dir.mkpath
+          dir.join("#{ts.strftime('%Y%m%dT%H%M%SZ')}-#{ref}.yml")
+             .write(YAML.dump(build_hash(ref, ts)))
         end
 
       private
 
-        def config
-          env_result.env.config
+        def build_hash(ref, ts)
+          mutation_results = all_mutation_results
+
+          {
+            'ran_at'            => ts,
+            'git_ref'           => ref,
+            'since'             => config.since_revision,
+            'total_mutations'   => mutation_results.length,
+            'killed'            => killed_results(mutation_results).length,
+            'alive'             => alive_results(mutation_results).length,
+            'errored'           => errored_results(mutation_results).length,
+            'alive_mutations'   => alive_results(mutation_results).map(&method(:serialize_alive)),
+            'errored_mutations' => errored_results(mutation_results).map(&method(:serialize_errored))
+          }
         end
 
-        def filename
-          "#{timestamp}-#{git_ref}.yml"
+        def config
+          env_result.env.config
         end
 
         def git_ref
@@ -30,26 +46,6 @@ module Mutant
 
         def results_dir
           config.results_dir
-        end
-
-        def timestamp
-          Time.now.utc.strftime('%Y%m%dT%H%M%SZ')
-        end
-
-        def to_h
-          mutation_results = all_mutation_results
-
-          {
-            'ran_at'            => Time.now.utc,
-            'git_ref'           => git_ref,
-            'since'             => config.since_revision,
-            'total_mutations'   => mutation_results.length,
-            'killed'            => killed_results(mutation_results).length,
-            'alive'             => alive_results(mutation_results).length,
-            'errored'           => errored_results(mutation_results).length,
-            'alive_mutations'   => alive_results(mutation_results).map(&method(:serialize_alive)),
-            'errored_mutations' => errored_results(mutation_results).map(&method(:serialize_errored))
-          }
         end
 
         def all_mutation_results

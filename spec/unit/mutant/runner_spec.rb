@@ -478,5 +478,28 @@ RSpec.describe Mutant::Runner do
       expect(runner.send(:run)).to equal(runner)
       expect(runner.result).to eql(env_result)
     end
+
+    it 'warns via reporter when result writing fails' do
+      expect(env).to receive(:method).with(:kill).and_return(processor)
+      expect(Mutant::Runner::Sink).to receive(:new).with(env).and_return(sink)
+      expect(Mutant::Parallel).to receive(:async).with(parallel_config).and_return(driver)
+      expect(Signal).to receive(:trap).with('INT').and_return('DEFAULT')
+      expect(Signal).to receive(:trap).with('TERM').and_return('DEFAULT')
+      expect(driver).to receive(:wait_timeout).with(delay).and_return(status_b)
+      expect(Signal).to receive(:trap).with('INT', 'DEFAULT')
+      expect(Signal).to receive(:trap).with('TERM', 'DEFAULT')
+      expect(reporter).to receive(:start).with(env)
+      expect(reporter).to receive(:report).with(env_result)
+
+      failing_io = instance_double(Mutant::Result::Env::IO)
+      allow(Mutant::Result::Env::IO).to receive(:new).with(env_result).and_return(failing_io)
+      allow(failing_io).to receive(:call).and_raise(Errno::EACCES, 'results.yml')
+
+      expected_message = 'Failed to write results: Permission denied - results.yml'
+      expect(reporter).to receive(:warn).with(expected_message)
+
+      result = runner.send(:run)
+      expect(result.result).to eql(env_result)
+    end
   end
 end
