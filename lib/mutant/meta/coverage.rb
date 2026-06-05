@@ -54,7 +54,7 @@ module Mutant
       end
 
       def self.escape(value)
-        value.gsub('|', '&#124;')
+        value.gsub('|', '\|')
       end
     end
   end
