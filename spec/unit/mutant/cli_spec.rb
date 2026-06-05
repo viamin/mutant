@@ -82,6 +82,7 @@ RSpec.describe Mutant::CLI do
 
       expect(call).to eql(config)
     end
+
   end
 
   describe 'processed cli', mutant: false do
@@ -1452,10 +1453,108 @@ RSpec.describe Mutant::CLI do
 
     describe '#add' do
       it 'appends the value to the selected configuration attribute' do
-          expect { cli.send(:add, :includes, 'foo') }
+        expect { cli.send(:add, :includes, 'foo') }
           .to change { cli.config.includes }
           .from(Mutant::EMPTY_ARRAY)
           .to(%w[foo])
+      end
+
+      it 'preserves existing values when appending' do
+        cli.send(:add, :includes, 'foo')
+
+        expect { cli.send(:add, :includes, 'bar') }
+          .to change { cli.config.includes }
+          .from(%w[foo])
+          .to(%w[foo bar])
+      end
+    end
+
+    describe '#add_matcher' do
+      let(:matcher) { instance_double(Mutant::Matcher::Config) }
+      let(:updated_matcher) { instance_double(Mutant::Matcher::Config) }
+
+      subject(:cli) do
+        described_class.allocate.tap do |object|
+          object.instance_variable_set(
+            :@config,
+            Mutant::Config::DEFAULT.with(matcher: matcher)
+          )
+        end
+      end
+
+      it 'updates the matcher using the provided attribute and value' do
+        expect(matcher).to receive(:add).with(:match_expressions, 'expression').and_return(updated_matcher)
+
+        cli.send(:add_matcher, :match_expressions, 'expression')
+
+        expect(cli.config.matcher).to eql(updated_matcher)
+      end
+
+      it 'requires both the matcher attribute and value' do
+        expect { cli.send(:add_matcher) }.to raise_error(ArgumentError)
+      end
+    end
+
+    describe '#with' do
+      subject(:cli) do
+        described_class.allocate.tap do |object|
+          object.instance_variable_set(:@config, Mutant::Config::DEFAULT)
+        end
+      end
+
+      it 'applies the provided attributes to the current config' do
+        cli.send(:with, jobs: 2)
+
+        expect(cli.config.jobs).to eql(2)
+      end
+
+      it 'requires attributes' do
+        expect { cli.send(:with) }.to raise_error(ArgumentError)
+      end
+    end
+
+    describe '#parse_match_expressions' do
+      let(:expression_a) { instance_double(Mutant::Expression) }
+      let(:expression_b) { instance_double(Mutant::Expression) }
+      let(:parser)       { instance_double(Mutant::Expression::Parser) }
+
+      subject(:cli) do
+        described_class.allocate.tap do |object|
+          object.instance_variable_set(
+            :@config,
+            Mutant::Config::DEFAULT.with(expression_parser: parser)
+          )
+        end
+      end
+
+      it 'parses and adds each expression in order' do
+        expect(parser).to receive(:call).with('Foo*').and_return(expression_a)
+        expect(parser).to receive(:call).with('Bar*').and_return(expression_b)
+        expect(cli).to receive(:add_matcher).with(:match_expressions, expression_a).ordered
+        expect(cli).to receive(:add_matcher).with(:match_expressions, expression_b).ordered
+
+        cli.send(:parse_match_expressions, %w[Foo* Bar*])
+      end
+
+      it 'requires the expressions argument' do
+        expect { cli.send(:parse_match_expressions) }.to raise_error(ArgumentError)
+      end
+    end
+
+    describe '#add_option_groups' do
+      let(:builder) { instance_double(OptionParser) }
+
+      it 'adds each expected option group to the builder' do
+        expect(cli).to receive(:add_environment_options).with(builder).ordered
+        expect(cli).to receive(:add_mutation_options).with(builder).ordered
+        expect(cli).to receive(:add_filter_options).with(builder).ordered
+        expect(cli).to receive(:add_debug_options).with(builder).ordered
+
+        cli.send(:add_option_groups, builder)
+      end
+
+      it 'requires the builder argument' do
+        expect { cli.send(:add_option_groups) }.to raise_error(ArgumentError)
       end
     end
 
@@ -1731,6 +1830,55 @@ RSpec.describe Mutant::CLI do
 
         option_parser.parse!(%w[--help])
       end
+    end
+  end
+
+  describe '.call' do
+    let(:arguments) { %w[run TestApp*] }
+    let(:cli)       { described_class.allocate }
+    let(:config)    { instance_double(Mutant::Config) }
+
+    it 'requires arguments' do
+      expect { described_class.call }.to raise_error(ArgumentError)
+    end
+
+    it 'processes the provided arguments on the constructed instance' do
+      expect(described_class).to receive(:allocate).and_return(cli)
+      expect(cli).to receive(:process).with(arguments)
+      expect(cli).to receive(:config).and_return(config)
+
+      expect(described_class.call(arguments)).to eql(config)
+    end
+  end
+
+  describe '.run' do
+    let(:arguments) { %w[run TestApp*] }
+    let(:config)    { instance_double(Mutant::Config) }
+    let(:env)       { instance_double(Mutant::Env) }
+    let(:report)    { instance_double(Mutant::Result::Env, success?: true) }
+
+    it 'requires arguments' do
+      expect { described_class.run }.to raise_error(ArgumentError)
+    end
+
+    it 'passes the provided arguments through the execution pipeline' do
+      expect(described_class).to receive(:call).with(arguments).and_return(config)
+      expect(Mutant::Env::Bootstrap).to receive(:call).with(config).and_return(env)
+      expect(Mutant::Runner).to receive(:call).with(env).and_return(report)
+
+      expect(described_class.run(arguments)).to be(true)
+    end
+
+    it 'prints CLI errors and returns false' do
+      error = described_class::Error.new('test-error')
+
+      expect(described_class).to receive(:call).with(arguments).and_return(config)
+      expect(Mutant::Env::Bootstrap).to receive(:call).with(config).and_return(env)
+      expect(Mutant::Runner).to receive(:call).with(env).and_return(report)
+      expect(report).to receive(:success?).and_raise(error)
+      expect($stderr).to receive(:puts).with('test-error')
+
+      expect(described_class.run(arguments)).to be(false)
     end
   end
 end
