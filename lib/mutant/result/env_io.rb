@@ -9,7 +9,7 @@ module Mutant
         def call
           ref = git_ref
           ts  = Time.now.utc
-          dir = config.pathname.new(results_dir.to_s)
+          dir = results_dir
           dir.mkpath
           dir.join("#{ts.strftime('%Y%m%dT%H%M%SZ')}-#{ref}.yml")
              .write(YAML.dump(build_hash(ref, ts)))
@@ -19,17 +19,20 @@ module Mutant
 
         def build_hash(ref, ts)
           mutation_results = all_mutation_results
+          killed  = killed_results(mutation_results)
+          alive   = alive_results(mutation_results)
+          errored = errored_results(mutation_results)
 
           {
             'ran_at'            => ts,
             'git_ref'           => ref,
             'since'             => config.since_revision,
             'total_mutations'   => mutation_results.length,
-            'killed'            => killed_results(mutation_results).length,
-            'alive'             => alive_results(mutation_results).length,
-            'errored'           => errored_results(mutation_results).length,
-            'alive_mutations'   => alive_results(mutation_results).map(&method(:serialize_alive)),
-            'errored_mutations' => errored_results(mutation_results).map(&method(:serialize_errored))
+            'killed'            => killed.length,
+            'alive'             => alive.length,
+            'errored'           => errored.length,
+            'alive_mutations'   => alive.map(&method(:serialize_alive)),
+            'errored_mutations' => errored.map(&method(:serialize_errored))
           }
         end
 

@@ -36,6 +36,7 @@ module Warning
   end
 end
 
+require 'yaml'
 require 'unparser'
 
 # This setting is done to make errors within the parallel
