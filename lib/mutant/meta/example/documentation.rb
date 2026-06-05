@@ -6,6 +6,8 @@ module Mutant
       # Renders documentation for shipped mutator families
       class Documentation
         META_DIRECTORY_NAME = 'meta'
+        ROOT_PATH           = Pathname.new(__dir__).join('../../../../').expand_path.freeze
+        META_PATH           = ROOT_PATH.join(META_DIRECTORY_NAME).freeze
 
         HEADER = <<~MARKDOWN.freeze
           # Mutators
@@ -70,13 +72,13 @@ module Mutant
         end
 
         def self.relative_meta_path(example)
-          path       = Pathname.new(example.file).cleanpath
-          filenames  = path.each_filename.to_a
-          meta_index = filenames.rindex(META_DIRECTORY_NAME)
+          path = Pathname.new(example.file).expand_path
 
-          return filenames.drop(meta_index).join('/') if meta_index
+          unless path.to_s.start_with?("#{META_PATH}/")
+            fail ArgumentError, "Example file is outside #{META_PATH}: #{path}"
+          end
 
-          "#{META_DIRECTORY_NAME}/#{path.basename}"
+          path.relative_path_from(ROOT_PATH).to_s
         end
 
         def self.singleton_mutation?(node)

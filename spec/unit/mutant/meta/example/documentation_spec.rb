@@ -29,8 +29,9 @@ RSpec.describe Mutant::Meta::Example::Documentation do
     context 'when the file does not live under meta' do
       let(:file) { '../../tmp/example.rb' }
 
-      it 'falls back to the basename under meta' do
-        expect(relative_meta_path).to eql('meta/example.rb')
+      it 'rejects the path' do
+        expect { relative_meta_path }
+          .to raise_error(ArgumentError, %r{\AExample file is outside .*/meta: .*/tmp/example\.rb\z})
       end
     end
   end
