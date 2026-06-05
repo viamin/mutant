@@ -64,6 +64,12 @@ RSpec.describe Mutant::Runner do
     described_class.call(env)
   end
 
+  before do
+    io_instance = instance_double(Mutant::Result::Env::IO)
+    allow(Mutant::Result::Env::IO).to receive(:new).and_return(io_instance)
+    allow(io_instance).to receive(:call)
+  end
+
   describe '.call' do
     let(:raw_expectations) do
       [
