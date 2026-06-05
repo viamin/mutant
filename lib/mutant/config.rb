@@ -25,6 +25,8 @@ module Mutant
       :reporter,
       :results_dir,
       :requires,
+      :results_dir,
+      :since_revision,
       :thread,
       :zombie
     )

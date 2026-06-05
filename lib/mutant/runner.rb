@@ -34,7 +34,14 @@ module Mutant
     def run
       reporter.start(env)
       @result = run_mutation_analysis
+      write_results
       self
+    end
+
+    def write_results
+      Result::Env::IO.new(@result).call
+    rescue StandardError
+      nil
     end
 
     def run_mutation_analysis

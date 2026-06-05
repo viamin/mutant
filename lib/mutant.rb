@@ -210,6 +210,7 @@ require 'mutant/diff'
 require 'mutant/runner'
 require 'mutant/runner/sink'
 require 'mutant/result'
+require 'mutant/result/env_io'
 require 'mutant/reporter'
 require 'mutant/reporter/null'
 require 'mutant/reporter/sequence'
@@ -267,6 +268,8 @@ module Mutant
       reporter:           Reporter::CLI.build($stdout),
       results_dir:        nil,
       requires:           EMPTY_ARRAY,
+      results_dir:        Pathname.new('.mutant/results'),
+      since_revision:     nil,
       thread:             Thread,
       zombie:             false
     )

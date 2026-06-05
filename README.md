@@ -191,6 +191,37 @@ Credits
 * Older abandoned [mutant](https://github.com/txus/mutant). For motivating me doing this one.
 * [heckle](https://github.com/seattlerb/heckle). For getting me into mutation testing.
 
+Machine-readable output
+-----------------------
+
+Mutant writes a YAML results file on every run to `.mutant/results/<timestamp>-<sha>.yml`.
+Use `--results-dir DIRECTORY` to override the output location.
+
+The file follows this schema:
+
+```yaml
+ran_at: 2026-05-29T14:00:00Z
+git_ref: a1b2c3d
+since: main            # value of --since, or null
+total_mutations: 42
+killed: 38
+alive: 3
+errored: 1
+alive_mutations:
+  - subject: "MyApp::Foo#bar"
+    subject_path: "app/models/foo.rb"
+    source_line: 17
+    mutation_diff: |
+      -  return true
+      +  return false
+errored_mutations:
+  - subject: "MyApp::Bar#qux"
+    error: "TimeoutError: 30s elapsed"
+```
+
+Files are loadable with `YAML.safe_load_file(path, permitted_classes: [Symbol, Time])`.
+Result files accumulate across runs; consumers are responsible for retention.
+
 Contributing
 -------------
 

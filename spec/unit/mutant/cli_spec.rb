@@ -87,6 +87,7 @@ RSpec.describe Mutant::CLI do
                 --include-subject EXPRESSION Add EXPRESSION to the configured subject matcher list
                 --ignore-subject EXPRESSION  Ignore subjects that match EXPRESSION as prefix
                 --since REVISION             Only select subjects touched since REVISION
+                --results-dir DIRECTORY      Write result YAML files to DIRECTORY
                 --fail-fast                  Fail fast
                 --version                    Print mutants version
             -h, --help                       Show this message
@@ -448,7 +449,7 @@ RSpec.describe Mutant::CLI do
           subject_filters: [
             Mutant::Repository::SubjectFilter.new(
               Mutant::Repository::Diff.new(
-                config: Mutant::Config::DEFAULT,
+                config: Mutant::Config::DEFAULT.with(since_revision: 'master'),
                 from:   'master',
                 to:     'HEAD'
               )
