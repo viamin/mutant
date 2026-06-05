@@ -122,6 +122,16 @@ RSpec.describe Mutant::Config::CoverageCriteria do
     end
   end
 
+  describe 'TIMEOUT_SIGNALS' do
+    subject { described_class::TIMEOUT_SIGNALS }
+
+    it 'contains signal numbers for KILL and TERM' do
+      expect(subject).to include(Signal.list.fetch('KILL'))
+      expect(subject).to include(Signal.list.fetch('TERM'))
+      expect(subject.length).to eql(2)
+    end
+  end
+
   describe '#success?' do
     subject { object.success?(mutation, isolation_result) }
 
@@ -332,6 +342,30 @@ RSpec.describe Mutant::Config::CoverageCriteria do
       let(:process_abort) { true }
 
       it { should be(true) }
+    end
+
+    context 'when error chain contains no timeout entries' do
+      let(:isolation_result) do
+        Mutant::Isolation::Result::ErrorChain.new(
+          Mutant::Isolation::Result::Exception.new(RuntimeError.new('boom')),
+          Mutant::Isolation::Result::Exception.new(RuntimeError.new('other'))
+        )
+      end
+
+      let(:process_abort) { true }
+
+      it { should be(true) }
+    end
+
+    context 'when error chain contains no timeout entries and process_abort is disabled' do
+      let(:isolation_result) do
+        Mutant::Isolation::Result::ErrorChain.new(
+          Mutant::Isolation::Result::Exception.new(RuntimeError.new('boom')),
+          Mutant::Isolation::Result::Exception.new(RuntimeError.new('other'))
+        )
+      end
+
+      it { should be(false) }
     end
   end
 

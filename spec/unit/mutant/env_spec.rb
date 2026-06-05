@@ -218,6 +218,48 @@ RSpec.describe Mutant::Env, mutant: false do
         assert_mutation_result(object.kill(mutation))
       end
     end
+
+    context 'when environment variables override an existing empty-string value' do
+      let(:config) do
+        super().with(
+          environment_variables: {
+            'MUTANT_ENV_SPEC' => 'configured'
+          }
+        )
+      end
+
+      let(:test_result) { double('test-result') }
+
+      before do
+        ENV['MUTANT_ENV_SPEC'] = ''
+
+        expect(mutation).to receive(:insert)
+          .ordered
+          .with(config.kernel) do
+            expect(ENV.fetch('MUTANT_ENV_SPEC')).to eql('configured')
+          end
+
+        expect(integration).to receive(:call)
+          .ordered
+          .with(tests) do
+            expect(ENV.fetch('MUTANT_ENV_SPEC')).to eql('configured')
+            test_result
+          end
+      end
+
+      let(:isolation_result) do
+        Mutant::Isolation::Result::Success.new(test_result)
+      end
+
+      after do
+        expect(ENV.fetch('MUTANT_ENV_SPEC')).to eql('')
+        ENV.delete('MUTANT_ENV_SPEC')
+      end
+
+      it 'returns the mutation result and restores the empty-string value' do
+        assert_mutation_result(object.kill(mutation))
+      end
+    end
   end
 
   describe '#selections' do

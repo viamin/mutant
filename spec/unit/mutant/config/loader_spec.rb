@@ -347,6 +347,44 @@ RSpec.describe Mutant::Config::Loader do
       end
     end
 
+    context 'when config only overrides timeout criteria' do
+      before do
+        config_path.write(<<~YAML)
+          coverage_criteria:
+            timeout: true
+        YAML
+      end
+
+      it 'merges with defaults' do
+        expect(subject.coverage_criteria).to eql(
+          Mutant::Config::CoverageCriteria.new(
+            process_abort: false,
+            test_result:   true,
+            timeout:       true
+          )
+        )
+      end
+    end
+
+    context 'when config only overrides test_result criteria' do
+      before do
+        config_path.write(<<~YAML)
+          coverage_criteria:
+            test_result: false
+        YAML
+      end
+
+      it 'merges with defaults' do
+        expect(subject.coverage_criteria).to eql(
+          Mutant::Config::CoverageCriteria.new(
+            process_abort: false,
+            test_result:   false,
+            timeout:       false
+          )
+        )
+      end
+    end
+
     context 'when coverage criteria contains an unknown nested key' do
       before do
         config_path.write(<<~YAML)

@@ -65,6 +65,13 @@ RSpec.describe Mutant::Result::Mutation do
 
       it { should eql(0.0) }
     end
+
+    context 'if isolation is a child error' do
+      let(:status) { instance_double(Process::Status) }
+      let(:isolation_result) { Mutant::Isolation::Fork::ChildError.new(status) }
+
+      it { should eql(0.0) }
+    end
   end
 
   describe '#runtime' do

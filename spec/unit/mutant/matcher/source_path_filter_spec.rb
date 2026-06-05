@@ -47,6 +47,14 @@ RSpec.describe Mutant::Matcher::SourcePathFilter do
     end
   end
 
+  describe 'MATCH_FLAGS' do
+    subject { described_class::MATCH_FLAGS }
+
+    it 'combines extglob and pathname flags' do
+      expect(subject).to eql(File::FNM_EXTGLOB | File::FNM_PATHNAME)
+    end
+  end
+
   describe '#relative_path' do
     subject { object.__send__(:relative_path, source_path) }
 

@@ -75,6 +75,29 @@ RSpec.describe Mutant::Result::Subject do
         it { should be(expected) }
       end
     end
+
+    context 'when subject has more mutations than results' do
+      let(:mutation_results) do
+        [
+          instance_double(Mutant::Result::Mutation, success?: true)
+        ]
+      end
+
+      let(:mutation_subject) do
+        instance_double(
+          Mutant::Subject,
+          mutations: [
+            instance_double(Mutant::Mutation),
+            instance_double(Mutant::Mutation),
+            instance_double(Mutant::Mutation)
+          ]
+        )
+      end
+
+      it 'returns the total mutation count from the subject' do
+        expect(subject).to eql(3)
+      end
+    end
   end
 
   describe '#amount_mutations_alive' do
