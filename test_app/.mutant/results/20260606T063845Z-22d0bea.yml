@@ -1,0 +1,54 @@
+---
+ran_at: 2026-06-06 06:38:45.969984484 Z
+git_ref: 22d0beaad7a9f1d1ae363d0d3262ff960aa5061d
+since:
+total_mutations: 6
+killed: 1
+alive: 5
+errored: 0
+alive_mutations:
+- subject: TestApp::Literal#uncovered_string:/workspace/test_app/lib/test_app/literal.rb:16
+  subject_path: "/workspace/test_app/lib/test_app/literal.rb"
+  source_line: 16
+  mutation_diff: |
+    @@ -1,3 +1,3 @@
+     def uncovered_string
+    -  "string"
+    +  raise
+     end
+- subject: TestApp::Literal#uncovered_string:/workspace/test_app/lib/test_app/literal.rb:16
+  subject_path: "/workspace/test_app/lib/test_app/literal.rb"
+  source_line: 16
+  mutation_diff: |
+    @@ -1,3 +1,3 @@
+     def uncovered_string
+    -  "string"
+    +  super
+     end
+- subject: TestApp::Literal#uncovered_string:/workspace/test_app/lib/test_app/literal.rb:16
+  subject_path: "/workspace/test_app/lib/test_app/literal.rb"
+  source_line: 16
+  mutation_diff: |
+    @@ -1,3 +1,2 @@
+     def uncovered_string
+    -  "string"
+     end
+- subject: TestApp::Literal#uncovered_string:/workspace/test_app/lib/test_app/literal.rb:16
+  subject_path: "/workspace/test_app/lib/test_app/literal.rb"
+  source_line: 16
+  mutation_diff: |
+    @@ -1,3 +1,3 @@
+     def uncovered_string
+    -  "string"
+    +  nil
+     end
+- subject: TestApp::Literal#uncovered_string:/workspace/test_app/lib/test_app/literal.rb:16
+  subject_path: "/workspace/test_app/lib/test_app/literal.rb"
+  source_line: 16
+  mutation_diff: |
+    @@ -1,3 +1,3 @@
+     def uncovered_string
+    -  "string"
+    +  self
+     end
+errored_mutations: []
