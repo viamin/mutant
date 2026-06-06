@@ -40,7 +40,7 @@ module Mutant
 
     def write_results
       Result::Env::IO.new(@result).call
-    rescue StandardError => error
+    rescue StandardError, ScriptError => error
       reporter.warn("Failed to write results: #{error.message}")
     end
 

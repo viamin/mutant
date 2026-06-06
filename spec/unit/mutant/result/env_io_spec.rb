@@ -247,6 +247,45 @@ RSpec.describe Mutant::Result::Env::IO do
       end
     end
 
+    context 'when errored mutation has ForkError isolation result' do
+      let(:fork_error_isolation_result) do
+        Mutant::Isolation::Fork::ForkError.new
+      end
+
+      let(:mutation_fork_error_result) do
+        instance_double(
+          Mutant::Result::Mutation,
+          mutation:         mutation_errored,
+          isolation_result: fork_error_isolation_result,
+          success?:         false,
+          runtime:          1.0
+        )
+      end
+
+      let(:subject_result) do
+        instance_double(
+          Mutant::Result::Subject,
+          subject:          subject_a,
+          mutation_results: [mutation_fork_error_result]
+        )
+      end
+
+      it 'uses the isolation result class name as error' do
+        subject
+        files = Dir.glob(results_dir.join('*.yml'))
+        loaded = YAML.safe_load_file(files.first, permitted_classes: [Symbol, Time])
+        expect(loaded['errored_mutations'].first['error']).to eql('Mutant::Isolation::Fork::ForkError')
+      end
+
+      it 'counts errored correctly' do
+        subject
+        files = Dir.glob(results_dir.join('*.yml'))
+        loaded = YAML.safe_load_file(files.first, permitted_classes: [Symbol, Time])
+        expect(loaded['errored']).to eql(1)
+        expect(loaded['total_mutations']).to eql(1)
+      end
+    end
+
     context 'when errored mutation has SerializedException' do
       let(:serialized_exception) do
         Mutant::Isolation::Result::SerializedException.new(

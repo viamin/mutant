@@ -81,10 +81,19 @@ module Mutant
         end
 
         def serialize_errored(mutation_result)
+          isolation = mutation_result.isolation_result
           {
             'subject' => mutation_result.mutation.subject.identification,
-            'error'   => format_error(mutation_result.isolation_result.value)
+            'error'   => isolation_error(isolation)
           }
+        end
+
+        def isolation_error(isolation)
+          if isolation.is_a?(Isolation::Fork::ForkError)
+            isolation.class.name
+          else
+            format_error(isolation.value)
+          end
         end
 
         def format_error(exception)
