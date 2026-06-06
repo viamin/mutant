@@ -19,7 +19,7 @@ RSpec.describe Mutant::Meta::Example::Documentation do
     end
 
     context 'when the file lives under meta' do
-      let(:file) { '/workspace/meta/operators/example.rb' }
+      let(:file) { described_class::ROOT_PATH.join('meta/operators/example.rb').to_s }
 
       it 'returns the normalized meta-relative path' do
         expect(relative_meta_path).to eql('meta/operators/example.rb')
@@ -27,7 +27,7 @@ RSpec.describe Mutant::Meta::Example::Documentation do
     end
 
     context 'when the file does not live under meta' do
-      let(:file) { '../../tmp/example.rb' }
+      let(:file) { described_class::ROOT_PATH.parent.join('tmp/example.rb').to_s }
 
       it 'rejects the path' do
         expect { relative_meta_path }
@@ -36,11 +36,11 @@ RSpec.describe Mutant::Meta::Example::Documentation do
     end
 
     context 'when the file only shares the meta prefix' do
-      let(:file) { '/workspace/meta2/example.rb' }
+      let(:file) { described_class::ROOT_PATH.join('meta2/example.rb').to_s }
 
       it 'rejects the path' do
         expect { relative_meta_path }
-          .to raise_error(ArgumentError, %r{\AExample file is outside .*/meta: /workspace/meta2/example\.rb\z})
+          .to raise_error(ArgumentError, %r{\AExample file is outside .*/meta: .*/meta2/example\.rb\z})
       end
     end
   end

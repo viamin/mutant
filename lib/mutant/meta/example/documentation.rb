@@ -73,12 +73,13 @@ module Mutant
 
         def self.relative_meta_path(example)
           path = Pathname.new(example.file).expand_path
+          relative_path = path.relative_path_from(META_PATH)
 
-          unless path.ascend.include?(META_PATH)
+          if relative_path.each_filename.first == '..'
             fail ArgumentError, "Example file is outside #{META_PATH}: #{path}"
           end
 
-          path.relative_path_from(ROOT_PATH).to_s
+          Pathname.new(META_DIRECTORY_NAME).join(relative_path).to_s
         end
 
         def self.singleton_mutation?(node)
