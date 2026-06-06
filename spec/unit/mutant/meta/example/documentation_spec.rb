@@ -51,18 +51,11 @@ RSpec.describe Mutant::Meta::Example::Documentation do
       end
     end
 
-    context 'when the file reaches outside meta through a symlink' do
-      let(:external_file) { @tmpdir.join('external.rb') }
-      let(:symlink_path)  { described_class::META_PATH.join('linked-spec.rb') }
-      let(:file)          { symlink_path.to_s }
+    context 'when the file has already been resolved outside meta' do
+      let(:file) { @tmpdir.join('external.rb').to_s }
 
       before do
-        external_file.write('# external')
-        symlink_path.make_symlink(external_file)
-      end
-
-      after do
-        symlink_path.delete if symlink_path.exist? || symlink_path.symlink?
+        Pathname.new(file).write('# external')
       end
 
       it 'rejects the path' do

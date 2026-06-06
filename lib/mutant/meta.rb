@@ -22,7 +22,8 @@ module Mutant
       #
       # rubocop:disable Performance/Caller
       def self.add(*types, &block)
-        file = caller.first.split(':in', 2).first
+        location = caller_locations(1, 1).first
+        file     = location.absolute_path || Pathname.new(location.path).expand_path.to_s
         ALL << DSL.call(file, Set.new(types), block)
       end
 

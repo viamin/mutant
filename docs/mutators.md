@@ -6,7 +6,7 @@ It is intentionally concise: each section shows the first `meta/` example for a 
 
 ## special forms
 
-Representative source from `meta/file.rb:3`:
+Representative source from `meta/file.rb`:
 
 ```ruby
 __FILE__
@@ -22,7 +22,7 @@ Representative diff:
 
 ## and
 
-Representative source from `meta/and.rb:3`:
+Representative source from `meta/and.rb`:
 
 ```ruby
 true && false
@@ -39,7 +39,7 @@ Representative diff:
 
 ## and_asgn
 
-Representative source from `meta/and_asgn.rb:3`:
+Representative source from `meta/and_asgn.rb`:
 
 ```ruby
 a &&= 1
@@ -56,7 +56,7 @@ Representative diff:
 
 ## array
 
-Representative source from `meta/array.rb:3`:
+Representative source from `meta/array.rb`:
 
 ```ruby
 [true]
@@ -73,7 +73,7 @@ Representative diff:
 
 ## array / lvasgn
 
-Representative source from `meta/lvasgn.rb:12`:
+Representative source from `meta/lvasgn.rb`:
 
 ```ruby
 a = [*b]
@@ -90,7 +90,7 @@ Representative diff:
 
 ## begin
 
-Representative source from `meta/begin.rb:3`:
+Representative source from `meta/begin.rb`:
 
 ```ruby
 true
@@ -110,7 +110,7 @@ Representative diff:
 
 ## block
 
-Representative source from `meta/block.rb:3`:
+Representative source from `meta/block.rb`:
 
 ```ruby
 foo {
@@ -132,7 +132,7 @@ Representative diff:
 
 ## block / lambda
 
-Representative source from `meta/lambda.rb:3`:
+Representative source from `meta/lambda.rb`:
 
 ```ruby
 ->() {
@@ -151,7 +151,7 @@ Representative diff:
 
 ## block_pass
 
-Representative source from `meta/block_pass.rb:3`:
+Representative source from `meta/block_pass.rb`:
 
 ```ruby
 foo(&bar)
@@ -168,7 +168,7 @@ Representative diff:
 
 ## blockarg
 
-Representative source from `meta/blockarg.rb:3`:
+Representative source from `meta/blockarg.rb`:
 
 ```ruby
 foo { |&bar|
@@ -187,7 +187,7 @@ Representative diff:
 
 ## break
 
-Representative source from `meta/break.rb:3`:
+Representative source from `meta/break.rb`:
 
 ```ruby
 break true
@@ -204,7 +204,7 @@ Representative diff:
 
 ## case
 
-Representative source from `meta/case.rb:3`:
+Representative source from `meta/case.rb`:
 
 ```ruby
 case
@@ -225,7 +225,7 @@ Representative diff:
 
 ## casgn
 
-Representative source from `meta/casgn.rb:3`:
+Representative source from `meta/casgn.rb`:
 
 ```ruby
 A = true
@@ -242,7 +242,7 @@ Representative diff:
 
 ## cbase
 
-Representative source from `meta/cbase.rb:3`:
+Representative source from `meta/cbase.rb`:
 
 ```ruby
 ::A
@@ -259,7 +259,7 @@ Representative diff:
 
 ## class
 
-Representative source from `meta/class.rb:3`:
+Representative source from `meta/class.rb`:
 
 ```ruby
 class Foo
@@ -281,7 +281,7 @@ Representative diff:
 
 ## const
 
-Representative source from `meta/const.rb:3`:
+Representative source from `meta/const.rb`:
 
 ```ruby
 A::B::C
@@ -298,7 +298,7 @@ Representative diff:
 
 ## csend
 
-Representative source from `meta/csend.rb:3`:
+Representative source from `meta/csend.rb`:
 
 ```ruby
 a&.b
@@ -315,7 +315,7 @@ Representative diff:
 
 ## cvar
 
-Representative source from `meta/cvar.rb:3`:
+Representative source from `meta/cvar.rb`:
 
 ```ruby
 @@a
@@ -332,7 +332,7 @@ Representative diff:
 
 ## cvasgn
 
-Representative source from `meta/cvasgn.rb:3`:
+Representative source from `meta/cvasgn.rb`:
 
 ```ruby
 @@a = true
@@ -349,7 +349,7 @@ Representative diff:
 
 ## def
 
-Representative source from `meta/def.rb:3`:
+Representative source from `meta/def.rb`:
 
 ```ruby
 def foo
@@ -368,7 +368,7 @@ Representative diff:
 
 ## defined?
 
-Representative source from `meta/defined.rb:3`:
+Representative source from `meta/defined.rb`:
 
 ```ruby
 defined?(foo)
@@ -385,7 +385,7 @@ Representative diff:
 
 ## dstr
 
-Representative source from `meta/dstr.rb:3`:
+Representative source from `meta/dstr.rb`:
 
 ```ruby
 "foo#{bar}baz"
@@ -402,7 +402,7 @@ Representative diff:
 
 ## dsym
 
-Representative source from `meta/dsym.rb:3`:
+Representative source from `meta/dsym.rb`:
 
 ```ruby
 :"foo#{bar}baz"
@@ -419,7 +419,7 @@ Representative diff:
 
 ## ensure
 
-Representative source from `meta/ensure.rb:3`:
+Representative source from `meta/ensure.rb`:
 
 ```ruby
 begin
@@ -444,7 +444,7 @@ Representative diff:
 
 ## erange
 
-Representative source from `meta/range.rb:22`:
+Representative source from `meta/range.rb`:
 
 ```ruby
 1...100
@@ -461,7 +461,7 @@ Representative diff:
 
 ## false
 
-Representative source from `meta/false.rb:3`:
+Representative source from `meta/false.rb`:
 
 ```ruby
 false
@@ -478,7 +478,7 @@ Representative diff:
 
 ## float
 
-Representative source from `meta/float.rb:3`:
+Representative source from `meta/float.rb`:
 
 ```ruby
 10.0
@@ -495,7 +495,7 @@ Representative diff:
 
 ## gvar
 
-Representative source from `meta/gvar.rb:3`:
+Representative source from `meta/gvar.rb`:
 
 ```ruby
 $a
@@ -512,7 +512,7 @@ Representative diff:
 
 ## gvasgn
 
-Representative source from `meta/gvasgn.rb:3`:
+Representative source from `meta/gvasgn.rb`:
 
 ```ruby
 $a = true
@@ -529,7 +529,7 @@ Representative diff:
 
 ## hash
 
-Representative source from `meta/hash.rb:3`:
+Representative source from `meta/hash.rb`:
 
 ```ruby
 { true => true, false => false }
@@ -546,7 +546,7 @@ Representative diff:
 
 ## if
 
-Representative source from `meta/if.rb:3`:
+Representative source from `meta/if.rb`:
 
 ```ruby
 if condition
@@ -571,7 +571,7 @@ Representative diff:
 
 ## index
 
-Representative source from `meta/index.rb:3`:
+Representative source from `meta/index.rb`:
 
 ```ruby
 self.foo[]
@@ -588,7 +588,7 @@ Representative diff:
 
 ## indexasgn
 
-Representative source from `meta/indexasgn.rb:3`:
+Representative source from `meta/indexasgn.rb`:
 
 ```ruby
 foo[bar] = baz
@@ -605,7 +605,7 @@ Representative diff:
 
 ## indexasgn / op_asgn
 
-Representative source from `meta/indexasgn.rb:22`:
+Representative source from `meta/indexasgn.rb`:
 
 ```ruby
 self[foo] += bar
@@ -622,7 +622,7 @@ Representative diff:
 
 ## int
 
-Representative source from `meta/int.rb:3`:
+Representative source from `meta/int.rb`:
 
 ```ruby
 10
@@ -639,7 +639,7 @@ Representative diff:
 
 ## irange
 
-Representative source from `meta/range.rb:3`:
+Representative source from `meta/range.rb`:
 
 ```ruby
 1..100
@@ -656,7 +656,7 @@ Representative diff:
 
 ## ivar
 
-Representative source from `meta/ivar.rb:3`:
+Representative source from `meta/ivar.rb`:
 
 ```ruby
 @foo
@@ -673,7 +673,7 @@ Representative diff:
 
 ## ivasgn
 
-Representative source from `meta/ivasgn.rb:3`:
+Representative source from `meta/ivasgn.rb`:
 
 ```ruby
 @a = true
@@ -690,7 +690,7 @@ Representative diff:
 
 ## kwarg
 
-Representative source from `meta/kwarg.rb:3`:
+Representative source from `meta/kwarg.rb`:
 
 ```ruby
 def foo(bar:)
@@ -709,7 +709,7 @@ Representative diff:
 
 ## kwbegin
 
-Representative source from `meta/kwbegin.rb:3`:
+Representative source from `meta/kwbegin.rb`:
 
 ```ruby
 begin
@@ -730,7 +730,7 @@ Representative diff:
 
 ## lvar
 
-Representative source from `meta/lvar.rb:3`:
+Representative source from `meta/lvar.rb`:
 
 ```ruby
 a = nil
@@ -750,7 +750,7 @@ Representative diff:
 
 ## lvasgn
 
-Representative source from `meta/lvasgn.rb:3`:
+Representative source from `meta/lvasgn.rb`:
 
 ```ruby
 a = true
@@ -767,7 +767,7 @@ Representative diff:
 
 ## masgn
 
-Representative source from `meta/masgn.rb:3`:
+Representative source from `meta/masgn.rb`:
 
 ```ruby
 (a, b) = [c, d]
@@ -784,7 +784,7 @@ Representative diff:
 
 ## match_current_line
 
-Representative source from `meta/match_current_line.rb:3`:
+Representative source from `meta/match_current_line.rb`:
 
 ```ruby
 if /foo/
@@ -805,7 +805,7 @@ Representative diff:
 
 ## next
 
-Representative source from `meta/next.rb:3`:
+Representative source from `meta/next.rb`:
 
 ```ruby
 next true
@@ -822,7 +822,7 @@ Representative diff:
 
 ## nil
 
-Representative source from `meta/nil.rb:3`:
+Representative source from `meta/nil.rb`:
 
 ```ruby
 nil
@@ -838,7 +838,7 @@ Representative diff:
 
 ## nth_ref
 
-Representative source from `meta/nthref.rb:3`:
+Representative source from `meta/nthref.rb`:
 
 ```ruby
 $1
@@ -855,7 +855,7 @@ Representative diff:
 
 ## numblock
 
-Representative source from `meta/numblock.rb:3`:
+Representative source from `meta/numblock.rb`:
 
 ```ruby
 foo {
@@ -876,7 +876,7 @@ Representative diff:
 
 ## op_asgn
 
-Representative source from `meta/op_assgn.rb:3`:
+Representative source from `meta/op_assgn.rb`:
 
 ```ruby
 @a.b += 1
@@ -893,7 +893,7 @@ Representative diff:
 
 ## or
 
-Representative source from `meta/or.rb:3`:
+Representative source from `meta/or.rb`:
 
 ```ruby
 true || false
@@ -910,7 +910,7 @@ Representative diff:
 
 ## or_asgn
 
-Representative source from `meta/or_asgn.rb:3`:
+Representative source from `meta/or_asgn.rb`:
 
 ```ruby
 a ||= 1
@@ -927,7 +927,7 @@ Representative diff:
 
 ## redo
 
-Representative source from `meta/redo.rb:3`:
+Representative source from `meta/redo.rb`:
 
 ```ruby
 redo
@@ -943,7 +943,7 @@ Representative diff:
 
 ## regexp
 
-Representative source from `meta/regexp.rb:3`:
+Representative source from `meta/regexp.rb`:
 
 ```ruby
 /foo/
@@ -960,7 +960,7 @@ Representative diff:
 
 ## regexp / regexp_digit_type
 
-Representative source from `meta/regexp/character_types.rb:15`:
+Representative source from `meta/regexp/character_types.rb`:
 
 ```ruby
 /\d/
@@ -977,7 +977,7 @@ Representative diff:
 
 ## regexp / regexp_hex_type
 
-Representative source from `meta/regexp/character_types.rb:15`:
+Representative source from `meta/regexp/character_types.rb`:
 
 ```ruby
 /\h/
@@ -994,7 +994,7 @@ Representative diff:
 
 ## regexp / regexp_linebreak_type
 
-Representative source from `meta/regexp/character_types.rb:15`:
+Representative source from `meta/regexp/character_types.rb`:
 
 ```ruby
 /\R/
@@ -1011,7 +1011,7 @@ Representative diff:
 
 ## regexp / regexp_nondigit_type
 
-Representative source from `meta/regexp/character_types.rb:15`:
+Representative source from `meta/regexp/character_types.rb`:
 
 ```ruby
 /\D/
@@ -1028,7 +1028,7 @@ Representative diff:
 
 ## regexp / regexp_nonhex_type
 
-Representative source from `meta/regexp/character_types.rb:15`:
+Representative source from `meta/regexp/character_types.rb`:
 
 ```ruby
 /\H/
@@ -1045,7 +1045,7 @@ Representative diff:
 
 ## regexp / regexp_nonspace_type
 
-Representative source from `meta/regexp/character_types.rb:15`:
+Representative source from `meta/regexp/character_types.rb`:
 
 ```ruby
 /\S/
@@ -1062,7 +1062,7 @@ Representative diff:
 
 ## regexp / regexp_nonword_boundary_anchor
 
-Representative source from `meta/regexp/character_types.rb:15`:
+Representative source from `meta/regexp/character_types.rb`:
 
 ```ruby
 /\B/
@@ -1079,7 +1079,7 @@ Representative diff:
 
 ## regexp / regexp_nonword_type
 
-Representative source from `meta/regexp/character_types.rb:15`:
+Representative source from `meta/regexp/character_types.rb`:
 
 ```ruby
 /\W/
@@ -1096,7 +1096,7 @@ Representative diff:
 
 ## regexp / regexp_space_type
 
-Representative source from `meta/regexp/character_types.rb:15`:
+Representative source from `meta/regexp/character_types.rb`:
 
 ```ruby
 /\s/
@@ -1113,7 +1113,7 @@ Representative diff:
 
 ## regexp / regexp_word_boundary_anchor
 
-Representative source from `meta/regexp/character_types.rb:15`:
+Representative source from `meta/regexp/character_types.rb`:
 
 ```ruby
 /\b/
@@ -1130,7 +1130,7 @@ Representative diff:
 
 ## regexp / regexp_word_type
 
-Representative source from `meta/regexp/character_types.rb:15`:
+Representative source from `meta/regexp/character_types.rb`:
 
 ```ruby
 /\w/
@@ -1147,7 +1147,7 @@ Representative diff:
 
 ## regexp / regexp_xgrapheme_type
 
-Representative source from `meta/regexp/character_types.rb:15`:
+Representative source from `meta/regexp/character_types.rb`:
 
 ```ruby
 /\X/
@@ -1164,7 +1164,7 @@ Representative diff:
 
 ## regexp_alternation_meta
 
-Representative source from `meta/regexp/regexp_alternation_meta.rb:3`:
+Representative source from `meta/regexp/regexp_alternation_meta.rb`:
 
 ```ruby
 /\A(foo|bar|baz)\z/
@@ -1181,7 +1181,7 @@ Representative diff:
 
 ## regexp_bol_anchor
 
-Representative source from `meta/regexp/regexp_bol_anchor.rb:3`:
+Representative source from `meta/regexp/regexp_bol_anchor.rb`:
 
 ```ruby
 /^/
@@ -1198,7 +1198,7 @@ Representative diff:
 
 ## regexp_bos_anchor
 
-Representative source from `meta/regexp/regexp_bos_anchor.rb:3`:
+Representative source from `meta/regexp/regexp_bos_anchor.rb`:
 
 ```ruby
 /\A/
@@ -1215,7 +1215,7 @@ Representative diff:
 
 ## regexp_capture_group
 
-Representative source from `meta/regexp/regexp_capture_group.rb:3`:
+Representative source from `meta/regexp/regexp_capture_group.rb`:
 
 ```ruby
 /()/
@@ -1232,7 +1232,7 @@ Representative diff:
 
 ## regexp_eol_anchor
 
-Representative source from `meta/regexp/regexp_eol_anchor.rb:3`:
+Representative source from `meta/regexp/regexp_eol_anchor.rb`:
 
 ```ruby
 /$/
@@ -1249,7 +1249,7 @@ Representative diff:
 
 ## regexp_eos_anchor
 
-Representative source from `meta/regexp/regexp_eos_anchor.rb:3`:
+Representative source from `meta/regexp/regexp_eos_anchor.rb`:
 
 ```ruby
 /\z/
@@ -1266,7 +1266,7 @@ Representative diff:
 
 ## regexp_eos_ob_eol_anchor
 
-Representative source from `meta/regexp/regexp_eos_ob_eol_anchor.rb:3`:
+Representative source from `meta/regexp/regexp_eos_ob_eol_anchor.rb`:
 
 ```ruby
 /\Z/
@@ -1283,7 +1283,7 @@ Representative diff:
 
 ## regexp_greedy_zero_or_more
 
-Representative source from `meta/regexp/regexp_greedy_zero_or_more.rb:3`:
+Representative source from `meta/regexp/regexp_greedy_zero_or_more.rb`:
 
 ```ruby
 /\d*/
@@ -1300,7 +1300,7 @@ Representative diff:
 
 ## regexp_root_expression
 
-Representative source from `meta/regexp/regexp_root_expression.rb:3`:
+Representative source from `meta/regexp/regexp_root_expression.rb`:
 
 ```ruby
 /^/
@@ -1317,7 +1317,7 @@ Representative diff:
 
 ## regopt
 
-Representative source from `meta/regopt.rb:3`:
+Representative source from `meta/regopt.rb`:
 
 ```ruby
 /foo/imox
@@ -1334,7 +1334,7 @@ Representative diff:
 
 ## rescue
 
-Representative source from `meta/rescue.rb:3`:
+Representative source from `meta/rescue.rb`:
 
 ```ruby
 begin
@@ -1357,7 +1357,7 @@ Representative diff:
 
 ## restarg
 
-Representative source from `meta/restarg.rb:3`:
+Representative source from `meta/restarg.rb`:
 
 ```ruby
 def foo(*bar)
@@ -1376,7 +1376,7 @@ Representative diff:
 
 ## return
 
-Representative source from `meta/return.rb:3`:
+Representative source from `meta/return.rb`:
 
 ```ruby
 return
@@ -1393,7 +1393,7 @@ Representative diff:
 
 ## self
 
-Representative source from `meta/self.rb:3`:
+Representative source from `meta/self.rb`:
 
 ```ruby
 self
@@ -1410,7 +1410,7 @@ Representative diff:
 
 ## send
 
-Representative source from `meta/date.rb:3`:
+Representative source from `meta/date.rb`:
 
 ```ruby
 Date.parse(nil)
@@ -1427,7 +1427,7 @@ Representative diff:
 
 ## str
 
-Representative source from `meta/str.rb:3`:
+Representative source from `meta/str.rb`:
 
 ```ruby
 "foo"
@@ -1444,7 +1444,7 @@ Representative diff:
 
 ## super
 
-Representative source from `meta/super.rb:3`:
+Representative source from `meta/super.rb`:
 
 ```ruby
 super
@@ -1461,7 +1461,7 @@ Representative diff:
 
 ## sym
 
-Representative source from `meta/sym.rb:3`:
+Representative source from `meta/sym.rb`:
 
 ```ruby
 :foo
@@ -1478,7 +1478,7 @@ Representative diff:
 
 ## true
 
-Representative source from `meta/true.rb:3`:
+Representative source from `meta/true.rb`:
 
 ```ruby
 true
@@ -1495,7 +1495,7 @@ Representative diff:
 
 ## until
 
-Representative source from `meta/until.rb:3`:
+Representative source from `meta/until.rb`:
 
 ```ruby
 until true
@@ -1517,7 +1517,7 @@ Representative diff:
 
 ## while
 
-Representative source from `meta/while.rb:3`:
+Representative source from `meta/while.rb`:
 
 ```ruby
 while true
@@ -1540,7 +1540,7 @@ Representative diff:
 
 ## yield
 
-Representative source from `meta/yield.rb:3`:
+Representative source from `meta/yield.rb`:
 
 ```ruby
 yield(true)
