@@ -37,30 +37,6 @@ module Mutant
         All options accepted by `mutant run` are also accepted here,
         since they influence the resolved configuration.
       MESSAGE
-
-    private
-
-      def print_main_help
-        puts MAIN_HELP
-      end
-
-      def print_session_help
-        puts SESSION_HELP
-      end
-
-      def print_environment_help
-        puts ENVIRONMENT_HELP
-      end
-
-      def print_run_help
-        opts = OptionParser.new do |builder|
-          builder.banner = 'usage: mutant run [options] MATCH_EXPRESSION ...'
-          %i[add_environment_options add_mutation_options add_filter_options add_debug_options].each do |name|
-            __send__(name, builder)
-          end
-        end
-        puts opts.to_s
-      end
     end
   end
 end

@@ -13,17 +13,16 @@ module Mutant
           raise Error, "session list does not accept arguments: #{arguments.join(' ')}"
         end
 
-        files = find_session_files
-
-        if files.empty?
+        files = session_list_files
+        if files.nil? || files.empty?
           puts 'No sessions found in .mutant/results/'
           return
         end
 
         puts "Sessions (#{files.size}):"
         files.each do |path|
-          data = load_session(path)
-          id = path.basename('.yml').to_s
+          data = load_session_data(path)
+          id = path.basename('.yml')
           status = session_success?(data) ? 'pass' : 'fail'
           coverage = session_coverage(data) || '?'
           puts "  #{id}  coverage: #{coverage}  status: #{status}"
@@ -36,7 +35,11 @@ module Mutant
         end
 
         path = resolve_session_path(id)
-        data = load_session(path)
+        require 'yaml'
+        data = YAML.safe_load(path.read, permitted_classes: [Symbol])
+        unless data.is_a?(Hash)
+          raise Error, "Could not load session '#{path.basename('.yml')}': expected a hash payload"
+        end
         puts "Session: #{id}"
         puts "  Status:   #{session_success?(data) ? 'pass' : 'fail'}"
         puts "  Coverage: #{session_coverage(data) || 'unknown'}"
@@ -46,27 +49,20 @@ module Mutant
         subjects.each do |subject|
           puts "    #{session_expression(subject)}"
         end
+      rescue Psych::Exception => exception
+        raise Error, "Could not load session '#{path.basename('.yml')}': #{exception.message}"
       end
 
       def session_results_dir
         config.pathname.new(RESULTS_DIR)
       end
 
-      def find_session_files
+      def session_list_files
         dir = session_results_dir
-        return EMPTY_ARRAY unless dir.directory?
+
+        return unless dir.directory?
 
         dir.glob('*.yml').sort
-      end
-
-      def load_session(path)
-        require 'yaml'
-        data = YAML.safe_load(path.read, permitted_classes: [Symbol])
-        return data if data.is_a?(Hash)
-
-        raise Error, "Could not load session '#{path.basename('.yml')}': expected a hash payload"
-      rescue Psych::Exception => exception
-        raise Error, "Could not load session '#{path.basename('.yml')}': #{exception.message}"
       end
 
       def resolve_session_path(id)
@@ -95,6 +91,19 @@ module Mutant
 
       def session_expression(data)
         session_value(data, :expression) || '<unknown>'
+      end
+
+      def load_session_data(path)
+        require 'yaml'
+        data = YAML.safe_load(path.read, permitted_classes: [Symbol])
+
+        unless data.is_a?(Hash)
+          raise Error, "Could not load session '#{path.basename('.yml')}': expected a hash payload"
+        end
+
+        data
+      rescue Psych::Exception => exception
+        raise Error, "Could not load session '#{path.basename('.yml')}': #{exception.message}"
       end
 
       def session_value(data, key)

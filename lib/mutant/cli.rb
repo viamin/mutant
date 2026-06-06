@@ -77,7 +77,10 @@ module Mutant
       if SUBCOMMANDS.include?(subcommand)
         __send__("handle_#{subcommand}", subcommand_arguments)
       elsif arguments.one? && HELP_FLAGS.include?(subcommand)
-        print_main_help
+        puts(Help::MAIN_HELP)
+        cli_exit
+      elsif arguments.one? && subcommand == '--version'
+        puts("mutant-#{VERSION}")
         cli_exit
       else
         parse(arguments)

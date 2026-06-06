@@ -115,8 +115,6 @@ RSpec.describe Mutant::CLI do
                 --ignore-subject EXPRESSION  Ignore subjects that match EXPRESSION as prefix
                 --since REVISION             Only select subjects touched since REVISION
                 --fail-fast                  Fail fast
-                --version                    Print mutants version
-            -h, --help                       Show this message
       MESSAGE
     end
 
@@ -143,6 +141,7 @@ RSpec.describe Mutant::CLI do
 
     context 'with include help flag' do
       let(:flags) { %w[--help] }
+      let(:expected_matcher_config) { Mutant::Matcher::Config::DEFAULT }
 
       before do
         expect($stdout).to receive(:puts).with(expected_message)
@@ -156,6 +155,7 @@ RSpec.describe Mutant::CLI do
 
     context 'with invalid MUTANT_JOBS env variable and help flag' do
       let(:flags) { %w[--help] }
+      let(:expected_matcher_config) { Mutant::Matcher::Config::DEFAULT }
 
       around do |example|
         ENV.store('MUTANT_JOBS', 'nope')
@@ -213,6 +213,7 @@ RSpec.describe Mutant::CLI do
 
     context 'with version flag' do
       let(:flags) { %w[--version] }
+      let(:expected_matcher_config) { Mutant::Matcher::Config::DEFAULT }
 
       before do
         expect_any_instance_of(described_class).to receive(:cli_exit)
@@ -224,6 +225,7 @@ RSpec.describe Mutant::CLI do
 
     context 'with invalid MUTANT_JOBS env variable and version flag' do
       let(:flags) { %w[--version] }
+      let(:expected_matcher_config) { Mutant::Matcher::Config::DEFAULT }
 
       around do |example|
         ENV.store('MUTANT_JOBS', 'nope')
@@ -562,8 +564,6 @@ RSpec.describe Mutant::CLI do
                     --ignore-subject EXPRESSION  Ignore subjects that match EXPRESSION as prefix
                     --since REVISION             Only select subjects touched since REVISION
                     --fail-fast                  Fail fast
-                    --version                    Print mutants version
-                -h, --help                       Show this message
           MESSAGE
         end
       end
@@ -775,12 +775,12 @@ RSpec.describe Mutant::CLI do
       end
 
       context 'list with extra arguments' do
-        let(:arguments) { %w[session list extra] }
+        let(:arguments) { %w[session list extra another] }
 
         it 'raises error' do
           expect { subject }.to raise_error(
             Mutant::CLI::Error,
-            'session list does not accept arguments: extra'
+            'session list does not accept arguments: extra another'
           )
         end
       end
@@ -1089,7 +1089,7 @@ RSpec.describe Mutant::CLI do
         let(:arguments) { %w[--help] }
 
         it 'prints main help and exits' do
-          expect(cli).to receive(:print_main_help)
+          expect(cli).to receive(:puts).with(Mutant::CLI::Help::MAIN_HELP)
           expect(cli).not_to receive(:parse)
           expect(cli).to receive(:cli_exit)
 
@@ -1112,7 +1112,7 @@ RSpec.describe Mutant::CLI do
 
         it 'parses instead of printing main help' do
           expect(cli).to receive(:parse).with(%w[--help extra])
-          expect(cli).not_to receive(:print_main_help)
+          expect(cli).not_to receive(:puts).with(Mutant::CLI::Help::MAIN_HELP)
           expect(cli).not_to receive(:cli_exit)
 
           dispatch
@@ -1160,7 +1160,7 @@ RSpec.describe Mutant::CLI do
         let(:arguments) { %w[unknown] }
 
         it 'prints session help before exiting' do
-          expect(cli).to receive(:print_session_help)
+          expect(cli).to receive(:puts).with(Mutant::CLI::Help::SESSION_HELP)
           handle_session
         end
       end
@@ -1188,7 +1188,7 @@ RSpec.describe Mutant::CLI do
         let(:arguments) { %w[TestApp* --help] }
 
         it 'prints environment help and skips parsing' do
-          expect(cli).to receive(:print_environment_help)
+          expect(cli).to receive(:puts).with(Mutant::CLI::Help::ENVIRONMENT_HELP)
           expect(cli).not_to receive(:parse)
           expect(cli).not_to receive(:print_environment)
           expect(cli).to receive(:cli_exit)
@@ -1201,7 +1201,7 @@ RSpec.describe Mutant::CLI do
         let(:arguments) { %w[-h] }
 
         it 'prints environment help and skips parsing' do
-          expect(cli).to receive(:print_environment_help)
+          expect(cli).to receive(:puts).with(Mutant::CLI::Help::ENVIRONMENT_HELP)
           expect(cli).not_to receive(:parse)
           expect(cli).not_to receive(:print_environment)
           expect(cli).to receive(:cli_exit)
@@ -1232,10 +1232,10 @@ RSpec.describe Mutant::CLI do
         let(:arguments) { %w[run] }
 
         it 'prints run help and exits' do
-          expect(cli).to receive(:print_run_help)
-          expect(cli).not_to receive(:print_environment_help)
-          expect(cli).not_to receive(:print_session_help)
-          expect(cli).not_to receive(:print_main_help)
+          expect(cli).to receive(:puts).with(a_string_starting_with('usage: mutant run [options] MATCH_EXPRESSION ...'))
+          expect(cli).not_to receive(:puts).with(Mutant::CLI::Help::ENVIRONMENT_HELP)
+          expect(cli).not_to receive(:puts).with(Mutant::CLI::Help::SESSION_HELP)
+          expect(cli).not_to receive(:puts).with(Mutant::CLI::Help::MAIN_HELP)
           expect(cli).to receive(:cli_exit)
 
           handle_help
@@ -1246,10 +1246,9 @@ RSpec.describe Mutant::CLI do
         let(:arguments) { %w[environment] }
 
         it 'prints environment help and exits' do
-          expect(cli).not_to receive(:print_run_help)
-          expect(cli).to receive(:print_environment_help)
-          expect(cli).not_to receive(:print_session_help)
-          expect(cli).not_to receive(:print_main_help)
+          expect(cli).to receive(:puts).with(Mutant::CLI::Help::ENVIRONMENT_HELP)
+          expect(cli).not_to receive(:puts).with(Mutant::CLI::Help::SESSION_HELP)
+          expect(cli).not_to receive(:puts).with(Mutant::CLI::Help::MAIN_HELP)
           expect(cli).to receive(:cli_exit)
 
           handle_help
@@ -1260,10 +1259,9 @@ RSpec.describe Mutant::CLI do
         let(:arguments) { %w[session] }
 
         it 'prints session help and exits' do
-          expect(cli).not_to receive(:print_run_help)
-          expect(cli).not_to receive(:print_environment_help)
-          expect(cli).to receive(:print_session_help)
-          expect(cli).not_to receive(:print_main_help)
+          expect(cli).not_to receive(:puts).with(Mutant::CLI::Help::ENVIRONMENT_HELP)
+          expect(cli).to receive(:puts).with(Mutant::CLI::Help::SESSION_HELP)
+          expect(cli).not_to receive(:puts).with(Mutant::CLI::Help::MAIN_HELP)
           expect(cli).to receive(:cli_exit)
 
           handle_help
@@ -1274,10 +1272,9 @@ RSpec.describe Mutant::CLI do
         let(:arguments) { %w[unknown] }
 
         it 'prints main help and exits' do
-          expect(cli).not_to receive(:print_run_help)
-          expect(cli).not_to receive(:print_environment_help)
-          expect(cli).not_to receive(:print_session_help)
-          expect(cli).to receive(:print_main_help)
+          expect(cli).not_to receive(:puts).with(Mutant::CLI::Help::ENVIRONMENT_HELP)
+          expect(cli).not_to receive(:puts).with(Mutant::CLI::Help::SESSION_HELP)
+          expect(cli).to receive(:puts).with(Mutant::CLI::Help::MAIN_HELP)
           expect(cli).to receive(:cli_exit)
 
           handle_help
@@ -1311,16 +1308,94 @@ RSpec.describe Mutant::CLI do
         cli.send(:add_environment_options, parser)
       end
 
+      it 'registers the expected option signatures' do
+        parser_double = instance_double(OptionParser)
+
+        expect(parser_double).to receive(:separator).with('Environment:').ordered
+        expect(parser_double).to receive(:on).with('--zombie', 'Run mutant zombified').ordered
+        expect(parser_double).to receive(:on).with('-I', '--include DIRECTORY', 'Add DIRECTORY to $LOAD_PATH').ordered
+        expect(parser_double).to receive(:on).with('-r', '--require NAME', 'Require file with NAME').ordered
+        expect(parser_double)
+          .to receive(:on)
+          .with('-j', '--jobs NUMBER', 'Number of kill jobs. Defaults to MUTANT_JOBS or 1.')
+          .ordered
+
+        cli.send(:add_environment_options, parser_double)
+      end
+
+      it 'adds the environment section header to the parser output' do
+        expect(parser.to_s).to include('Environment:')
+      end
+
+      it 'describes the zombie option in the parser output' do
+        parser_help = parser.to_s
+
+        expect(parser_help).to include('--zombie')
+        expect(parser_help).to include('Run mutant zombified')
+      end
+
+      it 'describes the include option in the parser output' do
+        parser_help = parser.to_s
+
+        expect(parser_help).to include('-I')
+        expect(parser_help).to include('--include DIRECTORY')
+        expect(parser_help).to include('Add DIRECTORY to $LOAD_PATH')
+      end
+
+      it 'describes the require option in the parser output' do
+        parser_help = parser.to_s
+
+        expect(parser_help).to include('-r')
+        expect(parser_help).to include('--require NAME')
+        expect(parser_help).to include('Require file with NAME')
+      end
+
       it 'sets zombie when the zombie option is parsed' do
         parser.parse!(%w[--zombie])
 
         expect(cli.config.zombie).to be(true)
       end
 
+      it 'adds includes when the short include option is parsed' do
+        parser.parse!(%w[-I lib/custom])
+
+        expect(cli.config.includes).to include('lib/custom')
+      end
+
+      it 'adds includes when the long include option is parsed' do
+        parser.parse!(%w[--include lib/alt])
+
+        expect(cli.config.includes).to include('lib/alt')
+      end
+
+      it 'adds requires when the short require option is parsed' do
+        parser.parse!(%w[-r mutant_helper])
+
+        expect(cli.config.requires).to include('mutant_helper')
+      end
+
+      it 'adds requires when the long require option is parsed' do
+        parser.parse!(%w[--require mutant/extra])
+
+        expect(cli.config.requires).to include('mutant/extra')
+      end
+
       it 'sets jobs when the jobs option is parsed' do
         parser.parse!(%w[--jobs 2])
 
         expect(cli.config.jobs).to eql(2)
+      end
+
+      it 'marks jobs as explicitly configured when the jobs option is parsed' do
+        parser.parse!(%w[--jobs 2])
+
+        expect(cli.send(:state).fetch(:jobs_explicit)).to be(true)
+      end
+
+      it 'uses the jobs flag name in parse errors' do
+        expect do
+          parser.parse!(%w[--jobs nope])
+        end.to raise_error(Mutant::CLI::Error, '--jobs must be an integer')
       end
     end
 
@@ -1338,11 +1413,7 @@ RSpec.describe Mutant::CLI do
       end
 
       it 'registers the version option on the parser' do
-        expect(parser).to have_received(:on).with('--version', 'Print mutants version')
-      end
-
-      it 'registers the help option on the parser tail' do
-        expect(parser).to have_received(:on_tail).with('-h', '--help', 'Show this message')
+        expect(parser).not_to have_received(:on).with('--version', 'Print mutants version')
       end
 
       it 'sets fail fast when the flag is parsed' do
@@ -1365,31 +1436,6 @@ RSpec.describe Mutant::CLI do
         block.call
       end
 
-      it 'prints version and exits when the version flag is parsed' do
-        block = nil
-        expect(parser).to receive(:on).with('--version', 'Print mutants version') { |*_, &captured| block = captured }
-        cli.send(:add_debug_options, parser)
-
-        expect($stdout).to receive(:puts).with("mutant-#{Mutant::VERSION}")
-        expect(cli).to receive(:cli_exit)
-
-        block.call
-      end
-
-      it 'prints parser help and exits when the help flag is parsed' do
-        block = nil
-        expect(parser).to receive(:on_tail).with(
-          '-h',
-          '--help',
-          'Show this message'
-        ) { |*_, &captured| block = captured }
-        cli.send(:add_debug_options, parser)
-
-        expect($stdout).to receive(:puts).with('parser help')
-        expect(cli).to receive(:cli_exit)
-
-        block.call
-      end
     end
 
     describe '#enable_fail_fast' do
@@ -1607,8 +1653,8 @@ RSpec.describe Mutant::CLI do
 
       it 'raises on unexpected arguments' do
         expect do
-          cli.send(:print_session_list, %w[extra])
-        end.to raise_error(Mutant::CLI::Error, 'session list does not accept arguments: extra')
+          cli.send(:print_session_list, %w[extra another])
+        end.to raise_error(Mutant::CLI::Error, 'session list does not accept arguments: extra another')
       end
 
       it 'prints a message when no session files exist' do
@@ -1617,16 +1663,75 @@ RSpec.describe Mutant::CLI do
         cli.send(:print_session_list, [])
       end
 
-      it 'prints each discovered session with fallback coverage and status' do
-        FileUtils.mkdir_p(results_dir)
-        File.write(File.join(results_dir, 'abc123.yml'), YAML.dump({ success: true, coverage: '100%' }))
-        File.write(File.join(results_dir, 'def456.yml'), YAML.dump({ 'success' => false }))
+      it 'treats a non-directory results path as missing sessions' do
+        results_dir_path = instance_double(Pathname, directory?: false)
 
-        expect($stdout).to receive(:puts).with('Sessions (2):')
-        expect($stdout).to receive(:puts).with('  abc123  coverage: 100%  status: pass')
-        expect($stdout).to receive(:puts).with('  def456  coverage: ?  status: fail')
+        expect(cli).to receive(:session_results_dir).and_return(results_dir_path)
+        expect(results_dir_path).not_to receive(:glob)
+        expect($stdout).to receive(:puts).with('No sessions found in .mutant/results/')
 
         cli.send(:print_session_list, [])
+      end
+
+      it 'prints a message when the results directory contains no session files' do
+        results_dir_path = instance_double(Pathname, directory?: true)
+
+        expect(cli).to receive(:session_results_dir).and_return(results_dir_path)
+        expect(results_dir_path).to receive(:glob).with('*.yml').and_return([])
+        expect($stdout).to receive(:puts).with('No sessions found in .mutant/results/')
+
+        cli.send(:print_session_list, [])
+      end
+
+      it 'sorts discovered sessions before printing fallback coverage and status' do
+        FileUtils.mkdir_p(results_dir)
+        first_path = Pathname(File.join(results_dir, 'zzz999.yml'))
+        second_path = Pathname(File.join(results_dir, 'aaa111.yml'))
+        results_dir_path = instance_double(Pathname, directory?: true)
+
+        first_path.write(YAML.dump({ success: true, coverage: '100%' }))
+        second_path.write(YAML.dump({ 'success' => false }))
+
+        expect(cli).to receive(:session_results_dir).and_return(results_dir_path)
+        expect(results_dir_path).to receive(:glob).with('*.yml').and_return([first_path, second_path])
+        expect($stdout).to receive(:puts).with('Sessions (2):')
+        expect($stdout).to receive(:puts).with('  aaa111  coverage: ?  status: fail').ordered
+        expect($stdout).to receive(:puts).with('  zzz999  coverage: 100%  status: pass').ordered
+
+        cli.send(:print_session_list, [])
+      end
+
+      it 'accepts hash subclasses when loading session payloads' do
+        FileUtils.mkdir_p(results_dir)
+        path = Pathname(File.join(results_dir, 'session.yml'))
+        payload_class = Class.new(Hash)
+        results_dir_path = instance_double(Pathname, directory?: true)
+
+        path.write('ignored')
+
+        expect(cli).to receive(:session_results_dir).and_return(results_dir_path)
+        expect(results_dir_path).to receive(:glob).with('*.yml').and_return([path])
+        allow(YAML).to receive(:safe_load).and_return(payload_class['success' => true, 'coverage' => '88%'])
+        expect($stdout).to receive(:puts).with('Sessions (1):')
+        expect($stdout).to receive(:puts).with('  session  coverage: 88%  status: pass')
+
+        cli.send(:print_session_list, [])
+      end
+
+      it 'raises when a session payload is not a hash' do
+        FileUtils.mkdir_p(results_dir)
+        path = Pathname(File.join(results_dir, 'broken.yml'))
+        results_dir_path = instance_double(Pathname, directory?: true)
+
+        path.write('ignored')
+
+        expect(cli).to receive(:session_results_dir).and_return(results_dir_path)
+        expect(results_dir_path).to receive(:glob).with('*.yml').and_return([path])
+        allow(YAML).to receive(:safe_load).and_return(true)
+
+        expect do
+          cli.send(:print_session_list, [])
+        end.to raise_error(Mutant::CLI::Error, "Could not load session 'broken': expected a hash payload")
       end
     end
 
@@ -1669,40 +1774,6 @@ RSpec.describe Mutant::CLI do
         expect($stdout).to receive(:puts).with('    <unknown>')
 
         cli.send(:print_session_show, 'abc123', [])
-      end
-    end
-
-    describe '#load_session' do
-      let(:tmpdir) { Dir.mktmpdir }
-      let(:results_dir) { File.join(tmpdir, '.mutant', 'results') }
-
-      around do |example|
-        Dir.chdir(tmpdir) { example.run }
-      end
-
-      after do
-        FileUtils.rm_rf(tmpdir)
-      end
-
-      it 'returns parsed hash data' do
-        FileUtils.mkdir_p(results_dir)
-        path = Pathname.new(File.join(results_dir, 'abc123.yml'))
-        File.write(path, YAML.dump({ success: true }))
-
-        expect(cli.send(:load_session, path)).to eql(success: true)
-      end
-
-      it 'raises on non-hash payloads' do
-        FileUtils.mkdir_p(results_dir)
-        path = Pathname.new(File.join(results_dir, 'abc123.yml'))
-        File.write(path, YAML.dump(['not-a-hash']))
-
-        expect do
-          cli.send(:load_session, path)
-        end.to raise_error(
-          Mutant::CLI::Error,
-          "Could not load session 'abc123': expected a hash payload"
-        )
       end
     end
 
@@ -1810,6 +1881,21 @@ RSpec.describe Mutant::CLI do
         cli.send(:add_debug_options, option_parser)
       end
 
+      it 'registers the expected option signatures' do
+        parser = instance_double(OptionParser)
+
+        expect(parser).to receive(:on).with('--fail-fast', 'Fail fast')
+
+        cli.send(:add_debug_options, parser)
+      end
+
+      it 'registers version and help flags on the parser output' do
+        parser_help = option_parser.to_s
+
+        expect(parser_help).not_to include('--version')
+        expect(parser_help).not_to include('--help')
+      end
+
       it 'enables fail-fast via the configured option handler' do
         expect { option_parser.parse!(%w[--fail-fast]) }
           .to change { cli.config.fail_fast }
@@ -1817,19 +1903,6 @@ RSpec.describe Mutant::CLI do
           .to(true)
       end
 
-      it 'uses the configured kernel for --version exits' do
-        expect($stdout).to receive(:puts).with("mutant-#{Mutant::VERSION}")
-        expect(cli.config.kernel).to receive(:exit)
-
-        option_parser.parse!(%w[--version])
-      end
-
-      it 'uses the configured kernel for --help exits' do
-        expect($stdout).to receive(:puts).with(option_parser.to_s)
-        expect(cli.config.kernel).to receive(:exit)
-
-        option_parser.parse!(%w[--help])
-      end
     end
   end
 

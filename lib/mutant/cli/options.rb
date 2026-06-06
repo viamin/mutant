@@ -65,16 +65,6 @@ module Mutant
         opts.on('--fail-fast', 'Fail fast') do
           enable_fail_fast(FAIL_FAST_TOKEN)
         end
-        opts.on('--version', 'Print mutants version') do
-          state[:exit_requested] = true
-          puts("mutant-#{VERSION}")
-          cli_exit
-        end
-        opts.on_tail('-h', '--help', 'Show this message') do
-          state[:exit_requested] = true
-          puts(opts.to_s)
-          cli_exit
-        end
       end
 
       def enable_fail_fast(token)

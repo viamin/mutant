@@ -7,12 +7,34 @@ module Mutant
     private
 
       def handle_run(arguments)
+        if arguments.include?('--version')
+          puts("mutant-#{VERSION}")
+          return cli_exit
+        end
+
+        if arguments.intersect?(%w[--help -h])
+          puts(
+            OptionParser.new do |builder|
+              builder.banner = 'usage: mutant run [options] MATCH_EXPRESSION ...'
+              %i[add_environment_options add_mutation_options add_filter_options add_debug_options].each do |name|
+                __send__(name, builder)
+              end
+            end.to_s
+          )
+          return cli_exit
+        end
+
         parse(arguments)
       end
 
       def handle_environment(arguments)
+        if arguments.include?('--version')
+          puts("mutant-#{VERSION}")
+          return cli_exit
+        end
+
         if arguments.intersect?(%w[--help -h])
-          print_environment_help
+          puts(Help::ENVIRONMENT_HELP)
           return cli_exit
         end
         parse(arguments)
@@ -28,7 +50,7 @@ module Mutant
         when 'show'
           print_session_show(session_id, rest)
         else
-          print_session_help
+          puts(Help::SESSION_HELP)
         end
         cli_exit
       end
@@ -42,13 +64,20 @@ module Mutant
 
         case subcommand
         when 'run'
-          print_run_help
+          puts(
+            OptionParser.new do |builder|
+              builder.banner = 'usage: mutant run [options] MATCH_EXPRESSION ...'
+              %i[add_environment_options add_mutation_options add_filter_options add_debug_options].each do |name|
+                __send__(name, builder)
+              end
+            end.to_s
+          )
         when 'environment'
-          print_environment_help
+          puts(Help::ENVIRONMENT_HELP)
         when 'session'
-          print_session_help
+          puts(Help::SESSION_HELP)
         else
-          print_main_help
+          puts(Help::MAIN_HELP)
         end
         cli_exit
       end
