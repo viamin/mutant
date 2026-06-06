@@ -59,6 +59,46 @@ marshal data too short
 ```
 Currently, troubleshooting these errors requires using a debugger and/or modyifying mutant to print out the error. You will want to rescue and inspect exceptions raised in this method: lib/mutant/integration/rspec.rb:call
 
+<<<<<<< HEAD
+=======
+Configuration
+-------------
+
+Mutant will load `.mutant.yml` from the project root when present. CLI flags override YAML values such as `--jobs` and `--since`.
+
+Supported top-level keys:
+
+```yaml
+integration: rspec
+requires:
+  - ./config/environment
+environment_variables:
+  RAILS_ENV: test
+  COVERAGE: "false"
+jobs: 4
+fail_fast: true
+coverage_criteria:
+  timeout: false
+  process_abort: false
+  test_result: true
+matcher:
+  subjects:
+    - "MyApp::Critical*"
+    - "MyApp::Secrets#fetch"
+  ignore:
+    - "app/admin/**/*.rb"
+results_dir: tmp/mutant
+```
+
+Defaults:
+
+* `jobs: 1`
+* `fail_fast: false`
+* `coverage_criteria.process_abort: false`
+* `coverage_criteria.timeout: false`
+* `coverage_criteria.test_result: true`
+
+>>>>>>> origin/main
 Only Mutating Changed Code
 --------------------------
 
@@ -166,8 +206,11 @@ License
 -------
 
 See LICENSE file.
+<<<<<<< HEAD
 
 Licensing
 ---------
 
 viamin/mutant is MIT-licensed. There is no commercial gate, no license key, and no usage restriction. Use on open-source or proprietary code freely under the terms of the LICENSE file.
+=======
+>>>>>>> origin/main

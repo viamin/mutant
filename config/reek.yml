@@ -16,6 +16,10 @@ detectors:
   DataClump:
     enabled: true
     exclude:
+<<<<<<< HEAD
+=======
+    - Mutant::Config::Loader::NodeReader
+>>>>>>> origin/main
     - Mutant::Matcher::SourcePath
     max_copies: 2
     min_clump_size: 2
@@ -36,6 +40,14 @@ detectors:
     - Mutant::Matcher::Method::Instance#self.build
     - Mutant::Matcher::SourcePath#subject_methods
     - Mutant::Meta::Example::DSL # 3 vars
+<<<<<<< HEAD
+=======
+    - Mutant::Config::Loader::NodeReader#fail_invalid_scalar
+    - Mutant::Config::Loader::NodeReader#fail_invalid_type
+    - Mutant::Config::Loader::NodeReader#fail_unknown_key
+    - Mutant::Config::Loader::NodeReader#mapping
+    - Mutant::Config::Loader::NodeReader#scalar
+>>>>>>> origin/main
     max_params: 2
   LongYieldList:
     enabled: true
@@ -61,6 +73,11 @@ detectors:
     exclude:
     - Mutant::Mutator
     - Mutant::Meta::Example::DSL
+<<<<<<< HEAD
+=======
+    - Mutant::Config::Loader::NodeReader
+    - Mutant::Repository::Diff
+>>>>>>> origin/main
     - Mutant::SinceRevisionResolver
     max_ifs: 1
   TooManyInstanceVariables:
@@ -69,6 +86,10 @@ detectors:
     - Mutant::Mutator # 4 vars
     - Mutant::Parallel::Master # 4 vars
     - Mutant::Meta::Example::DSL # 4 vars
+<<<<<<< HEAD
+=======
+    - Mutant::Result::Mutation # 4 vars
+>>>>>>> origin/main
     max_instance_variables: 3
   TooManyMethods:
     enabled: true
@@ -76,16 +97,29 @@ detectors:
     - Mutant::CLI
     - Mutant::Mutator::Node
     - Mutant::Parallel::Master
+<<<<<<< HEAD
+=======
+    - Mutant::Config::Loader
+    - Mutant::Config::Loader::NodeReader
+>>>>>>> origin/main
     max_methods: 10
   TooManyStatements:
     enabled: true
     exclude:
     - Mutant::CLI#add_debug_options
     - Mutant::CLI#add_environment_options
+<<<<<<< HEAD
+=======
+    - Mutant::CLI#config_file_sets_jobs?
+>>>>>>> origin/main
     - Mutant::Reporter::CLI::Printer::Config#run
     - Mutant::Reporter::CLI::Printer::EnvProgress#run
     - Mutant::Runner#run_driver
     - Mutant::Zombifier::File#self.find
+<<<<<<< HEAD
+=======
+    - Mutant::Env#with_environment_variables
+>>>>>>> origin/main
     max_statements: 7
   UncommunicativeMethodName:
     enabled: true
@@ -128,14 +162,28 @@ detectors:
     exclude:
     - Mutant::AST::Sexp#s
     - Mutant::CLI#reporter
+<<<<<<< HEAD
     - Mutant::Integration::Null#call
     - Mutant::Integration::Rspec#parse_example
     - Mutant::Integration::Rspec#parse_expression # intentional, private
     - Mutant::Integration::RspecSupport::SourceIndex#ruby_parser # intentional, private
     - Mutant::Integration::RspecSupport::SourceIndex#parser_internal_error? # intentional, private
+=======
+    - Mutant::Config::Loader#attribute_name # intentional, private helper
+    - Mutant::Integration::Null#call
+    - Mutant::Integration::Rspec#parse_example
+    - Mutant::Integration::Rspec#parse_expression # intentional, private
+>>>>>>> origin/main
     - Mutant::Matcher::SourcePath#candidate_method_names # intentional
     - Mutant::Meta::Example::Verification#format_mutations # intentional, private
     - Mutant::Reporter::CLI::Format::Progressive#new_buffer
     - Mutant::Reporter::CLI::Printer::StatusProgressive#object # False positive calls super
     - Mutant::Repository::Diff#tracks? # intentional, private
     - Mutant::Repository::Diff#within_working_directory? # intentional, private
+<<<<<<< HEAD
+=======
+    - Mutant::Config::CoverageCriteria#timeout_status? # intentional, private
+    - Mutant::Config::Loader::NodeReader#to_ruby # intentional, private
+    - Mutant::CLI#config_file_sets_jobs? # intentional, private helper for config
+    - Mutant::Result::Mutation#coverage_criteria # intentional, private helper for thread-local config
+>>>>>>> origin/main

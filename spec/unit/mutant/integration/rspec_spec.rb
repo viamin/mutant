@@ -1110,6 +1110,7 @@ RSpec.describe Mutant::Integration::RspecSupport::SourceIndex do
     expect(source_index.expressions(absolute_file_path: source_file, line_number: 1)).to eql([])
   end
 
+<<<<<<< HEAD
   it 'returns no expressions when the parser gem crashes while parsing source' do
     parser = instance_double(Mutant::Integration::RspecSupport::ExpressionParser)
     index  = described_class.new(parser)
@@ -1136,6 +1137,8 @@ RSpec.describe Mutant::Integration::RspecSupport::SourceIndex do
     File.unlink(file.path) if file && File.exist?(file.path)
   end
 
+=======
+>>>>>>> origin/main
   it 'stores the parser collaborator during initialization' do
     parser = Mutant::Integration::RspecSupport::ExpressionParser.new(Mutant::Config::DEFAULT.expression_parser)
     index = described_class.new(parser)
@@ -1242,6 +1245,7 @@ RSpec.describe Mutant::Integration::RspecSupport::SourceIndex do
     File.unlink(file.path) if file && File.exist?(file.path)
   end
 
+<<<<<<< HEAD
   it 'builds a fresh ruby parser for each parse to avoid cross-thread parser state' do
     parser_a = source_index.send(:ruby_parser)
     parser_b = source_index.send(:ruby_parser)
@@ -1250,6 +1254,8 @@ RSpec.describe Mutant::Integration::RspecSupport::SourceIndex do
     expect(parser_a).not_to be(parser_b)
   end
 
+=======
+>>>>>>> origin/main
   it 'caches parsed source indexes by path' do
     file = Tempfile.new(['mutant-rspec-cache', '.rb'])
     file.write(
