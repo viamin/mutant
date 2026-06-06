@@ -11,7 +11,7 @@ module Mutant
           ts  = Time.now.utc
           dir = results_dir
           dir.mkpath
-          dir.join("#{ts.strftime('%Y%m%dT%H%M%SZ')}-#{ref}.yml")
+          dir.join("#{ts.strftime('%Y%m%dT%H%M%SZ')}-#{ref[0, 7]}.yml")
              .write(YAML.dump(build_hash(ref, ts)))
         end
 
@@ -42,7 +42,7 @@ module Mutant
 
         def git_ref
           stdout, status = config.open3.capture2('git', 'rev-parse', 'HEAD', binmode: true)
-          return stdout.strip[0, 7] if status.success?
+          return stdout.strip if status.success?
 
           'unknown'
         end
