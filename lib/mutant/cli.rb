@@ -227,7 +227,7 @@ module Mutant
       root.children.each_slice(2).filter_map do |nodes|
         key_node, value_node = nodes
 
-        Psych::Visitors::ToRuby.create.accept(key_node) unless value_node.nil?
+        key_node.value unless value_node.nil?
       end.include?('jobs')
     end
 

@@ -72,8 +72,11 @@ module Mutant
         end
 
         def to_ruby(node)
-          Psych::Visitors::ToRuby.create.accept(node)
+          node.quoted ? node.value : SCANNER.tokenize(node.value)
         end
+
+        SCANNER = Psych::ScalarScanner.new(Psych::ClassLoader::Restricted.new([], []))
+        private_constant :SCANNER
       end
     end
   end
