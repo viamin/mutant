@@ -42,7 +42,7 @@ RSpec.describe Mutant::Config::Loader::NodeReader do
       it 'raises a validation error using the mapping context' do
         expect { subject }.to raise_error(
           Mutant::Config::Loader::Error,
-          'Invalid value for matcher at /tmp/.mutant.yml:1: expected String'
+          'Invalid value for matcher at /tmp/.mutant.yml:1: expected "String"'
         )
       end
     end
@@ -132,7 +132,7 @@ RSpec.describe Mutant::Config::Loader::NodeReader do
       it 'raises a validation error using the list context' do
         expect { subject }.to raise_error(
           Mutant::Config::Loader::Error,
-          'Invalid value for requires at /tmp/.mutant.yml:1: expected String'
+          'Invalid value for requires at /tmp/.mutant.yml:1: expected "String"'
         )
       end
     end
@@ -160,7 +160,7 @@ RSpec.describe Mutant::Config::Loader::NodeReader do
       it 'raises a validation error' do
         expect { subject }.to raise_error(
           Mutant::Config::Loader::Error,
-          'Invalid value for environment_variables.RAILS_ENV at /tmp/.mutant.yml:1: expected String'
+          'Invalid value for environment_variables.RAILS_ENV at /tmp/.mutant.yml:1: expected "String"'
         )
       end
     end
@@ -182,7 +182,7 @@ RSpec.describe Mutant::Config::Loader::NodeReader do
       it 'raises a validation error using the mapping context' do
         expect { subject }.to raise_error(
           Mutant::Config::Loader::Error,
-          'Invalid value for environment_variables at /tmp/.mutant.yml:1: expected String'
+          'Invalid value for environment_variables at /tmp/.mutant.yml:1: expected "String"'
         )
       end
     end
@@ -201,7 +201,7 @@ RSpec.describe Mutant::Config::Loader::NodeReader do
       it 'raises a validation error' do
         expect { subject }.to raise_error(
           Mutant::Config::Loader::Error,
-          'Invalid value for jobs at /tmp/.mutant.yml:1: expected Integer'
+          'Invalid value for jobs at /tmp/.mutant.yml:1: expected "Integer"'
         )
       end
     end
@@ -214,7 +214,7 @@ RSpec.describe Mutant::Config::Loader::NodeReader do
       it 'raises a validation error with the full nested path' do
         expect { subject }.to raise_error(
           Mutant::Config::Loader::Error,
-          'Invalid value for coverage_criteria.timeout at /tmp/.mutant.yml:1: expected Integer'
+          'Invalid value for coverage_criteria.timeout at /tmp/.mutant.yml:1: expected "Integer"'
         )
       end
     end
@@ -241,7 +241,7 @@ RSpec.describe Mutant::Config::Loader::NodeReader do
       it 'raises a validation error' do
         expect { subject }.to raise_error(
           Mutant::Config::Loader::Error,
-          'Invalid value for fail_fast at /tmp/.mutant.yml:1: expected Boolean'
+          'Invalid value for fail_fast at /tmp/.mutant.yml:1: expected "Boolean"'
         )
       end
     end

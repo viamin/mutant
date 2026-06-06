@@ -181,7 +181,7 @@ RSpec.describe Mutant::Config::Loader do
       it 'raises a validation error' do
         expect { subject }.to raise_error(
           Mutant::Config::Loader::Error,
-          %r{\AInvalid value for jobs at .*/\.mutant\.yml:1: expected Integer\z}
+          %r{\AInvalid value for jobs at .*/\.mutant\.yml:1: expected "Integer"\z}
         )
       end
     end
@@ -194,7 +194,7 @@ RSpec.describe Mutant::Config::Loader do
       it 'raises a validation error for fail_fast' do
         expect { subject }.to raise_error(
           Mutant::Config::Loader::Error,
-          %r{\AInvalid value for fail_fast at .*/\.mutant\.yml:1: expected Boolean\z}
+          %r{\AInvalid value for fail_fast at .*/\.mutant\.yml:1: expected "Boolean"\z}
         )
       end
     end
@@ -207,7 +207,7 @@ RSpec.describe Mutant::Config::Loader do
       it 'raises a validation error for integration' do
         expect { subject }.to raise_error(
           Mutant::Config::Loader::Error,
-          %r{\AInvalid value for integration at .*/\.mutant\.yml:1: expected String\z}
+          %r{\AInvalid value for integration at .*/\.mutant\.yml:1: expected "String"\z}
         )
       end
     end
@@ -236,7 +236,7 @@ RSpec.describe Mutant::Config::Loader do
       it 'raises a validation error for the requires entry' do
         expect { subject }.to raise_error(
           Mutant::Config::Loader::Error,
-          %r{\AInvalid value for requires at .*/\.mutant\.yml:2: expected String\z}
+          %r{\AInvalid value for requires at .*/\.mutant\.yml:2: expected "String"\z}
         )
       end
     end
@@ -265,7 +265,7 @@ RSpec.describe Mutant::Config::Loader do
       it 'raises a validation error for the nested environment_variables key' do
         expect { subject }.to raise_error(
           Mutant::Config::Loader::Error,
-          %r{\AInvalid value for environment_variables\.RAILS_ENV at .*/\.mutant\.yml:2: expected String\z}
+          %r{\AInvalid value for environment_variables\.RAILS_ENV at .*/\.mutant\.yml:2: expected "String"\z}
         )
       end
     end
@@ -278,7 +278,7 @@ RSpec.describe Mutant::Config::Loader do
       it 'raises a validation error' do
         expect { subject }.to raise_error(
           Mutant::Config::Loader::Error,
-          %r{\AInvalid value for results_dir at .*/\.mutant\.yml:1: expected String\z}
+          %r{\AInvalid value for results_dir at .*/\.mutant\.yml:1: expected "String"\z}
         )
       end
     end
@@ -425,7 +425,7 @@ RSpec.describe Mutant::Config::Loader do
       it 'raises a validation error for the nested coverage_criteria key' do
         expect { subject }.to raise_error(
           Mutant::Config::Loader::Error,
-          %r{\AInvalid value for coverage_criteria\.timeout at .*/\.mutant\.yml:2: expected Boolean\z}
+          %r{\AInvalid value for coverage_criteria\.timeout at .*/\.mutant\.yml:2: expected "Boolean"\z}
         )
       end
     end

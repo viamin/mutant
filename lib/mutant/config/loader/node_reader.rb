@@ -56,7 +56,7 @@ module Mutant
         end
 
         def fail_invalid_scalar(node, context, expected)
-          fail Error, "Invalid value for #{context.join('.')} at #{location(node)}: expected #{expected}"
+          fail Error, "Invalid value for #{context.join('.')} at #{location(node)}: expected #{expected.inspect}"
         end
 
         def fail_invalid_type(node, context, expected)
