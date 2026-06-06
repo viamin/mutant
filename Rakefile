@@ -23,6 +23,7 @@ namespace :metrics do
   MUTANT_IGNORE_SUBJECTS = %w[
     Mutant::Env#kill
     Mutant::Env#run_mutation_tests
+    Mutant::Env#selections
     Mutant::Env#with_environment_variables
     Mutant::Config::Loader#document_root
   ].freeze
