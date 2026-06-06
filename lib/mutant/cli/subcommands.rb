@@ -6,37 +6,20 @@ module Mutant
     module Subcommands
     private
 
-      def handle_run(arguments)
-        if arguments.include?('--version')
-          puts("mutant-#{VERSION}")
-          return cli_exit
-        end
+      HELP_FLAGS = %w[--help -h].freeze
+      VERSION_FLAG = '--version'
 
-        if arguments.intersect?(%w[--help -h])
-          puts(
-            OptionParser.new do |builder|
-              builder.banner = 'usage: mutant run [options] MATCH_EXPRESSION ...'
-              %i[add_environment_options add_mutation_options add_filter_options add_debug_options].each do |name|
-                __send__(name, builder)
-              end
-            end.to_s
-          )
-          return cli_exit
-        end
+      def handle_run(arguments)
+        return print_version_and_exit if arguments.include?(VERSION_FLAG)
+        return print_run_help_and_exit if arguments.intersect?(HELP_FLAGS)
 
         parse(arguments)
       end
 
       def handle_environment(arguments)
-        if arguments.include?('--version')
-          puts("mutant-#{VERSION}")
-          return cli_exit
-        end
+        return print_version_and_exit if arguments.include?(VERSION_FLAG)
+        return print_environment_help_and_exit if arguments.intersect?(HELP_FLAGS)
 
-        if arguments.intersect?(%w[--help -h])
-          puts(Help::ENVIRONMENT_HELP)
-          return cli_exit
-        end
         parse(arguments)
         print_environment
         cli_exit
@@ -64,14 +47,7 @@ module Mutant
 
         case subcommand
         when 'run'
-          puts(
-            OptionParser.new do |builder|
-              builder.banner = 'usage: mutant run [options] MATCH_EXPRESSION ...'
-              %i[add_environment_options add_mutation_options add_filter_options add_debug_options].each do |name|
-                __send__(name, builder)
-              end
-            end.to_s
-          )
+          print_run_help
         when 'environment'
           puts(Help::ENVIRONMENT_HELP)
         when 'session'
@@ -91,6 +67,30 @@ module Mutant
         puts "  Fail fast:       #{config.fail_fast?}"
         puts "  Zombie:          #{config.zombie?}"
         puts "  Matcher:         #{config.matcher.inspect}"
+      end
+
+      def print_run_help_and_exit
+        print_run_help
+        cli_exit
+      end
+
+      def print_environment_help_and_exit
+        puts(Help::ENVIRONMENT_HELP)
+        cli_exit
+      end
+
+      def print_version_and_exit
+        puts("mutant-#{VERSION}")
+        cli_exit
+      end
+
+      def print_run_help
+        puts(
+          OptionParser.new do |builder|
+            builder.banner = 'usage: mutant run [options] MATCH_EXPRESSION ...'
+            add_option_groups(builder)
+          end.to_s
+        )
       end
     end
   end
