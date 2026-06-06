@@ -1,6 +1,13 @@
 # frozen_string_literal: true
 
 RSpec.describe Mutant::Meta::Example::Documentation do
+  around do |example|
+    Dir.mktmpdir do |directory|
+      @tmpdir = Pathname.new(directory)
+      example.run
+    end
+  end
+
   describe '.render' do
     subject(:render) { described_class.render }
 
@@ -41,6 +48,26 @@ RSpec.describe Mutant::Meta::Example::Documentation do
       it 'rejects the path' do
         expect { relative_meta_path }
           .to raise_error(ArgumentError, %r{\AExample file is outside .*/meta: .*/meta2/example\.rb\z})
+      end
+    end
+
+    context 'when the file reaches outside meta through a symlink' do
+      let(:external_file) { @tmpdir.join('external.rb') }
+      let(:symlink_path)  { described_class::META_PATH.join('linked-spec.rb') }
+      let(:file)          { symlink_path.to_s }
+
+      before do
+        external_file.write('# external')
+        symlink_path.make_symlink(external_file)
+      end
+
+      after do
+        symlink_path.delete if symlink_path.exist? || symlink_path.symlink?
+      end
+
+      it 'rejects the path' do
+        expect { relative_meta_path }
+          .to raise_error(ArgumentError, %r{\AExample file is outside .*/meta: .*/external\.rb\z})
       end
     end
   end

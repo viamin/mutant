@@ -72,13 +72,14 @@ module Mutant
         end
 
         def self.relative_meta_path(example)
-          path = Pathname.new(example.file).expand_path
+          path      = canonical_path(Pathname.new(example.file))
+          meta_path = canonical_path(META_PATH)
 
-          unless path.to_s.start_with?("#{META_PATH}/")
-            fail ArgumentError, "Example file is outside #{META_PATH}: #{path}"
+          unless within_directory?(path, meta_path)
+            fail ArgumentError, "Example file is outside #{meta_path}: #{path}"
           end
 
-          "#{META_DIRECTORY_NAME}/#{path.relative_path_from(META_PATH)}"
+          "#{META_DIRECTORY_NAME}/#{path.relative_path_from(meta_path)}"
         end
 
         def self.singleton_mutation?(node)
@@ -87,6 +88,14 @@ module Mutant
 
         def self.fenced(language, source)
           ["```#{language}", source, '```'].join("\n")
+        end
+
+        def self.canonical_path(path)
+          path.exist? ? path.realpath : path.expand_path.cleanpath
+        end
+
+        def self.within_directory?(path, directory)
+          path.ascend.any?(&directory.method(:eql?))
         end
       end
     end
