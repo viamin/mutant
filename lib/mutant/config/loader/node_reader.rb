@@ -72,11 +72,18 @@ module Mutant
         end
 
         def to_ruby(node)
-          node.quoted ? node.value : SCANNER.tokenize(node.value)
-        end
+          return node.value if node.quoted
 
-        SCANNER = Psych::ScalarScanner.new(Psych::ClassLoader::Restricted.new([], []))
-        private_constant :SCANNER
+          raw = node.value
+
+          case raw
+          when 'true'  then true
+          when 'false' then false
+          else              Integer(raw)
+          end
+        rescue ArgumentError
+          raw
+        end
       end
     end
   end
