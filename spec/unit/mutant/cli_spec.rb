@@ -125,7 +125,6 @@ RSpec.describe Mutant::CLI do
 
     context 'with unknown flag' do
       let(:flags) { %w[--invalid] }
-
       let(:expected_message) { 'invalid option: --invalid' }
 
       it_should_behave_like 'an invalid cli run'
@@ -133,7 +132,6 @@ RSpec.describe Mutant::CLI do
 
     context 'with unknown option' do
       let(:flags) { %w[--invalid Foo] }
-
       let(:expected_message) { 'invalid option: --invalid' }
 
       it_should_behave_like 'an invalid cli run'
@@ -262,7 +260,6 @@ RSpec.describe Mutant::CLI do
 
     context 'with invalid jobs flag' do
       let(:flags) { %w[--jobs nope] }
-
       let(:expected_message) { '--jobs must be an integer' }
 
       it_should_behave_like 'an invalid cli run'
@@ -270,7 +267,6 @@ RSpec.describe Mutant::CLI do
 
     context 'with jobs flag below minimum' do
       let(:flags) { %w[--jobs 0] }
-
       let(:expected_message) { '--jobs must be >= 1' }
 
       it_should_behave_like 'an invalid cli run'
@@ -278,7 +274,6 @@ RSpec.describe Mutant::CLI do
 
     context 'with negative jobs flag' do
       let(:flags) { %w[--jobs -1] }
-
       let(:expected_message) { '--jobs must be >= 1' }
 
       it_should_behave_like 'an invalid cli run'
@@ -370,6 +365,99 @@ RSpec.describe Mutant::CLI do
       end
 
       it_should_behave_like 'a cli parser'
+    end
+
+    context 'with config file' do
+      around do |example|
+        Dir.mktmpdir do |directory|
+          Dir.chdir(directory) do
+            Pathname.new(directory).join('.mutant.yml').write(yaml_content)
+            example.run
+          end
+        end
+      end
+
+      context 'with jobs only' do
+        let(:yaml_content) { "jobs: 4\n" }
+
+        context 'without overriding flags' do
+          it_should_behave_like 'a cli parser'
+
+          it 'loads jobs from config file' do
+            expect(subject.config.jobs).to eql(4)
+          end
+        end
+
+        context 'with overriding jobs flag' do
+          let(:flags) { %w[--jobs 2] }
+
+          it_should_behave_like 'a cli parser'
+
+          it 'prefers cli flags over config file values' do
+            expect(subject.config.jobs).to eql(2)
+          end
+        end
+
+        context 'with MUTANT_JOBS env variable' do
+          around do |example|
+            ENV.store('MUTANT_JOBS', '6')
+            example.run
+          ensure
+            ENV.delete('MUTANT_JOBS')
+          end
+
+          it 'prefers config file values over MUTANT_JOBS' do
+            expect(subject.config.jobs).to eql(4)
+          end
+        end
+
+        context 'with invalid MUTANT_JOBS env variable' do
+          around do |example|
+            ENV.store('MUTANT_JOBS', 'nope')
+            example.run
+          ensure
+            ENV.delete('MUTANT_JOBS')
+          end
+
+          it 'still uses the config file jobs value' do
+            expect(subject.config.jobs).to eql(4)
+          end
+        end
+      end
+
+      context 'with matcher subjects' do
+        let(:yaml_content) { "matcher:\n  subjects:\n    - YAMLApp*\n" }
+        let(:expressions) { [] }
+
+        it 'uses yaml matcher subjects when no cli expressions' do
+          expect(subject.config.matcher.match_expressions.map(&:syntax)).to eql(%w[YAMLApp*])
+        end
+
+        context 'with cli positional expressions' do
+          let(:expressions) { %w[CLIApp*] }
+
+          it 'overrides yaml matcher subjects with cli expressions' do
+            expect(subject.config.matcher.match_expressions.map(&:syntax)).to eql(%w[CLIApp*])
+          end
+        end
+      end
+    end
+
+    context 'when config file is invalid' do
+      let(:arguments) { [] }
+      let(:error)     { Mutant::Config::Loader::Error.new('invalid yaml') }
+      let(:loader)    { instance_double(Mutant::Config::Loader) }
+
+      before do
+        expect(Mutant::Config::Loader).to receive(:new)
+          .with(Mutant::Config::DEFAULT)
+          .and_return(loader)
+        expect(loader).to receive(:load).and_raise(error)
+      end
+
+      it 'wraps the loader error as a cli error' do
+        expect { object.new(arguments) }.to raise_error(Mutant::CLI::Error, 'invalid yaml')
+      end
     end
 
     context 'with require flags' do
@@ -1472,21 +1560,32 @@ RSpec.describe Mutant::CLI do
 
     let(:cli)       { described_class.allocate }
     let(:arguments) { %w[foo] }
+    let(:loaded_config) { Mutant::Config::DEFAULT.with(jobs: 4) }
 
     before do
-      allow(cli).to receive(:parse)
+      allow(cli).to receive(:load_config) do
+        expect(cli.send(:state)).to eql(
+          exit_requested: false,
+          jobs_configured: false,
+          jobs_explicit: false
+        )
+        cli.send(:state)[:jobs_configured] = true
+        loaded_config
+      end
+      allow(cli).to receive(:process)
     end
 
-    it 'sets defaults and parses the provided arguments' do
+    it 'loads config and processes the provided arguments' do
       setup_cli
 
-      expect(cli.config).to eql(Mutant::Config::DEFAULT)
+      expect(cli.config).to eql(loaded_config)
       expect(cli.send(:state)).to eql(
         exit_requested: false,
+        jobs_configured: true,
         jobs_explicit: false
       )
-      expect(cli.send(:apply_jobs_env_defaults?)).to be(true)
-      expect(cli).to have_received(:parse).with(arguments)
+      expect(cli.send(:apply_jobs_env_defaults?)).to be(false)
+      expect(cli).to have_received(:process).with(arguments)
     end
   end
 
@@ -1952,6 +2051,257 @@ RSpec.describe Mutant::CLI do
       expect($stderr).to receive(:puts).with('test-error')
 
       expect(described_class.run(arguments)).to be(false)
+    end
+
+  end
+
+  describe 'merged private helpers' do
+    subject(:cli) do
+      described_class.allocate.tap do |object|
+        object.send(:initialize, [])
+      end
+    end
+
+    before do
+      allow(cli).to receive(:cli_exit)
+    end
+
+    describe '#add_environment_options', mutant_expression: 'Mutant::CLI#add_environment_options' do
+      class OptionCollector
+        attr_reader :handlers, :separators
+
+        def initialize
+          @handlers   = {}
+          @separators = []
+        end
+
+        def separator(value)
+          separators << value
+        end
+
+        def on(*arguments, &block)
+          handlers[arguments.fetch(0)] = [arguments, block]
+        end
+      end
+
+      it 'registers and applies the environment option handlers' do
+        options = OptionCollector.new
+
+        cli.__send__(:add_environment_options, options)
+
+        expect(options.separators).to eql(['Environment:'])
+
+        include_arguments, include_handler = options.handlers.fetch('-I')
+        require_arguments, require_handler = options.handlers.fetch('-r')
+        jobs_arguments, jobs_handler       = options.handlers.fetch('-j')
+        zombie_arguments, zombie_handler   = options.handlers.fetch('--zombie')
+
+        expect(include_arguments).to eql(['-I', '--include DIRECTORY', 'Add DIRECTORY to $LOAD_PATH'])
+        expect(require_arguments).to eql(['-r', '--require NAME', 'Require file with NAME'])
+        expect(jobs_arguments).to eql(['-j', '--jobs NUMBER', 'Number of kill jobs. Defaults to MUTANT_JOBS or 1.'])
+        expect(zombie_arguments).to eql(['--zombie', 'Run mutant zombified'])
+
+        include_handler.call('lib/foo')
+        require_handler.call('foo/bar')
+        jobs_handler.call('3')
+        zombie_handler.call
+
+        expect(cli.config.includes).to eql(['lib/foo'])
+        expect(cli.config.requires).to eql(['foo/bar'])
+        expect(cli.config.jobs).to eql(3)
+        expect(cli.send(:state)).to include(jobs_explicit: true)
+        expect(cli.config.zombie).to be(true)
+      end
+
+      it 'uses the --jobs source name for parse errors' do
+        options = OptionCollector.new
+
+        cli.__send__(:add_environment_options, options)
+
+        _arguments, jobs_handler = options.handlers.fetch('-j')
+
+        expect { jobs_handler.call('invalid') }
+          .to raise_error(Mutant::CLI::Error, '--jobs must be an integer')
+      end
+    end
+
+    describe '#enable_zombie', mutant_expression: 'Mutant::CLI#enable_zombie' do
+      it 'updates the config even when invoked with an unused argument' do
+        cli.__send__(:enable_zombie, :ignored)
+
+        expect(cli.config.zombie).to be(true)
+      end
+    end
+
+    describe '#load_config', mutant_expression: 'Mutant::CLI#load_config' do
+      let(:loader) { instance_double(Mutant::Config::Loader, load: loaded_config) }
+      let(:loaded_config) { Mutant::Config::DEFAULT.with(jobs: 4) }
+
+      before do
+        cli.instance_variable_set(
+          :@state,
+          { exit_requested: false, jobs_configured: false, jobs_explicit: false }
+        )
+      end
+
+      it 'returns the loaded default config and tracks configured jobs' do
+        expect(Mutant::Config::Loader).to receive(:new)
+          .with(Mutant::Config::DEFAULT)
+          .and_return(loader)
+        expect(cli).to receive(:config_file_sets_jobs?).and_return(true)
+
+        expect(cli.__send__(:load_config)).to eql(loaded_config)
+        expect(cli.send(:state)).to include(jobs_configured: true)
+      end
+
+      it 'wraps loader failures with the original message' do
+        error = Class.new(Mutant::Config::Loader::Error) do
+          def message = 'invalid yaml'
+          def to_s = 'different to_s'
+        end.new
+        failing_loader = instance_double(Mutant::Config::Loader)
+
+        expect(Mutant::Config::Loader).to receive(:new)
+          .with(Mutant::Config::DEFAULT)
+          .and_return(failing_loader)
+        expect(failing_loader).to receive(:load).and_raise(error)
+
+        expect { cli.__send__(:load_config) }.to raise_error(Mutant::CLI::Error, 'invalid yaml')
+      end
+    end
+
+    describe '#config_file_sets_jobs?', mutant_expression: 'Mutant::CLI#config_file_sets_jobs?' do
+      subject(:config_file_sets_jobs?) { cli.__send__(:config_file_sets_jobs?) }
+
+      let(:cli) { described_class.allocate }
+
+      around do |example|
+        Dir.mktmpdir do |directory|
+          Dir.chdir(directory) do
+            @config_path = Pathname.new(directory).join('.mutant.yml')
+            example.run
+          end
+        end
+      end
+
+      let(:config_path) { @config_path }
+
+      context 'when the config file is absent' do
+        it { should be(false) }
+      end
+
+      context 'when the config file is empty' do
+        before do
+          config_path.write('')
+        end
+
+        it { should be(false) }
+      end
+
+      context 'when the config root is not a mapping' do
+        before do
+          config_path.write(<<~YAML)
+            - jobs
+          YAML
+        end
+
+        it { should be(false) }
+      end
+
+      context 'when a sequence root could be misread as a key value pair' do
+        before do
+          config_path.write(<<~YAML)
+            - jobs
+            - 4
+          YAML
+        end
+
+        it { should be(false) }
+      end
+
+      context 'when yaml parsing returns a non-document object' do
+        before do
+          config_path.write("jobs: 4\n")
+          allow(Psych).to receive(:parse_file).with(config_path).and_return(Object.new)
+        end
+
+        it { should be(false) }
+      end
+
+      context 'when yaml parsing raises a syntax error' do
+        before do
+          config_path.write("jobs: [\n")
+        end
+
+        it 'propagates the parser failure' do
+          expect { config_file_sets_jobs? }.to raise_error(Psych::SyntaxError)
+        end
+      end
+
+      context 'when the config file contains jobs among other keys' do
+        before do
+          config_path.write(<<~YAML)
+            fail_fast: true
+            matcher:
+              subjects:
+                - TestApp*
+            jobs: 4
+          YAML
+        end
+
+        it { should be(true) }
+      end
+
+      context 'when the config file does not contain jobs' do
+        before do
+          config_path.write(<<~YAML)
+            fail_fast: true
+            requires:
+              - ./config/environment
+          YAML
+        end
+
+        it { should be(false) }
+      end
+
+      context 'when a non-jobs key has the string value jobs' do
+        before do
+          config_path.write("integration: jobs\n")
+        end
+
+        it { should be(false) }
+      end
+    end
+
+    describe '#parse_match_expressions', mutant_expression: 'Mutant::CLI#parse_match_expressions' do
+      before do
+        cli.instance_variable_set(
+          :@config,
+          Mutant::Config::DEFAULT.with(
+            matcher: Mutant::Matcher::Config::DEFAULT.with(
+              match_expressions: [parse_expression('YAMLApp*')]
+            )
+          )
+        )
+      end
+
+      context 'when no cli expressions are provided' do
+        it 'preserves configured matcher expressions' do
+          cli.__send__(:parse_match_expressions, [])
+
+          expect(cli.config.matcher.match_expressions.map(&:syntax)).to eql(%w[YAMLApp*])
+        end
+      end
+
+      context 'when cli expressions are provided' do
+        it 'replaces configured matcher expressions with parsed cli expressions' do
+          cli.__send__(:parse_match_expressions, %w[CLIApp* CLIApp::Thing#call])
+
+          expect(cli.config.matcher.match_expressions.map(&:syntax)).to eql(
+            ['CLIApp*', 'CLIApp::Thing#call']
+          )
+        end
+      end
     end
   end
 end

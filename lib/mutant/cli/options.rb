@@ -8,11 +8,11 @@ module Mutant
 
       FAIL_FAST_TOKEN = true
 
+      def enable_zombie(*) = with(zombie: true)
+
       def add_environment_options(opts)
         opts.separator('Environment:')
-        opts.on('--zombie', 'Run mutant zombified') do
-          with(zombie: true)
-        end
+        opts.on('--zombie', 'Run mutant zombified') { enable_zombie }
         opts.on('-I', '--include DIRECTORY', 'Add DIRECTORY to $LOAD_PATH') do |directory|
           add(:includes, directory)
         end

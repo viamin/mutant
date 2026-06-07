@@ -42,8 +42,6 @@ module Mutant
 
     def apply_env_defaults = (env_jobs = ENV['MUTANT_JOBS']) && with(jobs: ParseJobs.(env_jobs, 'MUTANT_JOBS'))
 
-    def apply_jobs_env_defaults? = !state.fetch(:jobs_explicit) && !state.fetch(:exit_requested)
-
     def normalize_arguments(arguments)
       return arguments if arguments.empty?
 
@@ -112,6 +110,8 @@ module Mutant
     end
 
     def parse_match_expressions(expressions)
+      with(matcher: config.matcher.with(match_expressions: [])) if expressions.any?
+
       expressions.each do |expression|
         add_matcher(:match_expressions, config.expression_parser.(expression))
       end
@@ -134,13 +134,44 @@ module Mutant
   class CLI
   private
 
+    def apply_jobs_env_defaults?
+      !state.fetch(:jobs_configured) && !state.fetch(:jobs_explicit) && !state.fetch(:exit_requested)
+    end
+
     def setup(arguments)
-      @config = Config::DEFAULT
       @state = {
         exit_requested: false,
+        jobs_configured: false,
         jobs_explicit: false
       }
+      @config = load_config
       process(arguments)
+    end
+
+    def load_config
+      loader = Config::Loader.new(Config::DEFAULT)
+      config = loader.load
+      state[:jobs_configured] = config_file_sets_jobs?
+      config
+    rescue Config::Loader::Error => exception
+      raise Error, exception.message
+    end
+
+    def config_file_sets_jobs?
+      path = Config::DEFAULT.pathname.pwd.join('.mutant.yml')
+      return false unless path.file?
+
+      document = Psych.parse_file(path)
+      return false unless document.instance_of?(Psych::Nodes::Document)
+
+      root = document.root
+      return false unless root.instance_of?(Psych::Nodes::Mapping)
+
+      root.children.each_slice(2).filter_map do |nodes|
+        key_node, value_node = nodes
+
+        Psych::Visitors::ToRuby.create.accept(key_node) unless value_node.nil?
+      end.include?('jobs')
     end
 
     alias_method :initialize, :setup

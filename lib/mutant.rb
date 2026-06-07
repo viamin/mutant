@@ -16,6 +16,7 @@ require 'optparse'
 require 'parser'
 require 'parser/ruby33'
 require 'pathname'
+require 'psych'
 require 'procto'
 require 'regexp_parser'
 require 'set'
@@ -185,6 +186,7 @@ require 'mutant/matcher/namespace'
 require 'mutant/matcher/scope'
 require 'mutant/matcher/filter'
 require 'mutant/matcher/null'
+require 'mutant/matcher/source_path_filter'
 require 'mutant/matcher/source_path'
 require 'mutant/matcher/static'
 require 'mutant/expression'
@@ -199,6 +201,9 @@ require 'mutant/integration'
 require 'mutant/selector'
 require 'mutant/selector/expression'
 require 'mutant/config'
+require 'mutant/config/coverage_criteria'
+require 'mutant/config/loader'
+require 'mutant/config/loader/node_reader'
 require 'mutant/cli'
 require 'mutant/cli/help'
 require 'mutant/cli/options'
@@ -236,6 +241,8 @@ module Mutant
   class Config
     DEFAULT = new(
       condition_variable: ConditionVariable,
+      coverage_criteria:  Config::CoverageCriteria::DEFAULT,
+      environment_variables: EMPTY_HASH,
       expression_parser:  Expression::Parser.new([
         Expression::Method,
         Expression::Methods,
@@ -262,6 +269,7 @@ module Mutant
       open3:              Open3,
       pathname:           Pathname,
       reporter:           Reporter::CLI.build($stdout),
+      results_dir:        nil,
       requires:           EMPTY_ARRAY,
       thread:             Thread,
       zombie:             false

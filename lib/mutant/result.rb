@@ -197,6 +197,7 @@ module Mutant
     # Mutation result
     class Mutation
       include Result, Anima.new(
+        :coverage_criteria,
         :isolation_result,
         :mutation,
         :runtime
@@ -217,14 +218,7 @@ module Mutant
       #
       # @return [Boolean]
       def success?
-        case isolation_result
-        when Isolation::Result::Success
-          mutation.class.success?(isolation_result.value)
-        when Isolation::Result::Exception
-          mutation.class.exception_success?(isolation_result.value)
-        else
-          false
-        end
+        coverage_criteria.success?(mutation, isolation_result)
       end
       memoize :success?
 
