@@ -604,6 +604,13 @@ RegexpSpec.expect_mapping(/.{1,3}+/, :regexp_possessive_interval) do
       s(:regexp_dot_meta)))
 end
 
+RegexpSpec.expect_mapping(/(?:a){1,3}+/, :regexp_possessive_interval) do
+  s(:regexp_root_expression,
+    s(:regexp_possessive_interval, 1, 3,
+      s(:regexp_passive_group,
+        s(:regexp_literal_literal, 'a'))))
+end
+
 RegexpSpec.expect_mapping(/.++/, :regexp_possessive_one_or_more) do
   s(:regexp_root_expression,
     s(:regexp_possessive_one_or_more, 1, -1,
@@ -643,6 +650,13 @@ RegexpSpec.expect_mapping(/.{1,3}?/, :regexp_reluctant_interval) do
   s(:regexp_root_expression,
     s(:regexp_reluctant_interval, 1, 3,
       s(:regexp_dot_meta)))
+end
+
+RegexpSpec.expect_mapping(/(?:a){1,3}?/, :regexp_reluctant_interval) do
+  s(:regexp_root_expression,
+    s(:regexp_reluctant_interval, 1, 3,
+      s(:regexp_passive_group,
+        s(:regexp_literal_literal, 'a'))))
 end
 
 RegexpSpec.expect_mapping(/.+?/, :regexp_reluctant_one_or_more) do

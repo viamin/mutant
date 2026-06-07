@@ -112,7 +112,7 @@ module Mutant
             # @return [String]
             def interval_text
               interval = [min, max].map { |num| num if num.positive? }.uniq
-              "{#{interval.join(',')}}"
+              '{' + interval.join(',') + '}'
             end
 
             def nested_interval?
@@ -120,7 +120,7 @@ module Mutant
             end
 
             def transform_nested_interval
-              source = "#{Regexp.to_expression_unfrozen(subject)}#{interval_text}#{suffix}"
+              source = Regexp.to_expression_unfrozen(subject).to_s + interval_text + suffix
 
               Regexp.parse(source).expressions.fetch(0)
             end

@@ -146,7 +146,7 @@ module Mutant
               end
             end
 
-            expression.quantifier&.freeze
+            expression.quantifier.freeze
             expression.freeze
           end
         end # ASTToExpression
