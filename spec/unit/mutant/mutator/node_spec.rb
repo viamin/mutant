@@ -572,6 +572,20 @@ RSpec.describe Mutant::Mutator::Node::Begin do
         [s(:begin, :__sentinel__, s(:false))].to_set
       )
     end
+
+    it 'mutates Parser::AST::Node subclasses in begin bodies' do
+      subclass = Class.new(Parser::AST::Node)
+      input    = s(:begin, subclass.new(:true, []))
+
+      expect(Mutant::Mutator).to receive(:mutate)
+        .once
+        .with(instance_of(subclass), kind_of(described_class))
+        .and_return([s(:false)].to_set)
+
+      expect(described_class.call(input)).to eql(
+        [s(:begin, s(:false))].to_set
+      )
+    end
   end
 end
 
