@@ -24,10 +24,10 @@ module Mutant
 
     def usage_flag_indices
       arguments.each_with_index.with_object([]) do |(argument, index), indices|
-        next unless argument == '--usage' || argument.start_with?('--usage=')
+        next unless argument.eql?('--usage') || argument.start_with?('--usage=')
 
         indices << index
-        next unless argument == '--usage' && USAGE_VALUES.include?(arguments[index + 1])
+        next unless argument.eql?('--usage') && USAGE_VALUES.include?(arguments.at(index + 1))
 
         indices << index + 1
       end

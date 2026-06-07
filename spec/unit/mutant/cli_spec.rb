@@ -88,6 +88,36 @@ RSpec.describe Mutant::CLI do
       end
     end
 
+    context 'when usage with a known value appears after other arguments' do
+      let(:original_arguments) { %w[--include lib --usage opensource TestApp*] }
+
+      it 'removes the flag and its value regardless of position' do
+        expect($stderr).to receive(:puts).with(described_class::WARNING)
+
+        expect(sanitize_arguments).to eql(%w[--include lib TestApp*])
+      end
+    end
+
+    context 'when usage is the last argument' do
+      let(:original_arguments) { %w[TestApp* --usage] }
+
+      it 'removes only the flag and warns' do
+        expect($stderr).to receive(:puts).with(described_class::WARNING)
+
+        expect(sanitize_arguments).to eql(%w[TestApp*])
+      end
+    end
+
+    context 'when usage flag is a non-interned string' do
+      let(:original_arguments) { [String.new('--usage'), 'opensource', 'TestApp*'] }
+
+      it 'removes both arguments and warns' do
+        expect($stderr).to receive(:puts).with(described_class::WARNING)
+
+        expect(sanitize_arguments).to eql(%w[TestApp*])
+      end
+    end
+
     context 'when an argument resembles but does not match usage' do
       let(:original_arguments) { %w[--usageother TestApp*] }
 
