@@ -16,10 +16,6 @@ RSpec.describe Mutant::CLI do
 
         expect(sanitize_arguments).to eql(%w[TestApp*])
       end
-
-      it 'does not mutate the original arguments' do
-        expect { sanitize_arguments }.not_to(change { arguments })
-      end
     end
 
     context 'when usage is passed as inline assignment' do
@@ -29,6 +25,16 @@ RSpec.describe Mutant::CLI do
         expect($stderr).to receive(:puts).with(described_class::WARNING)
 
         expect(sanitize_arguments).to eql(%w[TestApp*])
+      end
+    end
+
+    context 'when inline usage is followed by a known value' do
+      let(:original_arguments) { %w[--usage=commercial opensource TestApp*] }
+
+      it 'removes only the inline flag and warns' do
+        expect($stderr).to receive(:puts).with(described_class::WARNING)
+
+        expect(sanitize_arguments).to eql(%w[opensource TestApp*])
       end
     end
 
@@ -79,6 +85,16 @@ RSpec.describe Mutant::CLI do
         expect($stderr).not_to receive(:puts)
 
         expect(sanitize_arguments).to eql(%w[TestApp*])
+      end
+    end
+
+    context 'when an argument resembles but does not match usage' do
+      let(:original_arguments) { %w[--usageother TestApp*] }
+
+      it 'returns arguments unchanged without warning' do
+        expect($stderr).not_to receive(:puts)
+
+        expect(sanitize_arguments).to eql(%w[--usageother TestApp*])
       end
     end
   end

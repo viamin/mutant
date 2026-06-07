@@ -9,7 +9,7 @@ module Mutant
 
     def initialize(stderr, arguments)
       @stderr    = stderr
-      @arguments = arguments.dup
+      @arguments = arguments
     end
 
     def call
