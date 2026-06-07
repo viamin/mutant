@@ -3,7 +3,7 @@
 RSpec.describe Mutant::CLI do
   let(:object) { described_class }
 
-  describe Mutant::CLIArgumentSanitizer do
+  describe Mutant::CLIArgumentSanitizer, mutant_expression: 'Mutant::CLIArgumentSanitizer*' do
     subject(:sanitize_arguments) { described_class.call($stderr, arguments) }
 
     let(:arguments) { original_arguments.dup }
@@ -158,7 +158,7 @@ RSpec.describe Mutant::CLI do
     end
   end
 
-  describe '.new' do
+  describe '.new', mutant_expression: 'Mutant::CLI#parse' do
     subject { object.new(arguments) }
 
     let(:expected_integration)    { Mutant::Integration::Null        }
@@ -170,23 +170,23 @@ RSpec.describe Mutant::CLI do
         .with(match_expressions: expressions.map(&method(:parse_expression)))
     end
     let(:help_message) do
-      <<~MESSAGE
-        usage: mutant [options] MATCH_EXPRESSION ...
-        Environment:
-                --zombie                     Run mutant zombified
-            -I, --include DIRECTORY          Add DIRECTORY to $LOAD_PATH
-            -r, --require NAME               Require file with NAME
-            -j, --jobs NUMBER                Number of kill jobs. Defaults to MUTANT_JOBS or 1.
-
-        Options:
-                --use INTEGRATION            Use INTEGRATION to kill mutations
-                --include-subject EXPRESSION Add EXPRESSION to the configured subject matcher list
-                --ignore-subject EXPRESSION  Ignore subjects that match EXPRESSION as prefix
-                --since REVISION             Only select subjects touched since REVISION
-                --fail-fast                  Fail fast
-                --version                    Print mutants version
-            -h, --help                       Show this message
-      MESSAGE
+      [
+        'usage: mutant [options] MATCH_EXPRESSION ...',
+        'Environment:',
+        '        --zombie                     Run mutant zombified',
+        '    -I, --include DIRECTORY          Add DIRECTORY to $LOAD_PATH',
+        '    -r, --require NAME               Require file with NAME',
+        '    -j, --jobs NUMBER                Number of kill jobs. Defaults to MUTANT_JOBS or 1.',
+        '',
+        'Options:',
+        '        --use INTEGRATION            Use INTEGRATION to kill mutations',
+        '        --include-subject EXPRESSION Add EXPRESSION to the configured subject matcher list',
+        '        --ignore-subject EXPRESSION  Ignore subjects that match EXPRESSION as prefix',
+        '        --since REVISION             Only select subjects touched since REVISION',
+        '        --fail-fast                  Fail fast',
+        '        --version                    Print mutants version',
+        '    -h, --help                       Show this message'
+      ].join("\n") + "\n"
     end
 
     let(:flags)       { []           }
