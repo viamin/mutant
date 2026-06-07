@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 module Mutant
-<<<<<<< HEAD
   class CLIArgumentSanitizer
     include Adamantium::Flat, Procto.call(:call)
 
@@ -16,7 +15,7 @@ module Mutant
     def call
       indices = usage_flag_indices
       stderr.puts(WARNING) unless indices.empty?
-      arguments.reject.with_index { |_arg, index| indices.include?(index) }
+      arguments.reject.with_index { |_argument, index| indices.include?(index) }
     end
 
   private
@@ -24,34 +23,28 @@ module Mutant
     attr_reader :arguments, :stderr
 
     def usage_flag_indices
-      indices = []
-      arguments.each_with_index do |argument, index|
+      arguments.each_with_index.with_object([]) do |(argument, index), indices|
         next unless argument == '--usage' || argument.start_with?('--usage=')
+
         indices << index
-        indices << index + 1 if argument == '--usage' && USAGE_VALUES.include?(arguments[index + 1])
+        next unless argument == '--usage' && USAGE_VALUES.include?(arguments[index + 1])
+
+        indices << index + 1
       end
-      indices
     end
   end
 
-=======
->>>>>>> origin/main
   # Commandline parser / runner
   class CLI
     include Adamantium::Flat, Equalizer.new(:config), Procto.call(:config)
 
     # Error failed when CLI argv is invalid
     Error = Class.new(RuntimeError)
-<<<<<<< HEAD
-    # Run cli with arguments
-    # @param [Array<String>] arguments
-=======
 
     # Run cli with arguments
     #
     # @param [Array<String>] arguments
     #
->>>>>>> origin/main
     # @return [Boolean]
     def self.run(arguments)
       Runner.call(Env::Bootstrap.call(call(arguments))).success?
@@ -78,11 +71,9 @@ module Mutant
     #
     # @return [undefined]
     def parse(arguments)
-<<<<<<< HEAD
-      parse_match_expressions(option_parser.parse!(CLIArgumentSanitizer.call($stderr, arguments)))
-=======
-      parse_match_expressions(option_parser.parse!(arguments))
->>>>>>> origin/main
+      sanitized_arguments = CLIArgumentSanitizer.call($stderr, arguments)
+
+      parse_match_expressions(option_parser.parse!(sanitized_arguments))
       apply_env_defaults if apply_jobs_env_defaults?
     rescue OptionParser::ParseError => error
       raise(Error, error)
@@ -90,13 +81,9 @@ module Mutant
 
     def option_parser = OptionParser.new(&method(:configure_option_parser))
 
-<<<<<<< HEAD
-    def apply_jobs_env_defaults? = !state.fetch(:jobs_explicit) && !state.fetch(:exit_requested)
-=======
     def apply_jobs_env_defaults?
       !state.fetch(:jobs_configured) && !state.fetch(:jobs_explicit) && !state.fetch(:exit_requested)
     end
->>>>>>> origin/main
 
     def configure_option_parser(builder)
       builder.banner = 'usage: mutant [options] MATCH_EXPRESSION ...'
@@ -111,11 +98,8 @@ module Mutant
     #
     # @return [undefined]
     def parse_match_expressions(expressions)
-<<<<<<< HEAD
-=======
       with(matcher: config.matcher.with(match_expressions: [])) if expressions.any?
 
->>>>>>> origin/main
       expressions.each do |expression|
         add_matcher(:match_expressions, config.expression_parser.(expression))
       end
@@ -127,13 +111,7 @@ module Mutant
     # rubocop:disable MethodLength
     def add_environment_options(opts)
       opts.separator('Environment:')
-<<<<<<< HEAD
-      opts.on('--zombie', 'Run mutant zombified') do
-        with(zombie: true)
-      end
-=======
       opts.on('--zombie', 'Run mutant zombified') { enable_zombie }
->>>>>>> origin/main
       opts.on('-I', '--include DIRECTORY', 'Add DIRECTORY to $LOAD_PATH') do |directory|
         add(:includes, directory)
       end
@@ -146,11 +124,8 @@ module Mutant
       end
     end
 
-<<<<<<< HEAD
-=======
     def enable_zombie(*) = with(zombie: true)
 
->>>>>>> origin/main
     # Use integration
     #
     # @param [String] name
@@ -256,16 +231,6 @@ module Mutant
   private
 
     def setup(arguments)
-<<<<<<< HEAD
-      @config = Config::DEFAULT
-      @state = {
-        exit_requested: false,
-        jobs_explicit: false
-      }
-      parse(arguments)
-    end
-
-=======
       @state = {
         exit_requested: false,
         jobs_configured: false,
@@ -301,7 +266,6 @@ module Mutant
       end.include?('jobs')
     end
 
->>>>>>> origin/main
     alias_method :initialize, :setup
     private :initialize, :setup
   end

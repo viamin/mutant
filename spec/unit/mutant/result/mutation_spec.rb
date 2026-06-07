@@ -1,10 +1,6 @@
 # frozen_string_literal: true
 
 RSpec.describe Mutant::Result::Mutation do
-<<<<<<< HEAD
-  let(:object) do
-    described_class.new(
-=======
   class CoverageCriteriaSpy
     def initialize(expected_isolation_result, expected_mutation, result)
       @expected_isolation_result = expected_isolation_result
@@ -22,7 +18,6 @@ RSpec.describe Mutant::Result::Mutation do
   let(:object) do
     described_class.new(
       coverage_criteria: coverage_criteria,
->>>>>>> origin/main
       isolation_result: isolation_result,
       mutation:         mutation,
       runtime:          2.0
@@ -30,13 +25,10 @@ RSpec.describe Mutant::Result::Mutation do
   end
 
   let(:mutation) { instance_double(Mutant::Mutation) }
-<<<<<<< HEAD
-=======
   let(:success)  { true }
   let(:coverage_criteria) do
     CoverageCriteriaSpy.new(isolation_result, mutation, success)
   end
->>>>>>> origin/main
 
   let(:test_result) do
     instance_double(
@@ -73,8 +65,6 @@ RSpec.describe Mutant::Result::Mutation do
 
       it { should eql(0.0) }
     end
-<<<<<<< HEAD
-=======
 
     context 'if isolation is a child error' do
       let(:status) { instance_double(Process::Status) }
@@ -82,7 +72,6 @@ RSpec.describe Mutant::Result::Mutation do
 
       it { should eql(0.0) }
     end
->>>>>>> origin/main
   end
 
   describe '#runtime' do
@@ -91,59 +80,33 @@ RSpec.describe Mutant::Result::Mutation do
     it { should eql(2.0) }
   end
 
-<<<<<<< HEAD
-=======
   describe '#coverage_criteria', mutant_expression: 'Mutant::Result::Mutation#coverage_criteria' do
     subject { object.coverage_criteria }
 
     it { should eql(coverage_criteria) }
   end
 
->>>>>>> origin/main
   describe '#success?' do
     subject { object.success? }
 
     context 'if isolation is successful' do
-<<<<<<< HEAD
-      before do
-        expect(mutation.class).to receive(:success?)
-          .with(test_result)
-          .and_return(true)
-      end
-
-      it { should be(true) }
-=======
       let(:success) { true }
 
       it { should eql(true) }
->>>>>>> origin/main
     end
 
     context 'if isolation is not successful' do
       include_context 'unsuccessful isolation'
 
-<<<<<<< HEAD
-      before do
-        expect(mutation.class).to receive(:exception_success?)
-          .with(isolation_result.value)
-          .and_return(false)
-      end
-
-      it { should be(false) }
-=======
       let(:success) { false }
 
       it { should eql(false) }
->>>>>>> origin/main
     end
 
     context 'if isolation is a non-exception failure' do
       let(:status) { instance_double(Process::Status) }
       let(:isolation_result) { Mutant::Isolation::Fork::ChildError.new(status) }
-<<<<<<< HEAD
-=======
       let(:success) { false }
->>>>>>> origin/main
 
       it { should be(false) }
     end
@@ -159,11 +122,8 @@ RSpec.describe Mutant::Result::Mutation do
 
       include_context 'mutation exception isolation'
 
-<<<<<<< HEAD
-=======
       let(:success) { true }
 
->>>>>>> origin/main
       it { should be(true) }
     end
 
@@ -184,11 +144,6 @@ RSpec.describe Mutant::Result::Mutation do
 
       include_context 'mutation exception isolation'
 
-<<<<<<< HEAD
-      it { should be(true) }
-    end
-  end
-=======
       let(:success) { true }
 
       it { should be(true) }
@@ -210,5 +165,4 @@ RSpec.describe Mutant::Result::Mutation do
     end
   end
 
->>>>>>> origin/main
 end

@@ -59,8 +59,6 @@ marshal data too short
 ```
 Currently, troubleshooting these errors requires using a debugger and/or modyifying mutant to print out the error. You will want to rescue and inspect exceptions raised in this method: lib/mutant/integration/rspec.rb:call
 
-<<<<<<< HEAD
-=======
 Configuration
 -------------
 
@@ -98,7 +96,6 @@ Defaults:
 * `coverage_criteria.timeout: false`
 * `coverage_criteria.test_result: true`
 
->>>>>>> origin/main
 Only Mutating Changed Code
 --------------------------
 
@@ -206,11 +203,8 @@ License
 -------
 
 See LICENSE file.
-<<<<<<< HEAD
 
 Licensing
 ---------
 
 viamin/mutant is MIT-licensed. There is no commercial gate, no license key, and no usage restriction. Use on open-source or proprietary code freely under the terms of the LICENSE file.
-=======
->>>>>>> origin/main

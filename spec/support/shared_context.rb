@@ -99,10 +99,7 @@ module SharedContext
 
     let(:mutation_a_result) do
       Mutant::Result::Mutation.new(
-<<<<<<< HEAD
-=======
         coverage_criteria: config.coverage_criteria,
->>>>>>> origin/main
         mutation:         mutation_a,
         isolation_result: mutation_a_isolation_result,
         runtime:          1.0
@@ -111,10 +108,7 @@ module SharedContext
 
     let(:mutation_b_result) do
       Mutant::Result::Mutation.new(
-<<<<<<< HEAD
-=======
         coverage_criteria: config.coverage_criteria,
->>>>>>> origin/main
         isolation_result: mutation_b_isolation_result,
         mutation:         mutation_b,
         runtime:          1.0

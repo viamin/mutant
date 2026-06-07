@@ -1,10 +1,6 @@
 # frozen_string_literal: true
 
-<<<<<<< HEAD
-RSpec.describe Mutant::Env do
-=======
 RSpec.describe Mutant::Env, mutant: false do
->>>>>>> origin/main
   let(:object) do
     described_class.new(
       config:           config,
@@ -17,20 +13,6 @@ RSpec.describe Mutant::Env, mutant: false do
     )
   end
 
-<<<<<<< HEAD
-  let(:integration)       { instance_double(Mutant::Integration) }
-  let(:test_a)            { instance_double(Mutant::Test)        }
-  let(:test_b)            { instance_double(Mutant::Test)        }
-  let(:tests)             { [test_a, test_b]                     }
-  let(:selector)          { instance_double(Mutant::Selector)    }
-  let(:integration_class) { Mutant::Integration::Null            }
-  let(:isolation)         { Mutant::Isolation::None.new          }
-  let(:mutation_subject)  { instance_double(Mutant::Subject)     }
-
-  let(:mutation) do
-    instance_double(
-      Mutant::Mutation,
-=======
   let(:integration)       { double('integration')        }
   let(:test_a)            { double('test-a')             }
   let(:test_b)            { double('test-b')             }
@@ -43,7 +25,6 @@ RSpec.describe Mutant::Env, mutant: false do
   let(:mutation) do
     double(
       'mutation',
->>>>>>> origin/main
       subject: mutation_subject
     )
   end
@@ -52,11 +33,7 @@ RSpec.describe Mutant::Env, mutant: false do
     Mutant::Config::DEFAULT.with(
       isolation:   isolation,
       integration: integration_class,
-<<<<<<< HEAD
-      kernel:      class_double(Kernel)
-=======
       kernel:      Kernel
->>>>>>> origin/main
     )
   end
 
@@ -65,28 +42,6 @@ RSpec.describe Mutant::Env, mutant: false do
       .with(mutation_subject)
       .and_return(tests)
 
-<<<<<<< HEAD
-    allow(Mutant::Timer).to receive(:now).and_return(2.0, 3.0)
-  end
-
-  describe '#kill' do
-    subject { object.kill(mutation) }
-
-    shared_examples_for 'mutation kill' do
-      specify do
-        should eql(
-          Mutant::Result::Mutation.new(
-            isolation_result: isolation_result,
-            mutation:         mutation,
-            runtime:          1.0
-          )
-        )
-      end
-    end
-
-    context 'when isolation does not raise error' do
-      let(:test_result) { instance_double(Mutant::Result::Test) }
-=======
     timer_values = [2.0, 3.0].cycle
 
     allow(Mutant::Timer).to receive(:now) { timer_values.next }
@@ -103,7 +58,6 @@ RSpec.describe Mutant::Env, mutant: false do
 
     context 'when isolation does not raise error' do
       let(:test_result) { double('test-result') }
->>>>>>> origin/main
 
       before do
         expect(mutation).to receive(:insert)
@@ -120,13 +74,9 @@ RSpec.describe Mutant::Env, mutant: false do
         Mutant::Isolation::Result::Success.new(test_result)
       end
 
-<<<<<<< HEAD
-      include_examples 'mutation kill'
-=======
       it 'returns the mutation result' do
         assert_mutation_result(object.kill(mutation))
       end
->>>>>>> origin/main
     end
 
     context 'when code does raise error' do
@@ -140,9 +90,6 @@ RSpec.describe Mutant::Env, mutant: false do
         Mutant::Isolation::Result::Exception.new(exception)
       end
 
-<<<<<<< HEAD
-      include_examples 'mutation kill'
-=======
       it 'returns the mutation result' do
         assert_mutation_result(object.kill(mutation))
       end
@@ -312,7 +259,6 @@ RSpec.describe Mutant::Env, mutant: false do
       it 'returns the mutation result and restores the empty-string value' do
         assert_mutation_result(object.kill(mutation))
       end
->>>>>>> origin/main
     end
   end
 
@@ -324,8 +270,6 @@ RSpec.describe Mutant::Env, mutant: false do
     end
   end
 end
-<<<<<<< HEAD
-=======
 
 RSpec.describe 'Mutant::Env mutation coverage' do
   let(:build_env) do
@@ -577,4 +521,3 @@ RSpec.describe 'Mutant::Env mutation coverage' do
     end
   end
 end
->>>>>>> origin/main

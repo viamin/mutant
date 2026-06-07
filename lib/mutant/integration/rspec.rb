@@ -345,25 +345,10 @@ module Mutant
           ruby_parser.parse(buffer)
         rescue ::Parser::SyntaxError
           nil
-<<<<<<< HEAD
-        rescue ::StandardError => error
-          raise unless parser_internal_error?(error)
-
-          nil
-        end
-
-        def ruby_parser
-          ::Parser.const_get("Ruby#{RUBY_VERSION[/\A\d+\.\d+/].delete('.')}").new
-        end
-
-        def parser_internal_error?(error)
-          error.backtrace&.any? { |line| line.include?('/gems/parser-') }
-=======
         end
 
         def ruby_parser
           @ruby_parser ||= ::Parser.const_get("Ruby#{RUBY_VERSION[/\A\d+\.\d+/].delete('.')}").new
->>>>>>> origin/main
         end
       end
 

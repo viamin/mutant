@@ -20,8 +20,6 @@ end
 
 task('metrics:mutant').clear
 namespace :metrics do
-<<<<<<< HEAD
-=======
   MUTANT_IGNORE_SUBJECTS = %w[
     Mutant::Env#kill
     Mutant::Env#run_mutation_tests
@@ -30,7 +28,6 @@ namespace :metrics do
     Mutant::Config::Loader#document_root
   ].freeze
 
->>>>>>> origin/main
   task :rubocop do
     Kernel.system('bundle', 'exec', 'rubocop') or fail 'Rubocop task is not successful'
   end
@@ -53,12 +50,9 @@ namespace :metrics do
     ]
     arguments.concat(['--since', mutant_since]) if mutant_since && mutant_since != head_revision
     arguments.concat(['--jobs', mutant_jobs]) if mutant_jobs
-<<<<<<< HEAD
-=======
     MUTANT_IGNORE_SUBJECTS.each do |expression|
       arguments.concat(['--ignore-subject', expression])
     end
->>>>>>> origin/main
 
     arguments.concat(%w[-- Mutant*])
 

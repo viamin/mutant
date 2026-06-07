@@ -75,8 +75,6 @@ RSpec.describe Mutant::Result::Subject do
         it { should be(expected) }
       end
     end
-<<<<<<< HEAD
-=======
 
     context 'when subject has more mutations than results' do
       let(:mutation_results) do
@@ -100,7 +98,6 @@ RSpec.describe Mutant::Result::Subject do
         expect(subject).to eql(3)
       end
     end
->>>>>>> origin/main
   end
 
   describe '#amount_mutations_alive' do

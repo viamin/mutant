@@ -126,8 +126,6 @@ RSpec.describe Mutant::Result::Env do
       context 'on successful subject' do
         it { should be(false) }
       end
-<<<<<<< HEAD
-=======
 
       context 'on mixed results' do
         let(:failed_subject_result) do
@@ -143,7 +141,6 @@ RSpec.describe Mutant::Result::Env do
 
         it { should be(true) }
       end
->>>>>>> origin/main
     end
   end
 end

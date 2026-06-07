@@ -3,7 +3,6 @@
 RSpec.describe Mutant::CLI do
   let(:object) { described_class }
 
-<<<<<<< HEAD
   describe Mutant::CLIArgumentSanitizer do
     subject(:sanitize_arguments) { described_class.call($stderr, arguments) }
 
@@ -74,8 +73,6 @@ RSpec.describe Mutant::CLI do
     end
   end
 
-=======
->>>>>>> origin/main
   shared_examples_for 'an invalid cli run' do
     it 'raises error' do
       expect do
@@ -136,16 +133,8 @@ RSpec.describe Mutant::CLI do
   end
 
   describe '.new' do
-<<<<<<< HEAD
-    let(:object) { described_class }
-
     subject { object.new(arguments) }
 
-    # Defaults
-=======
-    subject { object.new(arguments) }
-
->>>>>>> origin/main
     let(:expected_integration)    { Mutant::Integration::Null        }
     let(:expected_reporter)       { Mutant::Config::DEFAULT.reporter }
     let(:expected_matcher_config) { default_matcher_config           }
@@ -154,13 +143,6 @@ RSpec.describe Mutant::CLI do
       Mutant::Matcher::Config::DEFAULT
         .with(match_expressions: expressions.map(&method(:parse_expression)))
     end
-<<<<<<< HEAD
-
-    let(:flags)       { []           }
-    let(:expressions) { %w[TestApp*] }
-
-=======
->>>>>>> origin/main
     let(:help_message) do
       <<~MESSAGE
         usage: mutant [options] MATCH_EXPRESSION ...
@@ -181,20 +163,12 @@ RSpec.describe Mutant::CLI do
       MESSAGE
     end
 
-<<<<<<< HEAD
-    let(:arguments) { flags + expressions }
-
-    context 'with unknown flag' do
-      let(:flags) { %w[--invalid] }
-
-=======
     let(:flags)       { []           }
     let(:expressions) { %w[TestApp*] }
     let(:arguments)   { flags + expressions }
 
     context 'with unknown flag' do
       let(:flags) { %w[--invalid] }
->>>>>>> origin/main
       let(:expected_message) { 'invalid option: --invalid' }
 
       it_should_behave_like 'an invalid cli run'
@@ -202,10 +176,6 @@ RSpec.describe Mutant::CLI do
 
     context 'with unknown option' do
       let(:flags) { %w[--invalid Foo] }
-<<<<<<< HEAD
-
-=======
->>>>>>> origin/main
       let(:expected_message) { 'invalid option: --invalid' }
 
       it_should_behave_like 'an invalid cli run'
@@ -215,12 +185,8 @@ RSpec.describe Mutant::CLI do
       let(:flags) { %w[--help] }
 
       before do
-<<<<<<< HEAD
         expect(help_message).not_to include('--usage')
-        expect($stdout).to receive(:puts).with(help_message)
-=======
         expect($stdout).to receive(:puts).with(expected_message)
->>>>>>> origin/main
         expect(Kernel).to receive(:exit)
       end
 
@@ -286,7 +252,6 @@ RSpec.describe Mutant::CLI do
       end
     end
 
-<<<<<<< HEAD
     context 'with usage flag' do
       before do
         expect($stderr).to receive(:puts).with(Mutant::CLIArgumentSanitizer::WARNING)
@@ -306,6 +271,7 @@ RSpec.describe Mutant::CLI do
 
       context 'when passed with another value' do
         let(:flags) { %w[--usage proprietary] }
+
         let(:expected_matcher_config) do
           Mutant::Matcher::Config::DEFAULT.with(
             match_expressions: [
@@ -337,8 +303,6 @@ RSpec.describe Mutant::CLI do
       end
     end
 
-=======
->>>>>>> origin/main
     context 'with version flag' do
       let(:flags) { %w[--version] }
 
@@ -388,10 +352,6 @@ RSpec.describe Mutant::CLI do
 
     context 'with invalid jobs flag' do
       let(:flags) { %w[--jobs nope] }
-<<<<<<< HEAD
-
-=======
->>>>>>> origin/main
       let(:expected_message) { '--jobs must be an integer' }
 
       it_should_behave_like 'an invalid cli run'
@@ -399,10 +359,6 @@ RSpec.describe Mutant::CLI do
 
     context 'with jobs flag below minimum' do
       let(:flags) { %w[--jobs 0] }
-<<<<<<< HEAD
-
-=======
->>>>>>> origin/main
       let(:expected_message) { '--jobs must be >= 1' }
 
       it_should_behave_like 'an invalid cli run'
@@ -410,10 +366,6 @@ RSpec.describe Mutant::CLI do
 
     context 'with negative jobs flag' do
       let(:flags) { %w[--jobs -1] }
-<<<<<<< HEAD
-
-=======
->>>>>>> origin/main
       let(:expected_message) { '--jobs must be >= 1' }
 
       it_should_behave_like 'an invalid cli run'
@@ -507,8 +459,6 @@ RSpec.describe Mutant::CLI do
       it_should_behave_like 'a cli parser'
     end
 
-<<<<<<< HEAD
-=======
     context 'with config file' do
       around do |example|
         Dir.mktmpdir do |directory|
@@ -602,7 +552,6 @@ RSpec.describe Mutant::CLI do
       end
     end
 
->>>>>>> origin/main
     context 'with require flags' do
       let(:flags) { %w[--require foo --require bar] }
 
@@ -708,22 +657,6 @@ RSpec.describe Mutant::CLI do
 
     let(:cli)       { described_class.allocate }
     let(:arguments) { %w[foo] }
-<<<<<<< HEAD
-
-    before do
-      allow(cli).to receive(:parse)
-    end
-
-    it 'sets defaults and parses the provided arguments' do
-      setup_cli
-
-      expect(cli.config).to eql(Mutant::Config::DEFAULT)
-      expect(cli.send(:state)).to eql(
-        exit_requested: false,
-        jobs_explicit: false
-      )
-      expect(cli.send(:apply_jobs_env_defaults?)).to be(true)
-=======
     let(:loaded_config) { Mutant::Config::DEFAULT.with(jobs: 4) }
 
     before do
@@ -749,7 +682,6 @@ RSpec.describe Mutant::CLI do
         jobs_explicit: false
       )
       expect(cli.send(:apply_jobs_env_defaults?)).to be(false)
->>>>>>> origin/main
       expect(cli).to have_received(:parse).with(arguments)
     end
   end
@@ -763,11 +695,7 @@ RSpec.describe Mutant::CLI do
 
     describe '#add' do
       it 'appends the value to the selected configuration attribute' do
-<<<<<<< HEAD
-          expect { cli.send(:add, :includes, 'foo') }
-=======
         expect { cli.send(:add, :includes, 'foo') }
->>>>>>> origin/main
           .to change { cli.config.includes }
           .from(Mutant::EMPTY_ARRAY)
           .to(%w[foo])
@@ -802,8 +730,6 @@ RSpec.describe Mutant::CLI do
         option_parser.parse!(%w[--help])
       end
     end
-<<<<<<< HEAD
-=======
 
     describe '#add_environment_options', mutant_expression: 'Mutant::CLI#add_environment_options' do
       class OptionCollector
@@ -1042,6 +968,5 @@ RSpec.describe Mutant::CLI do
         end
       end
     end
->>>>>>> origin/main
   end
 end
