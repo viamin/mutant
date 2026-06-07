@@ -32,6 +32,16 @@ RSpec.describe Mutant::CLI do
       end
     end
 
+    context 'when usage commercial is passed as separate option and value' do
+      let(:original_arguments) { %w[--usage commercial TestApp*] }
+
+      it 'removes both arguments and warns' do
+        expect($stderr).to receive(:puts).with(described_class::WARNING)
+
+        expect(sanitize_arguments).to eql(%w[TestApp*])
+      end
+    end
+
     context 'when usage is passed with another value' do
       let(:original_arguments) { %w[--usage proprietary TestApp*] }
 
@@ -265,6 +275,12 @@ RSpec.describe Mutant::CLI do
 
       context 'when passed as inline option assignment' do
         let(:flags) { %w[--usage=commercial] }
+
+        it_should_behave_like 'a cli parser'
+      end
+
+      context 'when passed commercial as separate option and value' do
+        let(:flags) { %w[--usage commercial] }
 
         it_should_behave_like 'a cli parser'
       end
