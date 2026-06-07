@@ -23,7 +23,6 @@ module Mutant
       :open3,
       :pathname,
       :reporter,
-      :results_dir,
       :requires,
       :results_dir,
       :since_revision,
