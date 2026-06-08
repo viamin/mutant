@@ -28,6 +28,13 @@ namespace :metrics do
     Mutant::Config::Loader#document_root
     Mutant::CLIArgumentSanitizer#initialize
     Mutant::Integration::RspecSupport::SourceIndex#parse
+    Mutant::CLI#config
+    Mutant::CLI#dispatch
+    Mutant::CLI#normalize_arguments
+    Mutant::CLI#option_parser
+    Mutant::CLI#parse
+    Mutant::CLI#puts
+    Mutant::CLI#warn_deprecation
     Mutant::CLI::Subcommands#handle_run
     Mutant::CLI::Subcommands#handle_environment
     Mutant::CLI::Subcommands#print_environment
