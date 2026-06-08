@@ -122,9 +122,9 @@ foo {
 Representative diff:
 
 ```diff
-@@ -1,4 +1,3 @@
+@@ -1,4 +1,2 @@
  foo {
-   a
+-  a
 -  b
  }
 
@@ -1507,10 +1507,10 @@ end
 Representative diff:
 
 ```diff
-@@ -1,4 +1,3 @@
+@@ -1,4 +1,2 @@
  until true
 -  foo
-   bar
+-  bar
  end
 
 ```
