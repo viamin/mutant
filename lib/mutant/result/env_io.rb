@@ -9,7 +9,7 @@ module Mutant
         def call
           ref = git_ref
           ts  = Time.now.utc
-          dir = results_dir
+          dir = config.results_dir
           dir.mkpath
           dir.join("#{ts.strftime('%Y%m%dT%H%M%SZ')}-#{ref[0, 7]}.yml")
              .write(YAML.dump(build_hash(ref, ts)))
@@ -17,17 +17,21 @@ module Mutant
 
       private
 
-        def build_hash(ref, ts)
+        def classify_mutations
           mutation_results = all_mutation_results
-          killed  = killed_results(mutation_results)
-          alive   = alive_results(mutation_results)
-          errored = errored_results(mutation_results)
+          killed, rest = mutation_results.partition(&:success?)
+          alive, errored = rest.partition { |result| result.isolation_result.success? }
+          [killed, alive, errored]
+        end
+
+        def build_hash(ref, ts)
+          killed, alive, errored = classify_mutations
 
           {
             'ran_at'            => ts,
             'git_ref'           => ref,
             'since'             => config.since_revision,
-            'total_mutations'   => mutation_results.length,
+            'total_mutations'   => killed.length + alive.length + errored.length,
             'killed'            => killed.length,
             'alive'             => alive.length,
             'errored'           => errored.length,
@@ -47,24 +51,8 @@ module Mutant
           'unknown'
         end
 
-        def results_dir
-          config.results_dir
-        end
-
         def all_mutation_results
           env_result.subject_results.flat_map(&:mutation_results)
-        end
-
-        def alive_results(mutation_results)
-          mutation_results.select { |r| !r.success? && r.isolation_result.success? }
-        end
-
-        def killed_results(mutation_results)
-          mutation_results.select(&:success?)
-        end
-
-        def errored_results(mutation_results)
-          mutation_results.select { |r| !r.success? && !r.isolation_result.success? }
         end
 
         def serialize_alive(mutation_result)

@@ -139,9 +139,7 @@ module Mutant
           )
         )
       end
-      opts.on('--results-dir DIRECTORY', 'Write result YAML files to DIRECTORY') do |directory|
-        with(results_dir: config.pathname.new(directory))
-      end
+      opts.on('--results-dir DIR', 'Write YAML results to DIR') { |dir| with(results_dir: config.pathname.new(dir)) }
     end
 
     # Add debug options

@@ -93,6 +93,7 @@ detectors:
     exclude:
     - Mutant::CLI#add_debug_options
     - Mutant::CLI#add_environment_options
+    - Mutant::CLI#add_filter_options
     - Mutant::CLI#config_file_sets_jobs?
     - Mutant::Reporter::CLI::Printer::Config#run
     - Mutant::Reporter::CLI::Printer::EnvProgress#run
@@ -155,3 +156,5 @@ detectors:
     - Mutant::Config::Loader::NodeReader#to_ruby # intentional, private
     - Mutant::CLI#config_file_sets_jobs? # intentional, private helper for config
     - Mutant::Result::Mutation#coverage_criteria # intentional, private helper for thread-local config
+    - Mutant::Result::Env::IO#format_error # intentional, private helper
+    - Mutant::Result::Env::IO#serialize_alive # intentional, private helper
