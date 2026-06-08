@@ -33,14 +33,17 @@ Topics
 * [Known Problems](/docs/known-problems.md)
 * [Limitations](/docs/limitations.md)
 * [Concurrency](/docs/concurrency.md)
+* [Mutators](/docs/mutators.md)
+* [Mutator Coverage](/docs/mutator-coverage.md)
 * [Rspec Integration](/docs/mutant-rspec.md)
 * [Minitest Integration](/docs/mutant-minitest.md)
 
 Mutation-Operators
 ------------------
 
-Mutant supports a wide range of mutation operators. An exhaustive list can be found in the [mutant-meta](https://github.com/mbj/mutant/tree/master/meta).
-The `mutant-meta` is arranged to the AST-Node-Types of parser. Refer to parsers [AST documentation](https://github.com/whitequark/parser/blob/master/doc/AST_FORMAT.md) in doubt.
+Mutant supports a wide range of mutation operators. The currently shipped operator families are documented in [docs/mutators.md](/docs/mutators.md), and the modern-Ruby coverage gaps tracked by issue `#18` are documented in [docs/mutator-coverage.md](/docs/mutator-coverage.md).
+
+The local `meta/` directory remains the exhaustive behavioral specification. It is arranged by parser AST node type; refer to parser's [AST documentation](https://github.com/whitequark/parser/blob/master/doc/AST_FORMAT.md) in doubt.
 
 There is no easy and universal way to count the number of mutation operators a tool supports.
 
@@ -58,6 +61,43 @@ Test Output:
 marshal data too short
 ```
 Currently, troubleshooting these errors requires using a debugger and/or modyifying mutant to print out the error. You will want to rescue and inspect exceptions raised in this method: lib/mutant/integration/rspec.rb:call
+
+Configuration
+-------------
+
+Mutant will load `.mutant.yml` from the project root when present. CLI flags override YAML values such as `--jobs` and `--since`.
+
+Supported top-level keys:
+
+```yaml
+integration: rspec
+requires:
+  - ./config/environment
+environment_variables:
+  RAILS_ENV: test
+  COVERAGE: "false"
+jobs: 4
+fail_fast: true
+coverage_criteria:
+  timeout: false
+  process_abort: false
+  test_result: true
+matcher:
+  subjects:
+    - "MyApp::Critical*"
+    - "MyApp::Secrets#fetch"
+  ignore:
+    - "app/admin/**/*.rb"
+results_dir: tmp/mutant
+```
+
+Defaults:
+
+* `jobs: 1`
+* `fail_fast: false`
+* `coverage_criteria.process_abort: false`
+* `coverage_criteria.timeout: false`
+* `coverage_criteria.test_result: true`
 
 Only Mutating Changed Code
 --------------------------
@@ -166,3 +206,8 @@ License
 -------
 
 See LICENSE file.
+
+Licensing
+---------
+
+viamin/mutant is MIT-licensed. There is no commercial gate, no license key, and no usage restriction. Use on open-source or proprietary code freely under the terms of the LICENSE file.

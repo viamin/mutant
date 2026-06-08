@@ -78,7 +78,7 @@ module Mutant
         end
 
         def load_child_result
-          result = marshal.load(reader)
+          result = marshal.load(reader.read)
 
           result.is_a?(Result) ? result : Result::Success.new(result)
         end

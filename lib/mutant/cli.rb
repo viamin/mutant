@@ -1,14 +1,50 @@
 # frozen_string_literal: true
 
 module Mutant
+  class CLIArgumentSanitizer
+    include Adamantium::Flat, Procto.call(:call)
+
+    WARNING = '--usage is a no-op in viamin/mutant (MIT-licensed)'
+    USAGE_VALUES = %w[opensource commercial].freeze
+
+    def initialize(stderr, arguments)
+      @stderr    = stderr
+      @arguments = arguments
+    end
+
+    def call
+      indices = usage_flag_indices
+      stderr.puts(WARNING) unless indices.empty?
+      arguments.reject.with_index { |_argument, index| indices.include?(index) }
+    end
+
+  private
+
+    attr_reader :arguments, :stderr
+
+    def usage_flag_indices
+      arguments.each_with_index.with_object([]) do |(argument, index), indices|
+        next unless argument.eql?('--usage') || argument.start_with?('--usage=')
+
+        indices << index
+        next unless argument.eql?('--usage') && USAGE_VALUES.include?(arguments.at(index + 1))
+
+        indices << index + 1
+      end
+    end
+  end
+
   # Commandline parser / runner
   class CLI
     include Adamantium::Flat, Equalizer.new(:config), Procto.call(:config)
 
     # Error failed when CLI argv is invalid
     Error = Class.new(RuntimeError)
+
     # Run cli with arguments
+    #
     # @param [Array<String>] arguments
+    #
     # @return [Boolean]
     def self.run(arguments)
       Runner.call(Env::Bootstrap.call(call(arguments))).success?
@@ -35,7 +71,9 @@ module Mutant
     #
     # @return [undefined]
     def parse(arguments)
-      parse_match_expressions(option_parser.parse!(arguments))
+      sanitized_arguments = CLIArgumentSanitizer.call($stderr, arguments)
+
+      parse_match_expressions(option_parser.parse!(sanitized_arguments))
       apply_env_defaults if apply_jobs_env_defaults?
     rescue OptionParser::ParseError => error
       raise(Error, error)
@@ -43,7 +81,9 @@ module Mutant
 
     def option_parser = OptionParser.new(&method(:configure_option_parser))
 
-    def apply_jobs_env_defaults? = !state.fetch(:jobs_explicit) && !state.fetch(:exit_requested)
+    def apply_jobs_env_defaults?
+      !state.fetch(:jobs_configured) && !state.fetch(:jobs_explicit) && !state.fetch(:exit_requested)
+    end
 
     def configure_option_parser(builder)
       builder.banner = 'usage: mutant [options] MATCH_EXPRESSION ...'
@@ -58,6 +98,8 @@ module Mutant
     #
     # @return [undefined]
     def parse_match_expressions(expressions)
+      with(matcher: config.matcher.with(match_expressions: [])) if expressions.any?
+
       expressions.each do |expression|
         add_matcher(:match_expressions, config.expression_parser.(expression))
       end
@@ -69,9 +111,7 @@ module Mutant
     # rubocop:disable MethodLength
     def add_environment_options(opts)
       opts.separator('Environment:')
-      opts.on('--zombie', 'Run mutant zombified') do
-        with(zombie: true)
-      end
+      opts.on('--zombie', 'Run mutant zombified') { enable_zombie }
       opts.on('-I', '--include DIRECTORY', 'Add DIRECTORY to $LOAD_PATH') do |directory|
         add(:includes, directory)
       end
@@ -83,6 +123,8 @@ module Mutant
         with(jobs: ParseJobs.(number, '--jobs'))
       end
     end
+
+    def enable_zombie(*) = with(zombie: true)
 
     # Use integration
     #
@@ -189,12 +231,39 @@ module Mutant
   private
 
     def setup(arguments)
-      @config = Config::DEFAULT
       @state = {
         exit_requested: false,
+        jobs_configured: false,
         jobs_explicit: false
       }
+      @config = load_config
       parse(arguments)
+    end
+
+    def load_config
+      loader = Config::Loader.new(Config::DEFAULT)
+      config = loader.load
+      state[:jobs_configured] = config_file_sets_jobs?
+      config
+    rescue Config::Loader::Error => exception
+      raise Error, exception.message
+    end
+
+    def config_file_sets_jobs?
+      path = Config::DEFAULT.pathname.pwd.join('.mutant.yml')
+      return false unless path.file?
+
+      document = Psych.parse_file(path)
+      return false unless document.instance_of?(Psych::Nodes::Document)
+
+      root = document.root
+      return false unless root.instance_of?(Psych::Nodes::Mapping)
+
+      root.children.each_slice(2).filter_map do |nodes|
+        key_node, value_node = nodes
+
+        key_node.value unless value_node.nil?
+      end.include?('jobs')
     end
 
     alias_method :initialize, :setup

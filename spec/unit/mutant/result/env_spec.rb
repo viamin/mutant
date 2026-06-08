@@ -126,6 +126,21 @@ RSpec.describe Mutant::Result::Env do
       context 'on successful subject' do
         it { should be(false) }
       end
+
+      context 'on mixed results' do
+        let(:failed_subject_result) do
+          instance_double(
+            Mutant::Result::Subject,
+            amount_mutation_results: 1,
+            amount_mutations_killed: 0,
+            success?:                false
+          )
+        end
+
+        let(:subject_results) { [subject_result, failed_subject_result] }
+
+        it { should be(true) }
+      end
     end
   end
 end

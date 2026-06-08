@@ -343,7 +343,7 @@ module Mutant
           buffer        = ::Parser::Source::Buffer.new(path)
           buffer.source = File.read(path)
           ruby_parser.parse(buffer)
-        rescue ::Parser::SyntaxError
+        rescue ::StandardError
           nil
         end
 

@@ -5,7 +5,10 @@ module Mutant
   module Meta
     require 'mutant/meta/example'
     require 'mutant/meta/example/dsl'
+    require 'mutant/meta/example/documentation'
     require 'mutant/meta/example/verification'
+    require 'mutant/meta/coverage/entries'
+    require 'mutant/meta/coverage'
 
     # Mutation example
     class Example
@@ -19,7 +22,8 @@ module Mutant
       #
       # rubocop:disable Performance/Caller
       def self.add(*types, &block)
-        file = caller.first.split(':in', 2).first
+        location = caller_locations(1, 1).first
+        file     = location.absolute_path || Pathname.new(location.path).expand_path.to_s
         ALL << DSL.call(file, Set.new(types), block)
       end
 

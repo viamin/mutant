@@ -8,6 +8,8 @@ module Mutant
   class Config
     include Adamantium::Flat, Anima.new(
       :condition_variable,
+      :coverage_criteria,
+      :environment_variables,
       :expression_parser,
       :fail_fast,
       :includes,
@@ -21,6 +23,7 @@ module Mutant
       :open3,
       :pathname,
       :reporter,
+      :results_dir,
       :requires,
       :thread,
       :zombie
