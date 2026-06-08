@@ -459,6 +459,18 @@ RSpec.describe Mutant::CLI do
       end
 
       it_should_behave_like 'a cli parser'
+
+      it 'sets since_revision on config' do
+        expect(subject.config.since_revision).to eql('master')
+      end
+    end
+
+    context 'with --results-dir flag' do
+      let(:flags) { %w[--results-dir /tmp/custom-results] }
+
+      it 'sets results_dir to a Pathname with the given path' do
+        expect(subject.config.results_dir).to eql(Pathname.new('/tmp/custom-results'))
+      end
     end
 
     context 'with subject-ignore flag' do

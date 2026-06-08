@@ -139,6 +139,15 @@ RSpec.describe Mutant::Result::Env::IO do
       expect(File.basename(files.first)).to match(/\A\d{8}T\d{6}Z-[0-9a-f]{7}\.yml\z/)
     end
 
+    it 'uses the first 7 characters of the git ref in the filename' do
+      subject
+      files = Dir.glob(results_dir.join('*.yml'))
+      expected_ref = `git rev-parse HEAD`.strip
+      filename = File.basename(files.first, '.yml')
+      ref_part = filename.split('-', 2).last
+      expect(ref_part).to eql(expected_ref[0, 7])
+    end
+
     it 'creates the results directory if missing' do
       missing_dir = results_dir.join('nested', 'dir')
       allow(config).to receive(:results_dir).and_return(missing_dir)
@@ -156,6 +165,10 @@ RSpec.describe Mutant::Result::Env::IO do
 
       it 'contains ran_at as a Time' do
         expect(yaml_content['ran_at']).to be_a(Time)
+      end
+
+      it 'ran_at is in UTC' do
+        expect(yaml_content['ran_at'].utc?).to be(true)
       end
 
       it 'contains git_ref as a string' do
@@ -308,6 +321,85 @@ RSpec.describe Mutant::Result::Env::IO do
         files = Dir.glob(results_dir.join('*.yml'))
         loaded = YAML.safe_load_file(files.first, permitted_classes: [Symbol, Time])
         expect(loaded['errored_mutations'].first['error']).to eql('TimeoutError: #<TimeoutError: 30s elapsed>')
+      end
+    end
+
+    context 'when git command fails' do
+      let(:fake_open3) { class_double(Open3) }
+      let(:failed_status) { instance_double(Process::Status, success?: false) }
+
+      before do
+        allow(config).to receive(:open3).and_return(fake_open3)
+        allow(fake_open3).to receive(:capture2)
+          .with('git', 'rev-parse', 'HEAD', binmode: true)
+          .and_return(['', failed_status])
+      end
+
+      it 'uses "unknown" as git_ref' do
+        subject
+        files = Dir.glob(results_dir.join('*.yml'))
+        loaded = YAML.safe_load_file(files.first, permitted_classes: [Symbol, Time])
+        expect(loaded['git_ref']).to eql('unknown')
+      end
+
+      it 'uses "unknown" prefix in filename' do
+        subject
+        files = Dir.glob(results_dir.join('*.yml'))
+        expect(File.basename(files.first)).to match(/\A\d{8}T\d{6}Z-unknown\.yml\z/)
+      end
+    end
+
+    context 'when git command returns ref with trailing whitespace' do
+      let(:fake_open3) { class_double(Open3) }
+      let(:success_status) { instance_double(Process::Status, success?: true) }
+
+      before do
+        allow(config).to receive(:open3).and_return(fake_open3)
+        allow(fake_open3).to receive(:capture2)
+          .with('git', 'rev-parse', 'HEAD', binmode: true)
+          .and_return(["abc123def456\n", success_status])
+      end
+
+      it 'strips whitespace from git_ref' do
+        subject
+        files = Dir.glob(results_dir.join('*.yml'))
+        loaded = YAML.safe_load_file(files.first, permitted_classes: [Symbol, Time])
+        expect(loaded['git_ref']).to eql('abc123def456')
+      end
+    end
+
+    context 'when alive mutation source matches subject source' do
+      let(:mutation_alive_same) do
+        instance_double(
+          Mutant::Mutation,
+          subject: subject_a,
+          source:  "return true\n"
+        )
+      end
+
+      let(:mutation_alive_same_result) do
+        instance_double(
+          Mutant::Result::Mutation,
+          mutation:         mutation_alive_same,
+          isolation_result: alive_isolation_result,
+          success?:         false,
+          runtime:          1.0
+        )
+      end
+
+      let(:subject_result) do
+        instance_double(
+          Mutant::Result::Subject,
+          subject:          subject_a,
+          mutation_results: [mutation_alive_same_result]
+        )
+      end
+
+      it 'mutation_diff falls back to empty string' do
+        subject
+        files = Dir.glob(results_dir.join('*.yml'))
+        loaded = YAML.safe_load_file(files.first, permitted_classes: [Symbol, Time])
+        expect(loaded['alive_mutations'].first['mutation_diff']).to eql('')
       end
     end
   end

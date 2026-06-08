@@ -58,7 +58,7 @@ module Mutant
         def serialize_alive(mutation_result)
           mutation = mutation_result.mutation
           subject  = mutation.subject
-          diff     = Mutant::Diff.build(subject.source, mutation.source)
+          diff     = Diff.build(subject.source, mutation.source)
 
           {
             'subject'       => subject.identification,

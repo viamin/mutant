@@ -493,9 +493,19 @@ RSpec.describe Mutant::Runner do
 
       failing_io = instance_double(Mutant::Result::Env::IO)
       allow(Mutant::Result::Env::IO).to receive(:new).with(env_result).and_return(failing_io)
-      allow(failing_io).to receive(:call).and_raise(Errno::EACCES, 'results.yml')
 
-      expected_message = 'Failed to write results: Permission denied - results.yml'
+      custom_error = Class.new(StandardError) do
+        def message
+          'the-message'
+        end
+
+        def to_s
+          'the-to_s'
+        end
+      end
+      allow(failing_io).to receive(:call).and_raise(custom_error.new)
+
+      expected_message = 'Failed to write results: the-message'
       expect(reporter).to receive(:warn).with(expected_message)
 
       result = runner.send(:run)
