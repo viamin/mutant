@@ -26,6 +26,8 @@ namespace :metrics do
     Mutant::Env#selections
     Mutant::Env#with_environment_variables
     Mutant::Config::Loader#document_root
+    Mutant::CLIArgumentSanitizer#initialize
+    Mutant::Integration::RspecSupport::SourceIndex#parse
   ].freeze
 
   task :rubocop do

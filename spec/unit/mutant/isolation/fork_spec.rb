@@ -56,11 +56,21 @@ RSpec.describe Mutant::Isolation::Fork do
     }
   end
 
-  let(:load_success) do
+  let(:read_child_result_blob) do
+    {
+      receiver:  reader,
+      selector:  :read,
+      reaction:  {
+        return: block_return_blob
+      }
+    }
+  end
+
+  let(:marshal_load_success) do
     {
       receiver:  marshal,
       selector:  :load,
-      arguments: [reader],
+      arguments: [block_return_blob],
       reaction:  {
         return: block_return
       }
@@ -152,7 +162,8 @@ RSpec.describe Mutant::Isolation::Fork do
           fork_success,
           *killfork,
           writer_close,
-          load_success,
+          read_child_result_blob,
+          marshal_load_success,
           child_wait
         ].map(&XSpec::MessageExpectation.method(:parse))
       end
@@ -233,9 +244,16 @@ RSpec.describe Mutant::Isolation::Fork do
           writer_close,
           writer_close,
           {
+            receiver:  reader,
+            selector:  :read,
+            reaction:  {
+              return: exception_result_blob
+            }
+          },
+          {
             receiver:  marshal,
             selector:  :load,
-            arguments: [reader],
+            arguments: [exception_result_blob],
             reaction:  {
               return: exception_result
             }
@@ -320,9 +338,16 @@ RSpec.describe Mutant::Isolation::Fork do
           writer_close,
           writer_close,
           {
+            receiver:  reader,
+            selector:  :read,
+            reaction:  {
+              return: exception_result_blob
+            }
+          },
+          {
             receiver:  marshal,
             selector:  :load,
-            arguments: [reader],
+            arguments: [exception_result_blob],
             reaction:  {
               return: exception_result
             }
@@ -415,9 +440,16 @@ RSpec.describe Mutant::Isolation::Fork do
           writer_close,
           writer_close,
           {
+            receiver:  reader,
+            selector:  :read,
+            reaction:  {
+              return: exception_result_blob
+            }
+          },
+          {
             receiver:  marshal,
             selector:  :load,
-            arguments: [reader],
+            arguments: [exception_result_blob],
             reaction:  {
               return: exception_result
             }
@@ -504,7 +536,8 @@ RSpec.describe Mutant::Isolation::Fork do
           fork_success,
           *killfork,
           writer_close,
-          load_success,
+          read_child_result_blob,
+          marshal_load_success,
           {
             receiver:  process,
             selector:  :wait2,

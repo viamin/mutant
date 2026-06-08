@@ -19,7 +19,7 @@ tmtags
 
 ## PROJECT::GENERAL
 *.gem
-coverage
+/coverage
 profiling
 turbulence
 rdoc

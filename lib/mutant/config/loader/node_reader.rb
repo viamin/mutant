@@ -72,7 +72,17 @@ module Mutant
         end
 
         def to_ruby(node)
-          Psych::Visitors::ToRuby.create.accept(node)
+          return node.value if node.quoted
+
+          raw = node.value
+
+          case raw
+          when 'true'  then true
+          when 'false' then false
+          else              Integer(raw)
+          end
+        rescue ArgumentError
+          raw
         end
       end
     end

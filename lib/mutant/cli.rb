@@ -1,6 +1,40 @@
 # frozen_string_literal: true
 
 module Mutant
+  class CLIArgumentSanitizer
+    include Adamantium::Flat, Procto.call(:call)
+
+    WARNING = '--usage is a no-op in viamin/mutant (MIT-licensed)'
+    USAGE_VALUES = %w[opensource commercial].freeze
+
+    def initialize(stderr, arguments)
+      @stderr    = stderr
+      @arguments = arguments
+    end
+
+    def call
+      indices = usage_flag_indices
+      stderr.puts(WARNING) unless indices.empty?
+      arguments.reject.with_index { |_argument, index| indices.include?(index) }
+    end
+
+  private
+
+    attr_reader :arguments, :stderr
+
+    def usage_flag_indices
+      arguments.each_with_index.with_object([]) do |(argument, index), indices|
+        next unless argument.eql?('--usage') || argument.start_with?('--usage=')
+
+        indices << index
+        next unless argument.eql?('--usage') && USAGE_VALUES.include?(arguments.at(index + 1))
+
+        indices << index + 1
+      end
+    end
+  end
+
+  # Commandline parser / runner
   class CLI
     include Adamantium::Flat, Equalizer.new(:config)
 
@@ -90,7 +124,9 @@ module Mutant
     end
 
     def parse(arguments)
-      parse_match_expressions(option_parser.parse!(arguments))
+      sanitized_arguments = CLIArgumentSanitizer.call($stderr, arguments)
+
+      parse_match_expressions(option_parser.parse!(sanitized_arguments))
       apply_env_defaults if apply_jobs_env_defaults?
     rescue OptionParser::ParseError => error
       raise(Error, error)
@@ -170,7 +206,7 @@ module Mutant
       root.children.each_slice(2).filter_map do |nodes|
         key_node, value_node = nodes
 
-        Psych::Visitors::ToRuby.create.accept(key_node) unless value_node.nil?
+        key_node.value unless value_node.nil?
       end.include?('jobs')
     end
 

@@ -418,7 +418,7 @@ module MutantSpec
         end
       end
 
-      ALL = load(YAML.load_file(ROOT.join('spec', 'integrations.yml')))
+      ALL = load(YAML.safe_load_file(ROOT.join('spec', 'integrations.yml')))
     end # Project
   end # Corpus
 end # MutantSpec
