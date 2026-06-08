@@ -2310,11 +2310,85 @@ RSpec.describe Mutant::CLI do
       end
     end
 
+    describe '#apply_env_defaults', mutant_expression: 'Mutant::CLI#apply_env_defaults' do
+      it 'sets jobs from the MUTANT_JOBS environment variable' do
+        ENV.store('MUTANT_JOBS', '7')
+
+        begin
+          cli.__send__(:apply_env_defaults)
+
+          expect(cli.config.jobs).to eql(7)
+        ensure
+          ENV.delete('MUTANT_JOBS')
+        end
+      end
+
+      it 'does not change jobs when MUTANT_JOBS is not set' do
+        ENV.delete('MUTANT_JOBS')
+
+        cli.__send__(:apply_env_defaults)
+
+        expect(cli.config.jobs).to eql(1)
+      end
+
+      it 'raises with MUTANT_JOBS as the source when the value is not an integer' do
+        ENV.store('MUTANT_JOBS', 'nope')
+
+        begin
+          expect { cli.__send__(:apply_env_defaults) }.to raise_error(
+            Mutant::CLI::Error,
+            'MUTANT_JOBS must be an integer'
+          )
+        ensure
+          ENV.delete('MUTANT_JOBS')
+        end
+      end
+
+      it 'raises with MUTANT_JOBS as the source when the value is below minimum' do
+        ENV.store('MUTANT_JOBS', '0')
+
+        begin
+          expect { cli.__send__(:apply_env_defaults) }.to raise_error(
+            Mutant::CLI::Error,
+            'MUTANT_JOBS must be >= 1'
+          )
+        ensure
+          ENV.delete('MUTANT_JOBS')
+        end
+      end
+    end
+
     describe '#enable_zombie', mutant_expression: 'Mutant::CLI#enable_zombie' do
       it 'updates the config even when invoked with an unused argument' do
         cli.__send__(:enable_zombie, :ignored)
 
         expect(cli.config.zombie).to be(true)
+      end
+    end
+
+    describe '#apply_jobs_env_defaults?', mutant_expression: 'Mutant::CLI#apply_jobs_env_defaults?' do
+      it 'returns true when no jobs source has been configured' do
+        cli.instance_variable_set(:@state, exit_requested: false, jobs_configured: false, jobs_explicit: false)
+
+        expect(cli.__send__(:apply_jobs_env_defaults?)).to be(true)
+      end
+
+      it 'returns false when jobs are configured via config file' do
+        cli.instance_variable_set(:@state, exit_requested: false, jobs_configured: true, jobs_explicit: false)
+
+        expect(cli.__send__(:apply_jobs_env_defaults?)).to be(false)
+      end
+
+      it 'returns false when jobs are explicitly set via flag' do
+        cli.instance_variable_set(:@state, exit_requested: false, jobs_configured: false, jobs_explicit: true)
+
+        expect(cli.__send__(:apply_jobs_env_defaults?)).to be(false)
+      end
+
+      it 'returns false when an exit has been requested' do
+        cli.instance_variable_set(:@state, exit_requested: true, jobs_configured: false, jobs_explicit: false)
+
+        expect(cli.__send__(:apply_jobs_env_defaults?)).to be(false)
       end
     end
 
