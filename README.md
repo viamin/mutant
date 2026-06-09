@@ -38,6 +38,46 @@ Topics
 * [Rspec Integration](/docs/mutant-rspec.md)
 * [Minitest Integration](/docs/mutant-minitest.md)
 
+Subcommands
+-----------
+
+Mutant uses a subcommand-based CLI. The available subcommands are:
+
+### `mutant run [options] MATCH_EXPRESSION ...`
+
+Run mutation testing. This is the primary command. All options from the previous single-command form are accepted here.
+
+```
+bundle exec mutant run --use rspec --include lib --require myapp MyApp*
+```
+
+### `mutant environment [options]`
+
+Print the resolved configuration (after merging CLI flags) and exit. Useful for debugging which settings are active.
+
+```
+bundle exec mutant environment --use rspec --include lib MyApp*
+```
+
+### `mutant session <subcommand>`
+
+Inspect mutation testing session results.
+
+* `mutant session list` — List sessions
+* `mutant session show <id>` — Show details of a specific session
+
+### `mutant help [subcommand]`
+
+Display help for mutant or a specific subcommand.
+
+```
+bundle exec mutant help run
+```
+
+### Backward Compatibility
+
+Invoking `mutant` without a subcommand (e.g. `mutant --use rspec MyApp*`) is temporarily accepted as an alias for `mutant run`, but prints a deprecation warning. This alias will be removed in a future release.
+
 Mutation-Operators
 ------------------
 
@@ -113,7 +153,7 @@ Running mutant for the first time on an existing codebase can be a rather dishea
 Mutate all code changed between `master` and the current branch:
 
 ```
-bundle exec mutant --include lib --require virtus --since master --use rspec Virtus::Attribute#type
+bundle exec mutant run --include lib --require virtus --since master --use rspec Virtus::Attribute#type
 ```
 
 ### Example: Rails app in CI
@@ -237,3 +277,8 @@ License
 -------
 
 See LICENSE file.
+
+Licensing
+---------
+
+viamin/mutant is MIT-licensed. There is no commercial gate, no license key, and no usage restriction. Use on open-source or proprietary code freely under the terms of the LICENSE file.

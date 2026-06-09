@@ -2,32 +2,23 @@
 
 module Mutant
   module Repository
-    # Error raised on repository interaction problems
     RepositoryError = Class.new(RuntimeError)
 
-    # Subject filter based on repository diff
     class SubjectFilter
       include Adamantium, Concord.new(:diff)
 
-      # Test if subject was touched in diff
-      #
-      # @param [Subject] subject
-      #
-      # @return [Boolean]
       def call(subject)
         diff.touches?(SubjectLocation.from_subject(subject))
       end
 
     end # SubjectFilter
 
-    # Source location of a subject within the repository.
     SubjectLocation = Struct.new(:path, :line_range) do
       def self.from_subject(subject)
         new(subject.source_path, subject.source_lines)
       end
     end
 
-    # Changed line ranges for a file, or an all-lines match for new files.
     ChangedLineRanges = Struct.new(:all, :ranges) do
       def self.empty
         new(false, [])
@@ -43,7 +34,6 @@ module Mutant
     end
     ChangedLineRanges::ALL = ChangedLineRanges.new(true, EMPTY_ARRAY).freeze
 
-    # Parser for unified diff output that groups changed line ranges by file path.
     class DiffHunkParser
       HUNK_HEADER = /\A@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/
 
@@ -53,7 +43,6 @@ module Mutant
         end.files
       end
 
-      # Mutable parse state while walking unified diff output.
       State = Struct.new(:files, :current_file, :file_type, keyword_init: true) do
         def parse_line(line)
           handle_new_file(line) ||
@@ -112,20 +101,11 @@ module Mutant
       end
     end
 
-    # Diff between two objects in repository
     class Diff
       include Adamantium, Anima.new(:config, :from, :to)
 
       HEAD = 'HEAD'
 
-      # Test if diff changes file at line range
-      #
-      # @param [SubjectLocation] location
-      #
-      # @return [Boolean]
-      #
-      # @raise [RepositoryError]
-      #   when git command failed
       def touches?(location)
         touched_ranges(location.path)&.touches?(location.line_range) || false
       end
@@ -165,11 +145,6 @@ module Mutant
         stdout
       end
 
-      # Test if the path is within the current working directory
-      #
-      # @param [Pathname] path
-      #
-      # @return [TrueClass, nil]
       def within_working_directory?(path)
         working_directory = config.pathname.pwd
         path.ascend { |parent| return true if working_directory.eql?(parent) }

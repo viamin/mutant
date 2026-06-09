@@ -8,7 +8,7 @@ RSpec.describe 'rspec integration', mutant: false do
              end
 
   let(:base_cmd) do
-    %w[bundle exec mutant -I lib --require ./config/environment --use rspec]
+    %w[bundle exec mutant run -I lib --require ./config/environment --use rspec]
   end
 
   versions.each do |version|
