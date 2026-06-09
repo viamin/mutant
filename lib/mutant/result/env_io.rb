@@ -86,7 +86,7 @@ module Mutant
 
         def format_error(exception)
           case exception
-          when Mutant::Isolation::Result::SerializedException
+          when Isolation::Result::SerializedException
             "#{exception.exception_class_name}: #{exception.inspection}"
           else
             exception.inspect
