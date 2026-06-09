@@ -19,7 +19,7 @@ module Mutant
         def dispatch
           emit_singletons
           emit_condition_mutations
-          emit_body_mutations if body
+          emit_body_mutations
           emit_body(nil)
           emit_body(N_RAISE)
         end
