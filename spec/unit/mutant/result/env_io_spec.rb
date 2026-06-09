@@ -60,6 +60,14 @@ RSpec.describe Mutant::Result::Env::IO do
     )
   end
 
+  let(:mutation_killed_b) do
+    instance_double(
+      Mutant::Mutation,
+      subject: subject_a,
+      source:  "return 0\n"
+    )
+  end
+
   let(:mutation_errored) do
     instance_double(
       Mutant::Mutation,
@@ -106,6 +114,16 @@ RSpec.describe Mutant::Result::Env::IO do
     )
   end
 
+  let(:mutation_killed_b_result) do
+    instance_double(
+      Mutant::Result::Mutation,
+      mutation:         mutation_killed_b,
+      isolation_result: killed_isolation_result,
+      success?:         true,
+      runtime:          1.0
+    )
+  end
+
   let(:mutation_errored_result) do
     instance_double(
       Mutant::Result::Mutation,
@@ -120,7 +138,12 @@ RSpec.describe Mutant::Result::Env::IO do
     instance_double(
       Mutant::Result::Subject,
       subject:          subject_a,
-      mutation_results: [mutation_alive_result, mutation_killed_result, mutation_errored_result]
+      mutation_results: [
+        mutation_alive_result,
+        mutation_killed_result,
+        mutation_killed_b_result,
+        mutation_errored_result
+      ]
     )
   end
 
@@ -180,11 +203,11 @@ RSpec.describe Mutant::Result::Env::IO do
       end
 
       it 'contains total_mutations count' do
-        expect(yaml_content['total_mutations']).to eql(3)
+        expect(yaml_content['total_mutations']).to eql(4)
       end
 
       it 'contains killed count' do
-        expect(yaml_content['killed']).to eql(1)
+        expect(yaml_content['killed']).to eql(2)
       end
 
       it 'contains alive count' do
@@ -224,7 +247,7 @@ RSpec.describe Mutant::Result::Env::IO do
       end
 
       it 'errored mutation has error' do
-        expect(yaml_content['errored_mutations'].first['error']).to include('RuntimeError')
+        expect(yaml_content['errored_mutations'].first['error']).to eql(exception.inspect)
       end
 
       it 'is round-trippable via YAML.safe_load_file' do
@@ -232,8 +255,8 @@ RSpec.describe Mutant::Result::Env::IO do
         files = Dir.glob(results_dir.join('*.yml'))
         loaded = YAML.safe_load_file(files.first, permitted_classes: [Symbol, Time])
 
-        expect(loaded['total_mutations']).to eql(3)
-        expect(loaded['killed']).to eql(1)
+        expect(loaded['total_mutations']).to eql(4)
+        expect(loaded['killed']).to eql(2)
         expect(loaded['alive']).to eql(1)
         expect(loaded['errored']).to eql(1)
         expect(loaded['alive_mutations']).to be_a(Array)

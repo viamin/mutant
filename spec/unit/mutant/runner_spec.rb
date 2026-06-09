@@ -511,5 +511,24 @@ RSpec.describe Mutant::Runner do
       result = runner.send(:run)
       expect(result.result).to eql(env_result)
     end
+
+    it 'invokes Result::Env::IO to write results on success' do
+      expect(env).to receive(:method).with(:kill).and_return(processor)
+      expect(Mutant::Runner::Sink).to receive(:new).with(env).and_return(sink)
+      expect(Mutant::Parallel).to receive(:async).with(parallel_config).and_return(driver)
+      expect(Signal).to receive(:trap).with('INT').and_return('DEFAULT')
+      expect(Signal).to receive(:trap).with('TERM').and_return('DEFAULT')
+      expect(driver).to receive(:wait_timeout).with(delay).and_return(status_b)
+      expect(Signal).to receive(:trap).with('INT', 'DEFAULT')
+      expect(Signal).to receive(:trap).with('TERM', 'DEFAULT')
+      expect(reporter).to receive(:start).with(env)
+      expect(reporter).to receive(:report).with(env_result)
+
+      success_io = instance_double(Mutant::Result::Env::IO)
+      expect(Mutant::Result::Env::IO).to receive(:new).with(env_result).and_return(success_io)
+      expect(success_io).to receive(:call)
+
+      runner.send(:run)
+    end
   end
 end

@@ -100,7 +100,7 @@ detectors:
     exclude:
     - Mutant::CLI#add_debug_options
     - Mutant::CLI#add_environment_options
-    - Mutant::CLI#add_filter_options
+    - Mutant::CLI::Options#add_filter_options
     - Mutant::CLI#config_file_sets_jobs?
     - Mutant::CLI#normalize_arguments
     - Mutant::CLI#parse
