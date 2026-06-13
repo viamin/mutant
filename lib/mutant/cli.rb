@@ -36,16 +36,18 @@ module Mutant
 
   # Commandline parser / runner
   class CLI
-    include Adamantium::Flat, Equalizer.new(:config), Procto.call(:config)
+    include Adamantium::Flat, Equalizer.new(:config)
 
-    # Error failed when CLI argv is invalid
     Error = Class.new(RuntimeError)
 
-    # Run cli with arguments
-    #
-    # @param [Array<String>] arguments
-    #
-    # @return [Boolean]
+    SUBCOMMANDS = %w[run environment session help].freeze
+
+    DEPRECATION_WARNING = <<~MESSAGE
+      WARNING: Invoking mutant without a subcommand is deprecated.
+      Use `mutant run [args]` instead of `mutant [args]`.
+      This compatibility alias will be removed in a future release.
+    MESSAGE
+
     def self.run(arguments)
       Runner.call(Env::Bootstrap.call(call(arguments))).success?
     rescue Error => exception
@@ -53,23 +55,74 @@ module Mutant
       false
     end
 
-    attr_reader :config
+    def self.call(arguments)
+      allocate.tap do |instance|
+        instance.__send__(:setup, arguments)
+      end.config
+    end
+
+    def config
+      return instance_variable_get(:@config) if instance_variable_defined?(:@config)
+
+      Config::DEFAULT
+    end
 
   private
+
+    GLOBAL_FLAGS = %w[--help -h --version].freeze
+    HELP_FLAGS   = %w[--help -h].freeze
 
     attr_reader :state
 
     def apply_env_defaults = (env_jobs = ENV['MUTANT_JOBS']) && with(jobs: ParseJobs.(env_jobs, 'MUTANT_JOBS'))
 
-    # Parse the command-line options
-    #
-    # @param [Array<String>] arguments
-    #   Command-line options and arguments to be parsed.
-    #
-    # @fail [Error]
-    #   An error occurred while parsing the options.
-    #
-    # @return [undefined]
+    def normalize_arguments(arguments)
+      return arguments if arguments.empty?
+
+      first = arguments.first
+
+      if SUBCOMMANDS.include?(first)
+        arguments
+      elsif arguments.one? && GLOBAL_FLAGS.include?(first)
+        arguments
+      else
+        warn_deprecation
+        ['run'] + arguments
+      end
+    end
+
+    def warn_deprecation
+      $stderr.puts(DEPRECATION_WARNING)
+    end
+
+    def puts(message = nil)
+      $stdout.puts(message)
+    end
+
+    def cli_exit
+      config.kernel.public_send(:exit)
+    end
+
+    def dispatch(arguments)
+      subcommand, *subcommand_arguments = arguments
+
+      if SUBCOMMANDS.include?(subcommand)
+        __send__("handle_#{subcommand}", subcommand_arguments)
+      elsif arguments.one? && HELP_FLAGS.include?(subcommand)
+        puts(Help::MAIN_HELP)
+        cli_exit
+      elsif arguments.one? && subcommand == '--version'
+        puts("mutant-#{VERSION}")
+        cli_exit
+      else
+        parse(arguments)
+      end
+    end
+
+    def process(arguments)
+      dispatch(normalize_arguments(arguments))
+    end
+
     def parse(arguments)
       sanitized_arguments = CLIArgumentSanitizer.call($stderr, arguments)
 
@@ -79,24 +132,19 @@ module Mutant
       raise(Error, error)
     end
 
-    def option_parser = OptionParser.new(&method(:configure_option_parser))
-
-    def apply_jobs_env_defaults?
-      !state.fetch(:jobs_configured) && !state.fetch(:jobs_explicit) && !state.fetch(:exit_requested)
+    def option_parser
+      OptionParser.new do |builder|
+        builder.banner = 'usage: mutant run [options] MATCH_EXPRESSION ...'
+        add_option_groups(builder)
+      end
     end
 
-    def configure_option_parser(builder)
-      builder.banner = 'usage: mutant [options] MATCH_EXPRESSION ...'
+    def add_option_groups(builder)
       %i[add_environment_options add_mutation_options add_filter_options add_debug_options].each do |name|
         __send__(name, builder)
       end
     end
 
-    # Parse matchers
-    #
-    # @param [Array<String>] expressions
-    #
-    # @return [undefined]
     def parse_match_expressions(expressions)
       with(matcher: config.matcher.with(match_expressions: [])) if expressions.any?
 
@@ -105,130 +153,26 @@ module Mutant
       end
     end
 
-    # Add environmental options
-    #
-    # @param [Object] opts
-    # rubocop:disable MethodLength
-    def add_environment_options(opts)
-      opts.separator('Environment:')
-      opts.on('--zombie', 'Run mutant zombified') { enable_zombie }
-      opts.on('-I', '--include DIRECTORY', 'Add DIRECTORY to $LOAD_PATH') do |directory|
-        add(:includes, directory)
-      end
-      opts.on('-r', '--require NAME', 'Require file with NAME') do |name|
-        add(:requires, name)
-      end
-      opts.on('-j', '--jobs NUMBER', 'Number of kill jobs. Defaults to MUTANT_JOBS or 1.') do |number|
-        state[:jobs_explicit] = true
-        with(jobs: ParseJobs.(number, '--jobs'))
-      end
+    def with(attributes)
+      instance_variable_set(:@config, config.with(attributes))
     end
 
-    def enable_zombie(*) = with(zombie: true)
-
-    # Use integration
-    #
-    # @param [String] name
-    #
-    # @return [undefined]
-    def setup_integration(name)
-      with(integration: Integration.setup(config.kernel, name))
-    rescue LoadError
-      raise Error, "Could not load integration #{name.inspect} (you may want to try installing the gem mutant-#{name})"
+    def add(attribute, value)
+      with(attribute => config.public_send(attribute) + [value])
     end
 
-    # Add mutation options
-    #
-    # @param [OptionParser] opts
-    #
-    # @return [undefined]
-    def add_mutation_options(opts)
-      opts.separator(nil)
-      opts.separator('Options:')
-
-      opts.on('--use INTEGRATION', 'Use INTEGRATION to kill mutations', &method(:setup_integration))
+    def add_matcher(attribute, value)
+      with(matcher: config.matcher.add(attribute, value))
     end
-
-    # Add filter options
-    #
-    # @param [OptionParser] opts
-    #
-    # @return [undefined]
-    def add_filter_options(opts)
-      opts.on('--include-subject EXPRESSION', 'Add EXPRESSION to the configured subject matcher list') do |pattern|
-        add_matcher(:match_expressions, config.expression_parser.(pattern))
-      end
-      opts.on('--ignore-subject EXPRESSION', 'Ignore subjects that match EXPRESSION as prefix') do |pattern|
-        add_matcher(:ignore_expressions, config.expression_parser.(pattern))
-      end
-      opts.on('--since REVISION', 'Only select subjects touched since REVISION') do |revision|
-        add_matcher(
-          :subject_filters,
-          Repository::SubjectFilter.new(
-            Repository::Diff.new(
-              config: config,
-              from:   revision,
-              to:     Repository::Diff::HEAD
-            )
-          )
-        )
-      end
-    end
-
-    # Add debug options
-    #
-    # @param [OptionParser] opts
-    #
-    # @return [undefined]
-    def add_debug_options(opts)
-      opts.on('--fail-fast', 'Fail fast') do
-        with(fail_fast: true)
-      end
-      opts.on('--version', 'Print mutants version') do
-        state[:exit_requested] = true
-        puts("mutant-#{VERSION}")
-        config.kernel.exit
-      end
-      opts.on_tail('-h', '--help', 'Show this message') do
-        state[:exit_requested] = true
-        puts(opts.to_s)
-        config.kernel.exit
-      end
-    end
-
-    # With configuration
-    #
-    # @param [Hash<Symbol, Object>] attributes
-    #
-    # @return [undefined]
-    def with(attributes) = @config = config.with(attributes)
-
-    # Add configuration
-    #
-    # @param [Symbol] attribute
-    #   the attribute to add to
-    #
-    # @param [Object] value
-    #   the value to add
-    #
-    # @return [undefined]
-    def add(attribute, value) = with(attribute => config.public_send(attribute) + [value])
-
-    # Add matcher configuration
-    #
-    # @param [Symbol] attribute
-    #   the attribute to add to
-    #
-    # @param [Object] value
-    #   the value to add
-    #
-    # @return [undefined]
-    def add_matcher(attribute, value) = with(matcher: config.matcher.add(attribute, value))
 
   end # CLI
 
   class CLI
   private
+
+    def apply_jobs_env_defaults?
+      !state.fetch(:jobs_configured) && !state.fetch(:jobs_explicit) && !state.fetch(:exit_requested)
+    end
 
     def setup(arguments)
       @state = {
@@ -237,7 +181,7 @@ module Mutant
         jobs_explicit: false
       }
       @config = load_config
-      parse(arguments)
+      process(arguments)
     end
 
     def load_config

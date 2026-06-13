@@ -28,6 +28,26 @@ namespace :metrics do
     Mutant::Config::Loader#document_root
     Mutant::CLIArgumentSanitizer#initialize
     Mutant::Integration::RspecSupport::SourceIndex#parse
+    Mutant::CLI#config
+    Mutant::CLI#dispatch
+    Mutant::CLI#normalize_arguments
+    Mutant::CLI#option_parser
+    Mutant::CLI#parse
+    Mutant::CLI#puts
+    Mutant::CLI#warn_deprecation
+    Mutant::CLI::Subcommands#handle_run
+    Mutant::CLI::Subcommands#handle_environment
+    Mutant::CLI::Subcommands#print_environment
+    Mutant::CLI::Subcommands#print_run_help
+    Mutant::CLI::Subcommands#print_run_help_and_exit
+    Mutant::CLI::Subcommands#print_version_and_exit
+    Mutant::CLI::Session#load_session_data
+    Mutant::CLI::Session#print_session_show
+    Mutant::CLI::Session#resolve_session_path
+    Mutant::CLI::Options#add_filter_options
+    Mutant::CLI::Options#add_mutation_options
+    Mutant::CLI::Options#enable_fail_fast
+    Mutant::CLI::Options#setup_integration
   ].freeze
 
   task :rubocop do
@@ -44,7 +64,7 @@ namespace :metrics do
     mutant_since = mutant_since_revision
     head_revision = `git rev-parse HEAD`.chomp
     arguments = %w[
-      bundle exec mutant
+      bundle exec mutant run
       --include lib
       --require mutant
       --use rspec

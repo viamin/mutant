@@ -22,6 +22,9 @@ if ENV['COVERAGE'] == 'true'
   end
 end
 
+# Require pathname first since warning support uses it
+require 'pathname'
+
 # Require warning support first in order to catch any warnings emitted during boot
 require_relative './support/warning'
 $stderr = MutantSpec::Warning::EXTRACTOR

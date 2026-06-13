@@ -38,6 +38,46 @@ Topics
 * [Rspec Integration](/docs/mutant-rspec.md)
 * [Minitest Integration](/docs/mutant-minitest.md)
 
+Subcommands
+-----------
+
+Mutant uses a subcommand-based CLI. The available subcommands are:
+
+### `mutant run [options] MATCH_EXPRESSION ...`
+
+Run mutation testing. This is the primary command. All options from the previous single-command form are accepted here.
+
+```
+bundle exec mutant run --use rspec --include lib --require myapp MyApp*
+```
+
+### `mutant environment [options]`
+
+Print the resolved configuration (after merging CLI flags) and exit. Useful for debugging which settings are active.
+
+```
+bundle exec mutant environment --use rspec --include lib MyApp*
+```
+
+### `mutant session <subcommand>`
+
+Inspect mutation testing session results.
+
+* `mutant session list` — List sessions
+* `mutant session show <id>` — Show details of a specific session
+
+### `mutant help [subcommand]`
+
+Display help for mutant or a specific subcommand.
+
+```
+bundle exec mutant help run
+```
+
+### Backward Compatibility
+
+Invoking `mutant` without a subcommand (e.g. `mutant --use rspec MyApp*`) is temporarily accepted as an alias for `mutant run`, but prints a deprecation warning. This alias will be removed in a future release.
+
 Mutation-Operators
 ------------------
 
@@ -113,7 +153,7 @@ Running mutant for the first time on an existing codebase can be a rather dishea
 Mutate all code changed between `master` and the current branch:
 
 ```
-bundle exec mutant --include lib --require virtus --since master --use rspec Virtus::Attribute#type
+bundle exec mutant run --include lib --require virtus --since master --use rspec Virtus::Attribute#type
 ```
 
 ### Example: Rails app in CI
@@ -190,6 +230,37 @@ Credits
 * A gist, now removed, from [dkubb](https://github.com/dkubb) showing ideas.
 * Older abandoned [mutant](https://github.com/txus/mutant). For motivating me doing this one.
 * [heckle](https://github.com/seattlerb/heckle). For getting me into mutation testing.
+
+Machine-readable output
+-----------------------
+
+Mutant writes a YAML results file on every run to `.mutant/results/<timestamp>-<sha>.yml`.
+Use `--results-dir DIRECTORY` to override the output location.
+
+The file follows this schema:
+
+```yaml
+ran_at: 2026-05-29T14:00:00Z
+git_ref: a1b2c3d
+since: main            # value of --since, or null
+total_mutations: 42
+killed: 38
+alive: 3
+errored: 1
+alive_mutations:
+  - subject: "MyApp::Foo#bar"
+    subject_path: "app/models/foo.rb"
+    source_line: 17
+    mutation_diff: |
+      -  return true
+      +  return false
+errored_mutations:
+  - subject: "MyApp::Bar#qux"
+    error: "TimeoutError: 30s elapsed"
+```
+
+Files are loadable with `YAML.safe_load_file(path, permitted_classes: [Symbol, Time])`.
+Result files accumulate across runs; consumers are responsible for retention.
 
 Contributing
 -------------

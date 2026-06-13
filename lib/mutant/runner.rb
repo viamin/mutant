@@ -33,8 +33,16 @@ module Mutant
     # Execute analysis and cache the final result before freezing the runner
     def run
       reporter.start(env)
-      @result = run_mutation_analysis
+      analysis_result = run_mutation_analysis
+      write_results(analysis_result)
+      @result = analysis_result
       self
+    end
+
+    def write_results(result)
+      Result::Env::IO.new(result).call
+    rescue StandardError => error
+      reporter.warn("Failed to write results: #{error.message}")
     end
 
     def run_mutation_analysis
