@@ -417,6 +417,15 @@ RSpec.describe Mutant::Mutator::Node::Argument do
         s(:def, :foo, s(:args, s(:arg, :_a), s(:optarg, :b, s(:lvar, :a))), nil)
       )
     end
+
+    it 'does not rename an unused underscore argument' do
+      input  = parse('foo { |_value| }')
+      result = Mutant::Mutator.mutate(input)
+
+      expect(result).not_to include(
+        s(:block, s(:send, nil, :foo), s(:args, s(:procarg0, s(:arg, :__value))), nil)
+      )
+    end
   end
 end
 
