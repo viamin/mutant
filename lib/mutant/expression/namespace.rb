@@ -10,7 +10,7 @@ module Mutant
     private
 
       def prefix_match_length(expression)
-        if expression.syntax.match?(/\A#{Regexp.escape(scope_name)}(?:(?:#{SCOPE_OPERATOR})|[.#]|\z)/)
+        if expression.syntax.match?(/\A#{::Regexp.escape(scope_name)}(?:(?:#{SCOPE_OPERATOR})|[.#]|\z)/)
           scope_name.length
         else
           0
