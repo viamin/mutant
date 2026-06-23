@@ -50,6 +50,15 @@ module Mutant
           self::ASTToExpression.call(node)
         end
 
+        # Transform node into unfrozen expression
+        #
+        # @param node [Parser::AST::Node]
+        #
+        # @return [Regexp::Expression]
+        def self.to_expression_unfrozen(node)
+          self::ASTToExpression.call_unfrozen(node)
+        end
+
         # Abstract expression transformer
         class ExpressionToAST
           PREFIX = :regexp
@@ -101,14 +110,22 @@ module Mutant
         class ASTToExpression
           include Concord.new(:node), Procto.call, AbstractType, Adamantium
 
+          def self.call_unfrozen(node)
+            new(node).__send__(:expression)
+          end
+
           # Call generic transform method and freeze result
           #
           # @return [Regexp::Expression]
           def call
-            transform.freeze
+            expression.tap { |result| traverse(result) }
           end
 
         private
+
+          def expression
+            transform
+          end
 
           # Transformation of ast into expression
           #
@@ -119,7 +136,18 @@ module Mutant
           #
           # @return [Array<Regexp::Expression>]
           def subexpressions
-            node.children.map(&Regexp.public_method(:to_expression))
+            node.children.map(&Regexp.public_method(:to_expression_unfrozen))
+          end
+
+          def traverse(expression)
+            unless expression.terminal?
+              expression.each do |subexpression|
+                traverse(subexpression)
+              end
+            end
+
+            expression.quantifier.freeze
+            expression.freeze
           end
         end # ASTToExpression
 

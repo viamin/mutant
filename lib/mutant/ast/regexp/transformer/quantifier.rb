@@ -12,7 +12,7 @@ module Mutant
             #
             # @return [Parser::AST::Node]
             def call
-              ast(expression.min, expression.max)
+              ast(quantifier_expression.min, quantifier_expression.max)
             end
 
           private
@@ -21,7 +21,11 @@ module Mutant
             #
             # @return [Symbol]
             def type
-              :"regexp_#{expression.mode}_#{expression.token}"
+              :"regexp_#{quantifier_expression.mode}_#{quantifier_expression.token}"
+            end
+
+            def quantifier_expression
+              expression.dup
             end
           end # ExpressionToAST
 
@@ -54,8 +58,13 @@ module Mutant
             #
             # @return [Regexp::Expression]
             def transform
-              Regexp.to_expression(subject).dup.tap do |expression|
-                expression.quantify(type, text, min, max, mode)
+              return transform_nested_interval if nested_interval?
+
+              Regexp.to_expression_unfrozen(subject).tap do |expression|
+                expression.quantifier = ::Regexp::Expression::Quantifier.construct(
+                  token: type,
+                  text:  text
+                )
               end
             end
 
@@ -103,7 +112,17 @@ module Mutant
             # @return [String]
             def interval_text
               interval = [min, max].map { |num| num if num.positive? }.uniq
-              "{#{interval.join(',')}}"
+              '{' + interval.join(',') + '}'
+            end
+
+            def nested_interval?
+              %i[regexp_possessive_interval regexp_reluctant_interval].include?(node.type)
+            end
+
+            def transform_nested_interval
+              source = Regexp.to_expression_unfrozen(subject).to_s + interval_text + suffix
+
+              Regexp.parse(source).expressions.fetch(0)
             end
           end # ASTToExpression
 

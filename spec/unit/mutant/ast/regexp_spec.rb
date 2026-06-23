@@ -36,6 +36,13 @@ module RegexpSpec
         "Expected #{root} to be deep frozen"
       )
 
+      if expression.quantified?
+        expect(expression.quantifier.frozen?).to(
+          be(true),
+          "Expected quantifier on #{root} to be frozen"
+        )
+      end
+
       return if expression.terminal?
 
       expression.expressions.each do |subexpression|
@@ -387,6 +394,23 @@ RegexpSpec.expect_mapping(/\xFF/n, :regexp_hex_escape) do
     s(:regexp_hex_escape, '\\xFF'))
 end
 
+RSpec.describe Mutant::AST::Regexp::Transformer::Text do
+  context 'when mapping utf8 hex escape ast' do
+    let(:ast) { s(:regexp_utf8_hex_escape, '\\xFF') }
+
+    it 'transforms ast back to expression' do
+      expression = Mutant::AST::Regexp.to_expression(ast)
+
+      expect(expression.class).to eql(::Regexp::Expression::EscapeSequence::UTF8Hex)
+      expect(expression.text).to eql('\\xFF')
+    end
+
+    it 'round trips the original ast type' do
+      expect(Mutant::AST::Regexp.to_ast(Mutant::AST::Regexp.to_expression(ast))).to eql(ast)
+    end
+  end
+end
+
 RegexpSpec.expect_mapping(/\h/, :regexp_hex_type) do
   s(:regexp_root_expression,
     s(:regexp_hex_type))
@@ -422,9 +446,9 @@ RegexpSpec.expect_mapping(/\p{L}/, :regexp_letter_property) do
     s(:regexp_letter_property))
 end
 
-RegexpSpec.expect_mapping(/\-/, :regexp_literal_escape) do
+RegexpSpec.expect_mapping(/-/, :regexp_literal_literal) do
   s(:regexp_root_expression,
-    s(:regexp_literal_escape, '\\-'))
+    s(:regexp_literal_literal, '-'))
 end
 
 RegexpSpec.expect_mapping(/\ /, :regexp_literal_escape) do
@@ -437,14 +461,14 @@ RegexpSpec.expect_mapping(/\#/, :regexp_literal_escape) do
     s(:regexp_literal_escape, '\\#'))
 end
 
-RegexpSpec.expect_mapping(/\:/, :regexp_literal_escape) do
+RegexpSpec.expect_mapping(/:/, :regexp_literal_literal) do
   s(:regexp_root_expression,
-    s(:regexp_literal_escape, '\\:'))
+    s(:regexp_literal_literal, ':'))
 end
 
-RegexpSpec.expect_mapping(/\</, :regexp_literal_escape) do
+RegexpSpec.expect_mapping(/</, :regexp_literal_literal) do
   s(:regexp_root_expression,
-    s(:regexp_literal_escape, '\\<'))
+    s(:regexp_literal_literal, '<'))
 end
 
 RegexpSpec.expect_mapping(/foo/, :regexp_literal_literal) do
@@ -558,13 +582,14 @@ RegexpSpec.expect_mapping(/a(?i)b/, :regexp_options_switch_group) do
     s(:regexp_literal_literal, 'b'))
 end
 
-RegexpSpec.expect_mapping(/(?x: #{"\n"} )/, :regexp_whitespace_free_space) do
+RegexpSpec.expect_mapping(/(?x:
+ )/, :regexp_whitespace_free_space) do
   s(:regexp_root_expression,
     s(:regexp_options_group,
       {
         x: true
       },
-      s(:regexp_whitespace_free_space, " \n ")))
+      s(:regexp_whitespace_free_space, "\n ")))
 end
 
 RegexpSpec.expect_mapping(/(?:a)/, :regexp_passive_group) do
@@ -577,6 +602,13 @@ RegexpSpec.expect_mapping(/.{1,3}+/, :regexp_possessive_interval) do
   s(:regexp_root_expression,
     s(:regexp_possessive_interval, 1, 3,
       s(:regexp_dot_meta)))
+end
+
+RegexpSpec.expect_mapping(/(?:a){1,3}+/, :regexp_possessive_interval) do
+  s(:regexp_root_expression,
+    s(:regexp_possessive_interval, 1, 3,
+      s(:regexp_passive_group,
+        s(:regexp_literal_literal, 'a'))))
 end
 
 RegexpSpec.expect_mapping(/.++/, :regexp_possessive_one_or_more) do
@@ -618,6 +650,13 @@ RegexpSpec.expect_mapping(/.{1,3}?/, :regexp_reluctant_interval) do
   s(:regexp_root_expression,
     s(:regexp_reluctant_interval, 1, 3,
       s(:regexp_dot_meta)))
+end
+
+RegexpSpec.expect_mapping(/(?:a){1,3}?/, :regexp_reluctant_interval) do
+  s(:regexp_root_expression,
+    s(:regexp_reluctant_interval, 1, 3,
+      s(:regexp_passive_group,
+        s(:regexp_literal_literal, 'a'))))
 end
 
 RegexpSpec.expect_mapping(/.+?/, :regexp_reluctant_one_or_more) do

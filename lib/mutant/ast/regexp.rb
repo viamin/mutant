@@ -37,6 +37,15 @@ module Mutant
       def self.to_expression(node)
         Transformer.lookup(node.type).to_expression(node)
       end
+
+      # Convert node into mutable expression
+      #
+      # @param node [Parser::AST::Node]
+      #
+      # @return [Regexp::Expression]
+      def self.to_expression_unfrozen(node)
+        Transformer.lookup(node.type).to_expression_unfrozen(node)
+      end
     end # Regexp
   end # AST
 end # Mutant

@@ -8,11 +8,35 @@ module Mutant
         class Recursive < self
           # Mapper from `Regexp::Expression` to `Parser::AST::Node`
           class ExpressionToAST < Transformer::ExpressionToAST
+            POSSESSIVE_INTERVAL_TOKEN_MAP = {
+              '+': :regexp_possessive_interval,
+              '?': :regexp_reluctant_interval
+            }.freeze
+
             # Transform expression and children into nodes
             #
             # @return [Parser::AST::Node]
             def call
+              return normalize_interval_quantifier if interval_quantifier?
+
               quantify(ast(*children))
+            end
+
+          private
+
+            def interval_quantifier?
+              children.first&.type.equal?(:regexp_greedy_interval) &&
+                expression.type.equal?(:group) &&
+                expression.token.equal?(:passive) &&
+                expression.quantified? &&
+                POSSESSIVE_INTERVAL_TOKEN_MAP.key?(expression.quantifier.text.to_sym)
+            end
+
+            def normalize_interval_quantifier
+              interval = children.fetch(0)
+              type     = POSSESSIVE_INTERVAL_TOKEN_MAP.fetch(expression.quantifier.text.to_sym)
+
+              s(type, *interval.children)
             end
           end # ExpressionToAST
 

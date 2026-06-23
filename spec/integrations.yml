@@ -28,9 +28,6 @@
     - library/base64/decode64_spec.rb
     - library/cgi/escapeHTML_spec.rb
     - library/cgi/unescapeHTML_spec.rb
-    "#<SystemStackError: stack level too deep>":
-    - language/regexp/back-references_spec.rb
-    - language/regexp/subexpression_call_spec.rb
   exclude:
     - core/string/casecmp_spec.rb
     - core/symbol/casecmp_spec.rb
