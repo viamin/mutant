@@ -119,4 +119,24 @@ RSpec.describe Mutant::Zombifier do
       end
     end
   end
+
+  describe '#include?' do
+    subject { described_class.new(options) }
+
+    before do
+      allow(pathname).to receive(:new, &file_system.method(:path))
+    end
+
+    it 'matches names under included prefixes' do
+      expect(subject.send(:include?, 'project/sub')).to be(true)
+    end
+
+    it 'matches exact included names' do
+      expect(subject.send(:include?, 'bar')).to be(true)
+    end
+
+    it 'does not match names outside included prefixes' do
+      expect(subject.send(:include?, 'other')).to be(false)
+    end
+  end
 end
