@@ -515,7 +515,7 @@ RSpec.describe Mutant::Integration::RspecSupport::Examples do
 end
 
 RSpec.describe Mutant::Integration::RspecSupport::Node do
-  let(:parser) { ::Parser::CurrentRuby }
+  let(:parser) { Mutant::PARSER_CLASS }
 
   describe '.cover_argument' do
     it 'extracts the cover matcher argument from expectation nodes' do
@@ -772,7 +772,7 @@ RSpec.describe Mutant::Integration::RspecSupport::ExpressionParser do
     stub_const('Example::Outer::Inner', Class.new)
   end
 
-  let(:parser) { ::Parser::CurrentRuby }
+  let(:parser) { Mutant::PARSER_CLASS }
 
   it 'parses constant cover annotations' do
     node = parser.parse('cover(Example::Outer::Inner)').children.fetch(2)

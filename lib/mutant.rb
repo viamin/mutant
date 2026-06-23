@@ -15,12 +15,14 @@ require 'open3'
 require 'optparse'
 require 'parser'
 require 'parser/ruby33'
+require 'parser/ruby34'
 require 'pathname'
 require 'psych'
 require 'procto'
 require 'regexp_parser'
 require 'set'
 require 'stringio'
+require 'mutant/regexp_parser_compat'
 
 module Warning
   PARSER_WARNING_PATTERNS = [
@@ -51,7 +53,12 @@ module Mutant
   EMPTY_ARRAY    = [].freeze
   EMPTY_HASH     = {}.freeze
   SCOPE_OPERATOR = '::'
-  PARSER_CLASS   = Parser::Ruby33
+  parser_class_name = "Ruby#{RUBY_VERSION.split('.').first(2).join}"
+  PARSER_CLASS      = if Parser.const_defined?(parser_class_name, false)
+                        Parser.const_get(parser_class_name, false)
+                      else
+                        Parser::Ruby34
+                      end
 
   # Test if CI is detected via environment
   #

@@ -26,7 +26,9 @@ module Mutant
     # @return [undefined]
     def initialize(*)
       super
-      @includes = %r{\A#{Regexp.union(includes)}(?:/.*)?\z}
+      includes_pattern = ::Regexp.union(includes).source
+
+      @includes = ::Regexp.new('\\A(?:' + includes_pattern + ')(?:/.*)?\\z')
       @zombified = Set.new
     end
 

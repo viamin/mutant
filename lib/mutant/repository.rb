@@ -76,9 +76,10 @@ module Mutant
         end
 
         def handle_current_file(line)
-          return unless %r{\A\+\+\+ b/(.*)}.match(line)
+          match = %r{\A\+\+\+ b/(.*)}.match(line)
+          return unless match
 
-          self.current_file = Regexp.last_match(1).strip
+          self.current_file = match[1].strip
           files[current_file] = Repository::ChangedLineRanges::ALL if file_type.equal?(:new)
           self.file_type = :normal
         end

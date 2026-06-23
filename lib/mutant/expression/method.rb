@@ -18,7 +18,7 @@ module Mutant
         '#' => Matcher::Methods::Instance
       )
 
-      METHOD_NAME_PATTERN = Regexp.union(
+      METHOD_NAME_PATTERN = ::Regexp.union(
         /(?<method_name>[A-Za-z_][A-Za-z\d_]*[!?=]?)/,
         *AST::Types::OPERATOR_METHODS.map(&:to_s)
       ).freeze

@@ -17,7 +17,7 @@ module Mutant
       # Set of op-assign types
       OP_ASSIGN              = Set.new(%i[or_asgn and_asgn op_asgn]).freeze
       # Set of node types that are not valid when emitted standalone
-      NOT_STANDALONE         = Set.new(%i[splat restarg block_pass]).freeze
+      NOT_STANDALONE         = Set.new(%i[splat restarg block_pass kwargs]).freeze
       INDEX_OPERATORS        = Set.new(%i[[] []=]).freeze
       UNARY_METHOD_OPERATORS = Set.new(%i[~@ +@ -@ !]).freeze
 

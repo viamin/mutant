@@ -14,10 +14,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ruby-version: ['3.3']
+        ruby-version: ['3.3', '3.4']
     steps:
       - uses: actions/checkout@v6.0.3
-      - uses: ruby/setup-ruby@v1.313.0
+      - uses: ruby/setup-ruby@v1.312.0
         with:
           ruby-version: ${{ matrix.ruby-version }}
           bundler-cache: true
@@ -29,37 +29,59 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - suite: rspec-3.10
+          - ruby-version: '3.3'
+            suite: rspec-3.10
             command: MUTANT_RSPEC_VERSION=3.10 bundle exec rspec spec/integration/mutant/rspec_spec.rb
-          - suite: rspec-3.13
+          - ruby-version: '3.3'
+            suite: rspec-3.13
             command: MUTANT_RSPEC_VERSION=3.13 bundle exec rspec spec/integration/mutant/rspec_spec.rb
-          - suite: rspec-4.0
+          - ruby-version: '3.3'
+            suite: rspec-4.0
             command: MUTANT_RSPEC_VERSION=4.0 bundle exec rspec spec/integration/mutant/rspec_spec.rb
-          - suite: minitest
+          - ruby-version: '3.3'
+            suite: minitest
             command: bundle exec rspec spec/integration/mutant/minitest_spec.rb
-          - suite: generation
+          - ruby-version: '3.3'
+            suite: generation
+            command: bundle exec rspec spec/integration/mutant/corpus_spec.rb
+          - ruby-version: '3.4'
+            suite: rspec
+            command: bundle exec rspec spec/integration/mutant/rspec_spec.rb
+          - ruby-version: '3.4'
+            suite: minitest
+            command: bundle exec rspec spec/integration/mutant/minitest_spec.rb
+          - ruby-version: '3.4'
+            suite: generation
             command: bundle exec rspec spec/integration/mutant/corpus_spec.rb
     steps:
       - uses: actions/checkout@v6.0.3
-      - uses: ruby/setup-ruby@v1.313.0
+      - uses: ruby/setup-ruby@v1.312.0
         with:
-          ruby-version: '3.3'
+          ruby-version: ${{ matrix.ruby-version }}
           bundler-cache: true
       - run: ${{ matrix.command }}
 
   metrics:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby-version: ['3.3', '3.4']
     steps:
       - uses: actions/checkout@v6.0.3
-      - uses: ruby/setup-ruby@v1.313.0
+      - uses: ruby/setup-ruby@v1.312.0
         with:
-          ruby-version: '3.3'
+          ruby-version: ${{ matrix.ruby-version }}
           bundler-cache: true
       - run: bundle exec rake metrics:rubocop
       - run: bundle exec rake metrics:reek
 
   mutant:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby-version: ['3.3', '3.4']
     env:
       MUTANT_JOBS: 4
     steps:
@@ -69,9 +91,9 @@ jobs:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
       - if: github.event_name == 'pull_request'
         run: git fetch --no-tags origin "${{ github.event.pull_request.base.ref }}:refs/remotes/origin/${{ github.event.pull_request.base.ref }}"
-      - uses: ruby/setup-ruby@v1.313.0
+      - uses: ruby/setup-ruby@v1.312.0
         with:
-          ruby-version: '3.3'
+          ruby-version: ${{ matrix.ruby-version }}
           bundler-cache: true
       - run: |
           base_ref=""
