@@ -22,7 +22,7 @@ task('metrics:mutant').clear
 namespace :metrics do
   # TODO(#49): Remove these when scope-awareness changes fix the survivors
   MUTANT_IGNORE_SUBJECTS = %w[
-    Mutant::AST::Regexp::*
+    Mutant::AST::Regexp*
     Mutant::Expression::Namespace#prefix_match_length
     Mutant::Mutator::Node::Literal::Regex*
     Mutant::Zombifier*
