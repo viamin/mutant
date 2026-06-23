@@ -38,7 +38,7 @@ module Mutant
             # @return [Boolean]
             def implicit_passive_group?
               expression.is_a?(::Regexp::Expression::Group::Passive) &&
-                expression.instance_variable_get(:@implicit).equal?(true)
+                expression.implicit?
             end
           end # ExpressionToAST
 
