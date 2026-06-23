@@ -59,7 +59,7 @@ module Mutant
     #
     # @param [String]
     def include?(logical_name)
-      !@zombified.include?(logical_name) && includes.match?(logical_name)
+      !@zombified.include?(logical_name) && !!(includes =~ logical_name)
     end
 
     # Require file in zombie namespace
