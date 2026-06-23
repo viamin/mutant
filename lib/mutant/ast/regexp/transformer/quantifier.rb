@@ -54,7 +54,7 @@ module Mutant
             #
             # @return [Regexp::Expression]
             def transform
-              Regexp.to_expression(subject).dup.tap do |expression|
+              Transformer.lookup(subject.type).to_expression(subject).tap do |expression|
                 expression.quantify(type, text, min, max, mode)
               end
             end

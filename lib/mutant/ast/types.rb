@@ -151,6 +151,7 @@ module Mutant
         regexp_open_conditional
         regexp_options_group
         regexp_options_switch_group
+        regexp_implicit_passive_group
         regexp_passive_group
         regexp_possessive_interval
         regexp_possessive_one_or_more

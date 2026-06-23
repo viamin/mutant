@@ -101,11 +101,19 @@ module Mutant
         class ASTToExpression
           include Concord.new(:node), Procto.call, AbstractType, Adamantium
 
-          # Call generic transform method and freeze result
+          # Call generic transform method
+          #
+          # The result is intentionally returned without an explicit freeze.
+          # Public callers (`Mutant::AST::Regexp.to_expression`) are
+          # responsible for deep-freezing the final tree. Intermediate freezes
+          # would deep-freeze sub-expressions and break later in-place
+          # mutations such as `Quantifier::ASTToExpression#transform` calling
+          # `dup`, which under `regexp_parser` 2.12.0 reassigns `parent` on
+          # cloned children that inherit the frozen state.
           #
           # @return [Regexp::Expression]
           def call
-            transform.freeze
+            transform
           end
 
         private
@@ -119,7 +127,7 @@ module Mutant
           #
           # @return [Array<Regexp::Expression>]
           def subexpressions
-            node.children.map(&Regexp.public_method(:to_expression))
+            node.children.map { |child| Transformer.lookup(child.type).to_expression(child) }
           end
         end # ASTToExpression
 

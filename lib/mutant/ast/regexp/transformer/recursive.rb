@@ -14,6 +14,32 @@ module Mutant
             def call
               quantify(ast(*children))
             end
+
+          private
+
+            # Node type, distinguishing implicit passive groups
+            #
+            # `regexp_parser` 2.12.0 wraps chained quantifiers like `.{1,3}+`
+            # in an implicit passive group. The AST encodes implicit vs.
+            # explicit `(?:...)` as distinct node types so the reverse
+            # transformation can faithfully round-trip both forms.
+            #
+            # @return [Symbol]
+            def type
+              if implicit_passive_group?
+                :regexp_implicit_passive_group
+              else
+                super
+              end
+            end
+
+            # Whether the expression is an implicit passive group
+            #
+            # @return [Boolean]
+            def implicit_passive_group?
+              expression.is_a?(::Regexp::Expression::Group::Passive) &&
+                expression.instance_variable_get(:@implicit).equal?(true)
+            end
           end # ExpressionToAST
 
           # Mapper from `Parser::AST::Node` to `Regexp::Expression`
@@ -23,19 +49,20 @@ module Mutant
             # rubocop:disable LineLength
             # Expression::Sequence represents conditional branches, alternation branches, and intersection branches
             TABLE = Table.create(
-              [:regexp_alternation_meta,      [:meta,        :alternation,  '|'],    ::Regexp::Expression::Alternation],
-              [:regexp_atomic_group,          [:group,       :atomic,       '(?>'],  ::Regexp::Expression::Group::Atomic],
-              [:regexp_capture_group,         [:group,       :capture,      '('],    ::Regexp::Expression::Group::Capture],
-              [:regexp_character_set,         [:set,         :character,    '['],    ::Regexp::Expression::CharacterSet],
-              [:regexp_intersection_set,      [:set,         :intersection, '&&'],   ::Regexp::Expression::CharacterSet::Intersection],
-              [:regexp_lookahead_assertion,   [:assertion,   :lookahead,    '(?='],  ::Regexp::Expression::Assertion::Lookahead],
-              [:regexp_lookbehind_assertion,  [:assertion,   :lookbehind,   '(?<='], ::Regexp::Expression::Assertion::Lookbehind],
-              [:regexp_nlookahead_assertion,  [:assertion,   :nlookahead,   '(?!'],  ::Regexp::Expression::Assertion::NegativeLookahead],
-              [:regexp_nlookbehind_assertion, [:assertion,   :nlookbehind,  '(?<!'], ::Regexp::Expression::Assertion::NegativeLookbehind],
-              [:regexp_open_conditional,      [:conditional, :open,         '(?'],   ::Regexp::Expression::Conditional::Expression],
-              [:regexp_passive_group,         [:group,       :passive,      '(?:'],  ::Regexp::Expression::Group::Passive],
-              [:regexp_range_set,             [:set,         :range,        '-'],    ::Regexp::Expression::CharacterSet::Range],
-              [:regexp_sequence_expression,   [:expression,  :sequence,     ''],     ::Regexp::Expression::Sequence]
+              [:regexp_alternation_meta,         [:meta,        :alternation,  '|'],    ::Regexp::Expression::Alternation],
+              [:regexp_atomic_group,             [:group,       :atomic,       '(?>'],  ::Regexp::Expression::Group::Atomic],
+              [:regexp_capture_group,            [:group,       :capture,      '('],    ::Regexp::Expression::Group::Capture],
+              [:regexp_character_set,            [:set,         :character,    '['],    ::Regexp::Expression::CharacterSet],
+              [:regexp_implicit_passive_group,   [:group,       :passive,      ''],     ::Regexp::Expression::Group::Passive],
+              [:regexp_intersection_set,         [:set,         :intersection, '&&'],   ::Regexp::Expression::CharacterSet::Intersection],
+              [:regexp_lookahead_assertion,      [:assertion,   :lookahead,    '(?='],  ::Regexp::Expression::Assertion::Lookahead],
+              [:regexp_lookbehind_assertion,     [:assertion,   :lookbehind,   '(?<='], ::Regexp::Expression::Assertion::Lookbehind],
+              [:regexp_nlookahead_assertion,     [:assertion,   :nlookahead,   '(?!'],  ::Regexp::Expression::Assertion::NegativeLookahead],
+              [:regexp_nlookbehind_assertion,    [:assertion,   :nlookbehind,  '(?<!'], ::Regexp::Expression::Assertion::NegativeLookbehind],
+              [:regexp_open_conditional,         [:conditional, :open,         '(?'],   ::Regexp::Expression::Conditional::Expression],
+              [:regexp_passive_group,            [:group,       :passive,      '(?:'],  ::Regexp::Expression::Group::Passive],
+              [:regexp_range_set,                [:set,         :range,        '-'],    ::Regexp::Expression::CharacterSet::Range],
+              [:regexp_sequence_expression,      [:expression,  :sequence,     ''],     ::Regexp::Expression::Sequence]
             )
 
           private
@@ -46,6 +73,7 @@ module Mutant
             def transform
               expression_class.new(expression_token).tap do |expression|
                 expression.expressions = subexpressions
+                expression.implicit = true if node.type.equal?(:regexp_implicit_passive_group)
               end
             end
           end # ASTToExpression

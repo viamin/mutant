@@ -573,10 +573,16 @@ RegexpSpec.expect_mapping(/(?:a)/, :regexp_passive_group) do
       s(:regexp_literal_literal, 'a')))
 end
 
-RegexpSpec.expect_mapping(/.{1,3}+/, :regexp_possessive_interval) do
+# regexp_parser 2.12.0 parses `.{1,3}+` as a one-or-more on an *implicit*
+# passive group wrapping `.{1,3}` rather than as a single possessive
+# interval. The implicit-group AST type round-trips back to `.{1,3}+`
+# without emitting `(?:)` syntax.
+RegexpSpec.expect_mapping(/.{1,3}+/, :regexp_implicit_passive_group) do
   s(:regexp_root_expression,
-    s(:regexp_possessive_interval, 1, 3,
-      s(:regexp_dot_meta)))
+    s(:regexp_greedy_one_or_more, 1, -1,
+      s(:regexp_implicit_passive_group,
+        s(:regexp_greedy_interval, 1, 3,
+          s(:regexp_dot_meta)))))
 end
 
 RegexpSpec.expect_mapping(/.++/, :regexp_possessive_one_or_more) do
@@ -614,10 +620,16 @@ RegexpSpec.expect_mapping(/[[:^print:]]/, :regexp_print_nonposixclass) do
       s(:regexp_print_nonposixclass)))
 end
 
-RegexpSpec.expect_mapping(/.{1,3}?/, :regexp_reluctant_interval) do
+# regexp_parser 2.12.0 parses `.{1,3}?` as a zero-or-one on an *implicit*
+# passive group wrapping `.{1,3}` rather than as a single reluctant
+# interval. The implicit-group AST type round-trips back to `.{1,3}?`
+# without emitting `(?:)` syntax.
+RegexpSpec.expect_mapping(/.{1,3}?/, :regexp_implicit_passive_group) do
   s(:regexp_root_expression,
-    s(:regexp_reluctant_interval, 1, 3,
-      s(:regexp_dot_meta)))
+    s(:regexp_greedy_zero_or_one, 0, 1,
+      s(:regexp_implicit_passive_group,
+        s(:regexp_greedy_interval, 1, 3,
+          s(:regexp_dot_meta)))))
 end
 
 RegexpSpec.expect_mapping(/.+?/, :regexp_reluctant_one_or_more) do
