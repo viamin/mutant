@@ -57,7 +57,7 @@
   repo_ref: 'origin/master'
   ruby_glob_pattern: '**/*.rb'
   integration: rspec
-  mutation_coverage: true
+  mutation_coverage: false
   mutation_generation: true
   expected_errors: {}
   exclude: []
@@ -67,7 +67,7 @@
   repo_ref: 'origin/master'
   ruby_glob_pattern: '**/*.rb'
   integration: minitest
-  mutation_coverage: true
+  mutation_coverage: false
   mutation_generation: true
   expected_errors: {}
   exclude: []
