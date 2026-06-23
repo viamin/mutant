@@ -22,6 +22,7 @@ require 'procto'
 require 'regexp_parser'
 require 'set'
 require 'stringio'
+require 'mutant/regexp_parser_compat'
 
 module Warning
   PARSER_WARNING_PATTERNS = [

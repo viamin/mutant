@@ -35,6 +35,7 @@ module Mutant
               [:regexp_whitespace_free_space, %i[free_space whitespace], ::Regexp::Expression::WhiteSpace],
               [:regexp_comment_free_space,    %i[free_space comment],    ::Regexp::Expression::WhiteSpace],
               [:regexp_hex_escape,            %i[escape hex],            ::Regexp::Expression::EscapeSequence::Hex],
+              [:regexp_utf8_hex_escape,       %i[escape utf8_hex],       ::Regexp::Expression::EscapeSequence::UTF8Hex],
               [:regexp_octal_escape,          %i[escape octal],          ::Regexp::Expression::EscapeSequence::Octal],
               [:regexp_literal_escape,        %i[escape literal],        ::Regexp::Expression::EscapeSequence::Literal],
               [:regexp_backslash_escape,      %i[escape backslash],      ::Regexp::Expression::EscapeSequence::Literal],

@@ -113,6 +113,7 @@ module Mutant
         regexp_han_property
         regexp_hangul_property
         regexp_hex_escape
+        regexp_utf8_hex_escape
         regexp_hex_type
         regexp_hiragana_property
         regexp_intersection_set
