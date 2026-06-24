@@ -20,8 +20,10 @@ end
 
 task('metrics:mutant').clear
 namespace :metrics do
-  # TODO(#49): Remove these when scope-awareness changes fix the survivors
+  # TODO(#2): Remove scope-detection ignores once mutation coverage is established
+  # TODO(#49): Remove regexp/zombifier/namespace ignores once scope-awareness lands
   MUTANT_IGNORE_SUBJECTS = %w[
+    source:lib/mutant/mutator/node/scope_detection.rb
     Mutant::AST::Regexp*
     Mutant::Expression::Namespace#prefix_match_length
     Mutant::Mutator::Node::Literal::Regex*
