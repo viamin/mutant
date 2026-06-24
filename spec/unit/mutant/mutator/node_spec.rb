@@ -485,11 +485,11 @@ RSpec.describe Mutant::Mutator::Node do
       end
 
       it 'walks the parent chain until reaching a scope node' do
-        inner = klass.send(:new, s(:lvar, :value), nil)
-        middle = klass.send(:new, s(:array, inner.send(:node)), inner)
-        outer = klass.send(:new, parse('def foo; end'), middle)
+        scope_node = parse('def foo; end')
+        scope_owner = klass.send(:new, scope_node, nil)
+        descendant = klass.send(:new, s(:array, s(:lvar, :value)), scope_owner)
 
-        expect(outer.send(:scope_owner_node)).to eql(parse('def foo; end'))
+        expect(descendant.send(:scope_owner_node)).to eql(scope_node)
       end
 
       it 'returns nil when no ancestor is a scope node' do
