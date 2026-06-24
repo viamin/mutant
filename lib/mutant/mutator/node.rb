@@ -9,6 +9,7 @@ module Mutant
     class Node < self
       include AbstractType, Unparser::Constants
       include AST::NamedChildren, AST::NodePredicates, AST::Sexp, AST::Nodes
+      include ScopeDetection
 
       TAUTOLOGY = ->(_input) { true }
 

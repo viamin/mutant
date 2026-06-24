@@ -31,7 +31,7 @@ module Mutant
           emit_body(N_RAISE)
 
           return unless body
-          emit(body) unless body_has_control?
+          emit(body) unless body_has_control? || body_uses_arguments?
           emit_body_mutations
 
           mutate_body_receiver
@@ -66,6 +66,11 @@ module Mutant
           last = AST::Meta::Send.new(node).arguments.last
 
           !last&.type.equal?(:block_pass)
+        end
+
+        def body_uses_arguments?
+          argument_names = arguments.children.flat_map { |arg| extract_argument_names(arg) }
+          argument_names.any? { |name| local_variable_used_in_node?(body, name) }
         end
 
       end # Block

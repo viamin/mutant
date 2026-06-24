@@ -150,6 +150,94 @@ RSpec.describe Mutant::Mutator::Node do
       end
     end
   end
+
+  describe 'scope detection' do
+    let(:klass) do
+      Class.new(described_class) do
+        def dispatch; end
+      end
+    end
+
+    let(:mutator) { klass.send(:new, s(:self), nil) }
+
+    describe '#hard_scope_boundary?' do
+      it 'returns true for instance method definitions' do
+        expect(mutator.send(:hard_scope_boundary?, parse('def test; value; end'))).to be(true)
+      end
+
+      it 'returns true for singleton method definitions' do
+        expect(mutator.send(:hard_scope_boundary?, parse('def self.test; value; end'))).to be(true)
+      end
+
+      it 'returns false for non-method nodes' do
+        expect(mutator.send(:hard_scope_boundary?, parse('foo { value }'))).to be(false)
+      end
+    end
+
+    describe '#local_variable_used_in_node?' do
+      it 'returns false for non-node candidates' do
+        expect(mutator.send(:local_variable_used_in_node?, :value, :value)).to be(false)
+      end
+
+      it 'returns true for matching local-variable reads' do
+        expect(mutator.send(:local_variable_used_in_node?, s(:lvar, :value), :value)).to be(true)
+      end
+
+      it 'accepts subclasses of Parser::AST::Node' do
+        subclass = Class.new(Parser::AST::Node)
+
+        expect(mutator.send(:local_variable_used_in_node?, subclass.new(:lvar, [:value]), :value)).to be(true)
+      end
+
+      it 'returns false for non-matching local-variable reads' do
+        expect(mutator.send(:local_variable_used_in_node?, s(:lvar, :other), :value)).to be(false)
+      end
+
+      it 'returns false for non-local-variable nodes with matching children' do
+        expect(mutator.send(:local_variable_used_in_node?, s(:sym, :value), :value)).to be(false)
+      end
+
+      it 'searches recursively through child nodes' do
+        candidate = s(:array, s(:send, nil, :foo), s(:lvar, :value))
+
+        expect(mutator.send(:local_variable_used_in_node?, candidate, :value)).to be(true)
+      end
+
+      it 'returns false when recursive children do not use the name' do
+        candidate = s(:array, s(:send, nil, :foo))
+
+        expect(mutator.send(:local_variable_used_in_node?, candidate, :value)).to be(false)
+      end
+
+      it 'stops at nested instance method boundaries' do
+        expect(mutator.send(:local_variable_used_in_node?, parse('def test; value; end'), :value)).to be(false)
+      end
+
+      it 'stops at nested singleton method boundaries' do
+        expect(mutator.send(:local_variable_used_in_node?, parse('def self.test; value; end'), :value)).to be(false)
+      end
+
+      it 'returns false when a block argument shadows the name' do
+        expect(mutator.send(:local_variable_used_in_node?, parse('foo { |value| value }'), :value)).to be(false)
+      end
+
+      it 'still traverses a shadowing block send in the outer scope' do
+        candidate = s(:block, s(:send, s(:lvar, :value), :each), s(:args, s(:arg, :value)), s(:lvar, :value))
+
+        expect(mutator.send(:local_variable_used_in_node?, candidate, :value)).to be(true)
+      end
+
+      it 'returns false when a numblock parameter shadows the name' do
+        expect(mutator.send(:local_variable_used_in_node?, parse('foo { _1 }'), :_1)).to be(false)
+      end
+
+      it 'still traverses a shadowing numblock send in the outer scope' do
+        candidate = s(:numblock, s(:send, s(:lvar, :value), :then), 1, s(:lvar, :_1))
+
+        expect(mutator.send(:local_variable_used_in_node?, candidate, :value)).to be(true)
+      end
+    end
+  end
 end
 
 RSpec.describe Mutant::Mutator::Node::Dstr do
@@ -278,6 +366,250 @@ RSpec.describe Mutant::Mutator::Node::Dsym do
           s(:dsym, s(:str, 'foo'), s(:str, 'qux'), s(:str, 'baz'))
         )
       end
+    end
+  end
+end
+
+RSpec.describe Mutant::Mutator::Node::Argument do
+  describe '.call' do
+    it 'does not rename used block arguments' do
+      input  = parse('foo { |value| "#{value}" }')
+      body   = input.children.fetch(2)
+      result = Mutant::Mutator.mutate(input)
+
+      expect(result).not_to include(
+        s(:block, s(:send, nil, :foo), s(:args, s(:arg, :_value)), body)
+      )
+    end
+
+    it 'renames outer block argument when shadowed by inner block argument' do
+      input  = parse('foo { |value| bar { |value| value } }')
+      body   = input.children.fetch(2)
+      result = Mutant::Mutator.mutate(input)
+
+      expect(result).to include(
+        s(:block, s(:send, nil, :foo), s(:args, s(:procarg0, s(:arg, :_value))), body)
+      )
+    end
+
+    it 'renames outer block argument when nested method body uses the same local name' do
+      input  = parse('foo { |value| def inner; value = 1; value; end }')
+      body   = input.children.fetch(2)
+      result = Mutant::Mutator.mutate(input)
+
+      expect(result).to include(
+        s(:block, s(:send, nil, :foo), s(:args, s(:procarg0, s(:arg, :_value))), body)
+      )
+    end
+
+    it 'renames outer block argument when nested singleton method body uses the same local name' do
+      input  = parse('foo { |value| def self.inner; value = 1; value; end }')
+      body   = input.children.fetch(2)
+      result = Mutant::Mutator.mutate(input)
+
+      expect(result).to include(
+        s(:block, s(:send, nil, :foo), s(:args, s(:procarg0, s(:arg, :_value))), body)
+      )
+    end
+
+    it 'does not rename a required argument used in a default expression' do
+      expect(Mutant::Mutator.mutate(parse('def foo(a, b = a); end'))).not_to include(
+        s(:def, :foo, s(:args, s(:arg, :_a), s(:optarg, :b, s(:lvar, :a))), nil)
+      )
+    end
+
+    it 'does not rename an unused underscore argument' do
+      input  = parse('foo { |_value| }')
+      result = Mutant::Mutator.mutate(input)
+
+      expect(result).not_to include(
+        s(:block, s(:send, nil, :foo), s(:args, s(:procarg0, s(:arg, :__value))), nil)
+      )
+    end
+  end
+end
+
+RSpec.describe Mutant::Mutator::Node::Arguments do
+  describe '.call' do
+    it 'does not remove used block arguments' do
+      input  = parse('foo { |unit, length| "#{unit}^#{length}" }')
+      body   = input.children.fetch(2)
+      result = Mutant::Mutator.mutate(input)
+
+      expect(result).not_to include(
+        s(:block, s(:send, nil, :foo), s(:args), body),
+        s(:block, s(:send, nil, :foo), s(:args, s(:arg, :unit)), body),
+        s(:block, s(:send, nil, :foo), s(:args, s(:arg, :length)), body)
+      )
+    end
+
+    it 'removes outer block argument when shadowed by inner block argument' do
+      input  = parse('foo { |value| bar { |value| value } }')
+      body   = input.children.fetch(2)
+      result = Mutant::Mutator.mutate(input)
+
+      expect(result).to include(
+        s(:block, s(:send, nil, :foo), s(:args), body)
+      )
+    end
+
+    it 'removes outer block argument when nested method body uses the same local name' do
+      input  = parse('foo { |value| def inner; value = 1; value; end }')
+      body   = input.children.fetch(2)
+      result = Mutant::Mutator.mutate(input)
+
+      expect(result).to include(
+        s(:block, s(:send, nil, :foo), s(:args), body)
+      )
+    end
+
+    it 'removes outer block argument when nested singleton method body uses the same local name' do
+      input  = parse('foo { |value| def self.inner; value = 1; value; end }')
+      body   = input.children.fetch(2)
+      result = Mutant::Mutator.mutate(input)
+
+      expect(result).to include(
+        s(:block, s(:send, nil, :foo), s(:args), body)
+      )
+    end
+
+    it 'does not remove a required argument used in a default expression' do
+      expect(Mutant::Mutator.mutate(parse('def foo(a, b = a); end'))).not_to include(
+        s(:def, :foo, s(:args, s(:optarg, :b, s(:lvar, :a))), nil)
+      )
+    end
+
+    it 'does not remove a destructured block argument used in the body' do
+      input  = parse('foo { |(value)| value }')
+      body   = input.children.fetch(2)
+      result = Mutant::Mutator.mutate(input)
+
+      expect(result).not_to include(
+        s(:block, s(:send, nil, :foo), s(:args), body)
+      )
+    end
+  end
+end
+
+RSpec.describe Mutant::Mutator::Node::Block do
+  describe '.call' do
+    it 'does not emit a standalone body that still uses block arguments' do
+      input  = parse('foo { |value| "#{value}" }')
+      body   = input.children.fetch(2)
+      result = described_class.call(input)
+
+      expect(result).not_to include(body)
+    end
+
+    it 'emits standalone body when block argument is only used in a shadowing inner block' do
+      input  = parse('foo { |value| bar { |value| value } }')
+      body   = input.children.fetch(2)
+      result = described_class.call(input)
+
+      expect(result).to include(body)
+    end
+
+    it 'emits standalone body when nested method body uses the same local name' do
+      input  = parse('foo { |value| def inner; value = 1; value; end }')
+      body   = input.children.fetch(2)
+      result = described_class.call(input)
+
+      expect(result).to include(body)
+    end
+
+    it 'emits standalone body when nested singleton method body uses the same local name' do
+      input  = parse('foo { |value| def self.inner; value = 1; value; end }')
+      body   = input.children.fetch(2)
+      result = described_class.call(input)
+
+      expect(result).to include(body)
+    end
+
+    it 'does not emit a standalone body when a shadowing inner block send still uses the argument' do
+      input  = parse('foo { |value| value.each { |value| value } }')
+      body   = input.children.fetch(2)
+      result = described_class.call(input)
+
+      expect(result).not_to include(body)
+    end
+
+    it 'does not emit a standalone body when a shadowing inner numblock send still uses the argument' do
+      input  = parse('foo { |value| value.then { _1 } }')
+      body   = input.children.fetch(2)
+      result = described_class.call(input)
+
+      expect(result).not_to include(body)
+    end
+
+    it 'does not emit a standalone body that still uses a destructured block argument' do
+      input  = parse('foo { |(value)| value }')
+      body   = input.children.fetch(2)
+      result = described_class.call(input)
+
+      expect(result).not_to include(body)
+    end
+  end
+end
+
+RSpec.describe Mutant::Mutator::Node::Begin do
+  describe '.call' do
+    it 'does not emit standalone children from multi-statement begin nodes' do
+      input = s(
+        :begin,
+        s(:lvasgn, :value, s(:int, 1)),
+        s(:lvar, :value)
+      )
+
+      result = described_class.call(input)
+
+      expect(result).not_to include(s(:lvasgn, :value, s(:int, 1)), s(:lvar, :value))
+      expect(result).to include(
+        s(:begin, s(:lvasgn, :value, s(:int, 1)), s(:nil)),
+        s(:begin, s(:lvasgn, :value, s(:int, 1)), s(:self))
+      )
+    end
+
+    it 'skips non-node children when mutating a begin body' do
+      input = s(:begin, :__sentinel__, s(:true))
+
+      expect(Mutant::Mutator).to receive(:mutate)
+        .once
+        .with(s(:true), kind_of(described_class))
+        .and_return([s(:false)].to_set)
+
+      expect(described_class.call(input)).to eql(
+        [s(:begin, :__sentinel__, s(:false))].to_set
+      )
+    end
+
+    it 'mutates Parser::AST::Node subclasses in begin bodies' do
+      subclass = Class.new(Parser::AST::Node)
+      input    = s(:begin, subclass.new(:true, []))
+
+      expect(Mutant::Mutator).to receive(:mutate)
+        .once
+        .with(instance_of(subclass), kind_of(described_class))
+        .and_return([s(:false)].to_set)
+
+      expect(described_class.call(input)).to eql(
+        [s(:begin, s(:false))].to_set
+      )
+    end
+  end
+end
+
+RSpec.describe Mutant::Mutator::Node::Literal::Regex do
+  describe '.call' do
+    it 'skips body mutations when regexp_parser cannot build an expression tree' do
+      input = parse('/foo/')
+      token = Struct.new(:token).new(:condition_open)
+      error = ::Regexp::Parser::UnknownTokenError.new(:conditional, token)
+
+      allow(Mutant::AST::Regexp)
+        .to receive(:parse)
+        .and_raise(error)
+
+      expect { described_class.call(input) }.not_to raise_error
     end
   end
 end
@@ -505,6 +837,44 @@ RSpec.describe Mutant::Mutator::Node::Numblock do
       subclass = Class.new(Parser::AST::Node)
       node = subclass.new(:lvar, [:_1])
       expect(mutator.__send__(:numbered_parameter_used?, node)).to be(true)
+    end
+  end
+end
+
+RSpec.describe Mutant::Mutator::Node::Literal::Hash::Pair do
+  describe '.call' do
+    let(:parent_class) do
+      Class.new(Mutant::Mutator::Node) do
+        def dispatch; end
+      end
+    end
+
+    it 'does not mutate label keys inside hash patterns' do
+      result = described_class.call(
+        s(:pair, s(:sym, :foo), s(:int, 1)),
+        parent_class.send(:new, s(:hash_pattern), nil)
+      )
+
+      expect(result).to include(s(:pair, s(:sym, :foo), s(:nil)))
+      expect(result).not_to include(s(:pair, s(:nil), s(:int, 1)))
+    end
+
+    it 'does not mutate keyword argument labels' do
+      result = described_class.call(
+        s(:pair, s(:sym, :foo), s(:int, 1)),
+        parent_class.send(:new, s(:kwargs), nil)
+      )
+
+      expect(result).to include(s(:pair, s(:sym, :foo), s(:nil)))
+      expect(result).not_to include(s(:pair, s(:nil), s(:int, 1)))
+    end
+  end
+end
+
+RSpec.describe Mutant::AST::Types do
+  describe 'NOT_STANDALONE' do
+    it 'treats kwargs as non-standalone' do
+      expect(described_class::NOT_STANDALONE).to include(:kwargs)
     end
   end
 end

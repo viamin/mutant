@@ -6,8 +6,6 @@ Mutant::Meta::Example.add :while do
   singleton_mutations
   mutation 'while true; self; bar; end'
   mutation 'while true; foo; self; end'
-  mutation 'while true; bar; end'
-  mutation 'while true; foo; end'
   mutation 'while true; end'
   mutation 'while false; foo; bar; end'
   mutation 'while nil;   foo; bar; end'

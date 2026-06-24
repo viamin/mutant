@@ -23,9 +23,11 @@ module Mutant
         #
         # @return [undefined]
         def emit_argument_presence
-          emit_type
+          emit_type unless children.any?(&method(:local_variable_used_argument?))
 
           Util::Array::Presence.call(children).each do |children|
+            next if invalid_argument_presence?(children)
+
             if children.one? && n_mlhs?(Mutant::Util.one(children))
               emit_procarg(Mutant::Util.one(children))
             else
@@ -46,7 +48,7 @@ module Mutant
         # @return [undefined]
         def emit_argument_mutations
           children.each_with_index do |child, index|
-            Mutator.mutate(child).each do |mutant|
+            Mutator.mutate(child, self).each do |mutant|
               next if invalid_argument_replacement?(mutant, index)
               emit_child_update(index, mutant)
             end
@@ -60,6 +62,22 @@ module Mutant
         # @return [Boolean]
         def invalid_argument_replacement?(mutant, index)
           n_arg?(mutant) && children[0...index].any?(&method(:n_optarg?))
+        end
+
+        def invalid_argument_presence?(mutated_children)
+          removed_argument_names(mutated_children).any?(&method(:local_variable_used_in_scope?))
+        end
+
+        def removed_argument_names(mutated_children)
+          removed_children = children - mutated_children
+
+          removed_children.flat_map(&method(:extract_argument_names))
+        end
+
+        def local_variable_used_argument?(child)
+          extract_argument_names(child).any? do |name|
+            local_variable_used_in_scope?(name)
+          end
         end
 
         # Emit mlhs expansions

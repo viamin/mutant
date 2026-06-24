@@ -4,8 +4,6 @@ Mutant::Meta::Example.add :block do
   source 'foo { a; b }'
 
   singleton_mutations
-  mutation 'foo { a }'
-  mutation 'foo { b }'
   mutation 'foo {}'
   mutation 'foo { raise }'
   mutation 'foo { a; nil }'

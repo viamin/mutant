@@ -39,14 +39,20 @@ module Mutant
 
             children :key, :value
 
+            KEY_MUTATION_CONSTRAINTS = Set.new(%i[hash_pattern kwargs]).freeze
+
           private
 
             # Emit mutations
             #
             # @return [undefined]
             def dispatch
-              emit_key_mutations
+              emit_key_mutations unless constrained_key_mutations?
               emit_value_mutations
+            end
+
+            def constrained_key_mutations?
+              KEY_MUTATION_CONSTRAINTS.include?(parent_type)
             end
 
           end # Pair
