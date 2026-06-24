@@ -17,7 +17,7 @@ jobs:
         ruby-version: ['3.3', '3.4']
     steps:
       - uses: actions/checkout@v6.0.3
-      - uses: ruby/setup-ruby@v1.312.0
+      - uses: ruby/setup-ruby@v1.313.0
         with:
           ruby-version: ${{ matrix.ruby-version }}
           bundler-cache: true
@@ -55,7 +55,7 @@ jobs:
             command: bundle exec rspec spec/integration/mutant/corpus_spec.rb
     steps:
       - uses: actions/checkout@v6.0.3
-      - uses: ruby/setup-ruby@v1.312.0
+      - uses: ruby/setup-ruby@v1.313.0
         with:
           ruby-version: ${{ matrix.ruby-version }}
           bundler-cache: true
@@ -69,7 +69,7 @@ jobs:
         ruby-version: ['3.3', '3.4']
     steps:
       - uses: actions/checkout@v6.0.3
-      - uses: ruby/setup-ruby@v1.312.0
+      - uses: ruby/setup-ruby@v1.313.0
         with:
           ruby-version: ${{ matrix.ruby-version }}
           bundler-cache: true
@@ -91,7 +91,7 @@ jobs:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
       - if: github.event_name == 'pull_request'
         run: git fetch --no-tags origin "${{ github.event.pull_request.base.ref }}:refs/remotes/origin/${{ github.event.pull_request.base.ref }}"
-      - uses: ruby/setup-ruby@v1.312.0
+      - uses: ruby/setup-ruby@v1.313.0
         with:
           ruby-version: ${{ matrix.ruby-version }}
           bundler-cache: true
