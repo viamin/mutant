@@ -236,6 +236,268 @@ RSpec.describe Mutant::Mutator::Node do
 
         expect(mutator.send(:local_variable_used_in_node?, candidate, :value)).to be(true)
       end
+
+      it 'returns true from cached results on repeated lookups' do
+        mutator.send(:local_variable_used_in_node?, s(:lvar, :value), :value)
+
+        expect(mutator.send(:local_variable_usage_cache)).to have_key([s(:lvar, :value), :value])
+      end
+    end
+
+    describe '#local_variable_used_in_scope?' do
+      it 'returns false when no scope owner is found' do
+        expect(mutator.send(:local_variable_used_in_scope?, :value)).to be(false)
+      end
+
+      it 'returns false when the scope owner does not use the name' do
+        block_mutator = klass.send(
+          :new,
+          parse('foo { |other| other }'),
+          mutator
+        )
+
+        expect(block_mutator.send(:local_variable_used_in_scope?, :value)).to be(false)
+      end
+
+      it 'returns true when the scope owner uses the name in its body' do
+        block_mutator = klass.send(
+          :new,
+          parse('foo { |value| value }'),
+          mutator
+        )
+
+        expect(block_mutator.send(:local_variable_used_in_scope?, :value)).to be(true)
+      end
+    end
+
+    describe '.scope_nodes_for_local_variable_lookup' do
+      it 'returns an empty array for nil input' do
+        expect(described_class::ScopeDetection.scope_nodes_for_local_variable_lookup(nil)).to eql([])
+      end
+
+      it 'returns an empty array for non-node truthy input' do
+        expect(described_class::ScopeDetection.scope_nodes_for_local_variable_lookup(:symbol)).to eql([])
+        expect(described_class::ScopeDetection.scope_nodes_for_local_variable_lookup('string')).to eql([])
+        expect(described_class::ScopeDetection.scope_nodes_for_local_variable_lookup(42)).to eql([])
+      end
+
+      it 'returns arguments and body for a :block node' do
+        node = parse('foo { |a| a }')
+
+        expect(described_class::ScopeDetection.scope_nodes_for_local_variable_lookup(node)).to contain_exactly(
+          s(:args, s(:procarg0, s(:arg, :a))),
+          s(:lvar, :a)
+        )
+      end
+
+      it 'returns the body for a :numblock node' do
+        node = parse('foo { _1 }')
+
+        expect(described_class::ScopeDetection.scope_nodes_for_local_variable_lookup(node)).to contain_exactly(
+          s(:lvar, :_1)
+        )
+      end
+
+      it 'returns arguments and body for a :def node' do
+        node = parse('def foo(a); a; end')
+
+        expect(described_class::ScopeDetection.scope_nodes_for_local_variable_lookup(node)).to contain_exactly(
+          s(:args, s(:arg, :a)),
+          s(:lvar, :a)
+        )
+      end
+
+      it 'returns arguments and body for a :defs node' do
+        node = parse('def self.foo(a); a; end')
+
+        expect(described_class::ScopeDetection.scope_nodes_for_local_variable_lookup(node)).to contain_exactly(
+          s(:args, s(:arg, :a)),
+          s(:lvar, :a)
+        )
+      end
+
+      it 'returns an empty array for nodes outside scope types' do
+        node = parse('foo + 1')
+
+        expect(described_class::ScopeDetection.scope_nodes_for_local_variable_lookup(node)).to eql([])
+      end
+
+      it 'compacts out nil children for :block nodes' do
+        node = s(:block, s(:send, nil, :foo), nil, nil)
+
+        expect(described_class::ScopeDetection.scope_nodes_for_local_variable_lookup(node)).to eql([])
+      end
+    end
+
+    describe '#visible_children_for_local_variable_lookup' do
+      it 'returns empty when entering a hard scope boundary' do
+        node = parse('def foo; value; end')
+
+        expect(mutator.send(:visible_children_for_local_variable_lookup, node, :value)).to eql([])
+      end
+
+      it 'returns all children for non-block, non-numblock nodes' do
+        node = s(:array, s(:lvar, :value))
+
+        expect(mutator.send(:visible_children_for_local_variable_lookup, node, :value)).to eql(
+          [s(:lvar, :value)]
+        )
+      end
+
+      it 'returns the receiver when a shadowing block argument hides the name' do
+        node = s(:block, s(:send, s(:lvar, :value), :each), s(:args, s(:arg, :value)), s(:lvar, :value))
+
+        expect(mutator.send(:visible_children_for_local_variable_lookup, node, :value)).to eql(
+          [s(:send, s(:lvar, :value), :each)]
+        )
+      end
+
+      it 'returns all children for a non-shadowing block' do
+        node = parse('foo { |other| value }')
+
+        expect(mutator.send(:visible_children_for_local_variable_lookup, node, :value)).to eql(
+          node.children
+        )
+      end
+
+      it 'returns the receiver and body for a non-shadowing numblock' do
+        node = s(:numblock, s(:send, s(:lvar, :value), :then), 1, s(:lvar, :_1))
+
+        expect(mutator.send(:visible_children_for_local_variable_lookup, node, :value)).to eql(
+          [node.children[0], node.children[2]]
+        )
+      end
+    end
+
+    describe '#scope_shadows_name?' do
+      it 'returns true when a block argument has the same name' do
+        node = parse('foo { |value| }')
+
+        expect(mutator.send(:scope_shadows_name?, node, :value)).to be(true)
+      end
+
+      it 'returns false when a block argument has a different name' do
+        node = parse('foo { |other| }')
+
+        expect(mutator.send(:scope_shadows_name?, node, :value)).to be(false)
+      end
+
+      it 'returns true when a def argument has the same name' do
+        node = parse('def foo(value); end')
+
+        expect(mutator.send(:scope_shadows_name?, node, :value)).to be(true)
+      end
+
+      it 'returns true when a defs argument has the same name' do
+        node = parse('def self.foo(value); end')
+
+        expect(mutator.send(:scope_shadows_name?, node, :value)).to be(true)
+      end
+
+      it 'returns false when a defs argument has a different name' do
+        node = parse('def self.foo(other); end')
+
+        expect(mutator.send(:scope_shadows_name?, node, :value)).to be(false)
+      end
+
+      it 'returns true when a numblock numbered parameter is within arity' do
+        node = parse('foo { _1 }')
+
+        expect(mutator.send(:scope_shadows_name?, node, :_1)).to be(true)
+      end
+
+      it 'returns true for multi-digit numbered parameters within arity' do
+        node = parse('foo { _1; _2 }')
+
+        expect(mutator.send(:scope_shadows_name?, node, :_2)).to be(true)
+      end
+
+      it 'returns false when a numblock numbered parameter exceeds arity' do
+        node = parse('foo { _1 }')
+
+        expect(mutator.send(:scope_shadows_name?, node, :_2)).to be(false)
+      end
+
+      it 'returns false when the numblock name is not a numbered parameter' do
+        node = parse('foo { _1 }')
+
+        expect(mutator.send(:scope_shadows_name?, node, :value)).to be(false)
+      end
+
+      it 'returns false for nodes outside scope types' do
+        node = parse('foo + 1')
+
+        expect(mutator.send(:scope_shadows_name?, node, :value)).to be(false)
+      end
+    end
+
+    describe '#scope_argument_names' do
+      it 'returns an empty array when the args node is not an :args node' do
+        expect(mutator.send(:scope_argument_names, nil)).to eql([])
+        expect(mutator.send(:scope_argument_names, s(:send, nil, :foo))).to eql([])
+      end
+
+      it 'returns the names of all arguments in an :args node' do
+        args = s(:args, s(:arg, :a), s(:optarg, :b, s(:int, 1)), s(:restarg, :c))
+
+        expect(mutator.send(:scope_argument_names, args)).to eql(%i[a b c])
+      end
+    end
+
+    describe '#extract_argument_names' do
+      it 'returns an empty array when the node is not a Parser::AST::Node' do
+        expect(mutator.send(:extract_argument_names, nil)).to eql([])
+        expect(mutator.send(:extract_argument_names, :symbol)).to eql([])
+      end
+
+      it 'unwraps a :procarg0 by recursing into its child' do
+        node = s(:procarg0, s(:arg, :a))
+
+        expect(mutator.send(:extract_argument_names, node)).to eql([:a])
+      end
+
+      it 'recurses into each child of an :mlhs node' do
+        node = s(:mlhs, s(:arg, :a), s(:arg, :b))
+
+        expect(mutator.send(:extract_argument_names, node)).to eql(%i[a b])
+      end
+
+      it 'returns the name of a recognized argument type' do
+        expect(mutator.send(:extract_argument_names, s(:arg, :a))).to eql([:a])
+        expect(mutator.send(:extract_argument_names, s(:optarg, :b, s(:int, 1)))).to eql([:b])
+        expect(mutator.send(:extract_argument_names, s(:kwarg, :c))).to eql([:c])
+        expect(mutator.send(:extract_argument_names, s(:kwoptarg, :d, s(:int, 1)))).to eql([:d])
+        expect(mutator.send(:extract_argument_names, s(:restarg, :e))).to eql([:e])
+        expect(mutator.send(:extract_argument_names, s(:kwrestarg, :f))).to eql([:f])
+        expect(mutator.send(:extract_argument_names, s(:blockarg, :g))).to eql([:g])
+      end
+
+      it 'returns an empty array for unrecognized argument types' do
+        expect(mutator.send(:extract_argument_names, s(:shadowarg, :a))).to eql([])
+      end
+    end
+
+    describe '#scope_owner_node' do
+      it 'returns the immediate node when it is a scope node' do
+        scope_mutator = klass.send(:new, parse('def foo; end'), nil)
+
+        expect(scope_mutator.send(:scope_owner_node)).to eql(parse('def foo; end'))
+      end
+
+      it 'walks the parent chain until reaching a scope node' do
+        inner = klass.send(:new, s(:lvar, :value), nil)
+        middle = klass.send(:new, s(:array, inner.node), inner)
+        outer = klass.send(:new, parse('def foo; end'), middle)
+
+        expect(outer.send(:scope_owner_node)).to eql(parse('def foo; end'))
+      end
+
+      it 'returns nil when no ancestor is a scope node' do
+        inner = klass.send(:new, s(:lvar, :value), nil)
+        middle = klass.send(:new, s(:array, inner.node), inner)
+
+        expect(middle.send(:scope_owner_node)).to be_nil
+      end
     end
   end
 end
