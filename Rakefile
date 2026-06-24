@@ -21,22 +21,12 @@ end
 task('metrics:mutant').clear
 namespace :metrics do
   # TODO(#2): Remove scope-detection ignores once mutation coverage is established
-  # TODO(#49): Remove pre-existing survivor ignores once mutation coverage is established
   MUTANT_IGNORE_SUBJECTS = %w[
     source:lib/mutant/mutator/node/scope_detection.rb
     Mutant::AST::Regexp*
     Mutant::Expression::Namespace#prefix_match_length
     Mutant::Mutator::Node::Literal::Regex*
     Mutant::Zombifier*
-    Mutant::Mutator::Node::Argument#skip?
-    Mutant::Mutator::Node::Arguments#emit_argument_mutations
-    Mutant::Mutator::Node::Arguments#emit_argument_presence
-    Mutant::Mutator::Node::Arguments#invalid_argument_presence?
-    Mutant::Mutator::Node::Arguments#invalid_argument_replacement?
-    Mutant::Mutator::Node::Arguments#local_variable_used_argument?
-    Mutant::Mutator::Node::Arguments#removed_argument_names
-    Mutant::Mutator::Node::Literal::Hash::Pair#constrained_key_mutations?
-    Mutant::Mutator::Node::Literal::Hash::Pair#dispatch
     Mutant::Env#kill
     Mutant::Env#run_mutation_tests
     Mutant::Env#selections

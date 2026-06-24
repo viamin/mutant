@@ -426,6 +426,40 @@ RSpec.describe Mutant::Mutator::Node::Argument do
         s(:block, s(:send, nil, :foo), s(:args, s(:procarg0, s(:arg, :__value))), nil)
       )
     end
+
+    it 'renames a regular unused argument' do
+      expect(Mutant::Mutator.mutate(parse('def foo(bar); end'))).to include(
+        s(:def, :foo, s(:args, s(:arg, :_bar)), nil)
+      )
+    end
+  end
+
+  describe '#skip?' do
+    it 'skips underscore-prefixed names' do
+      mutator = described_class.send(:new, s(:arg, :_value), nil)
+
+      expect(mutator.__send__(:skip?)).to be(true)
+    end
+
+    it 'does not skip regular unused names' do
+      mutator = described_class.send(:new, s(:arg, :value), nil)
+
+      expect(mutator.__send__(:skip?)).to be(false)
+    end
+
+    it 'coerces non-symbol names before checking the underscore prefix' do
+      mutator = described_class.send(:new, s(:arg, 42), nil)
+
+      expect(mutator.__send__(:skip?)).to be(false)
+    end
+
+    it 'skips regular names that are used in the parent scope' do
+      parent = Class.new(Mutant::Mutator::Node) { def dispatch; end }
+        .send(:new, s(:def, :foo, s(:args, s(:arg, :value)), s(:lvar, :value)), nil)
+      mutator = described_class.send(:new, s(:arg, :value), parent)
+
+      expect(mutator.__send__(:skip?)).to be(true)
+    end
   end
 end
 
@@ -487,6 +521,209 @@ RSpec.describe Mutant::Mutator::Node::Arguments do
       expect(result).not_to include(
         s(:block, s(:send, nil, :foo), s(:args), body)
       )
+    end
+
+    it 'emits an empty argument list when no argument is used' do
+      expect(Mutant::Mutator.mutate(parse('def foo(a, b); end'))).to include(
+        s(:def, :foo, s(:args), nil)
+      )
+    end
+
+    it 'does not rename an argument that follows an optional argument' do
+      expect(Mutant::Mutator.mutate(parse('def foo(a = 1, b); end'))).not_to include(
+        s(:def, :foo, s(:args, s(:optarg, :a, s(:int, 1)), s(:arg, :_b)), nil)
+      )
+    end
+
+    it 'does not rename an argument used in the method body' do
+      expect(Mutant::Mutator.mutate(parse('def foo(value); value; end'))).not_to include(
+        s(:def, :foo, s(:args, s(:arg, :_value)), s(:lvar, :value))
+      )
+    end
+  end
+
+  def scope_parent(node)
+    Class.new(Mutant::Mutator::Node) { def dispatch; end }.send(:new, node, nil)
+  end
+
+  describe '#emit_argument_mutations' do
+    it 'emits rename mutations for regular arguments' do
+      mutator = described_class.send(:new, s(:args, s(:arg, :a)), nil)
+
+      mutator.__send__(:emit_argument_mutations)
+
+      expect(mutator.output).to include(s(:args, s(:arg, :_a)))
+    end
+
+    it 'suppresses rename mutations for arguments used in scope' do
+      parent   = scope_parent(s(:def, :foo, s(:args, s(:arg, :value)), s(:lvar, :value)))
+      mutator  = described_class.send(:new, s(:args, s(:arg, :value)), parent)
+
+      mutator.__send__(:emit_argument_mutations)
+
+      expect(mutator.output).not_to include(s(:args, s(:arg, :_value)))
+    end
+
+    it 'skips invalid replacements that would place an argument after an optional argument' do
+      mutator = described_class.send(:new, s(:args, s(:optarg, :a, s(:int, 1)), s(:arg, :b)), nil)
+
+      mutator.__send__(:emit_argument_mutations)
+
+      expect(mutator.output).not_to include(
+        s(:args, s(:optarg, :a, s(:int, 1)), s(:arg, :_b))
+      )
+    end
+
+    it 'emits the required form of an optional argument placed before other arguments' do
+      mutator = described_class.send(:new, s(:args, s(:optarg, :a, s(:int, 1)), s(:arg, :b)), nil)
+
+      mutator.__send__(:emit_argument_mutations)
+
+      expect(mutator.output).to include(s(:args, s(:arg, :a), s(:arg, :b)))
+    end
+
+    it 'emits default mutations following a skipped invalid replacement' do
+      mutator = described_class.send(
+        :new,
+        s(:args, s(:optarg, :a, s(:int, 1)), s(:optarg, :b, s(:int, 2))),
+        nil
+      )
+
+      mutator.__send__(:emit_argument_mutations)
+
+      expect(mutator.output).to include(
+        s(:args, s(:optarg, :a, s(:int, 1)), s(:optarg, :b, s(:nil)))
+      )
+    end
+  end
+
+  describe '#emit_argument_presence' do
+    it 'emits an empty arguments node when no argument is used' do
+      mutator = described_class.send(:new, s(:args, s(:arg, :a), s(:arg, :b)), nil)
+
+      mutator.__send__(:emit_argument_presence)
+
+      expect(mutator.output).to include(s(:args))
+    end
+
+    it 'emits single argument removals' do
+      mutator = described_class.send(:new, s(:args, s(:arg, :a), s(:arg, :b), s(:arg, :c)), nil)
+
+      mutator.__send__(:emit_argument_presence)
+
+      expect(mutator.output).to include(s(:args, s(:arg, :a), s(:arg, :b)))
+    end
+
+    it 'wraps a single remaining destructured argument in a procarg node' do
+      mutator = described_class.send(:new, s(:args, s(:arg, :a), s(:mlhs, s(:arg, :b))), nil)
+
+      mutator.__send__(:emit_argument_presence)
+
+      expect(mutator.output).to include(s(:args, s(:procarg0, s(:arg, :b))))
+    end
+
+    it 'does not emit an empty arguments node when an argument is used in scope' do
+      parent   = scope_parent(s(:def, :foo, s(:args, s(:arg, :value)), s(:lvar, :value)))
+      mutator  = described_class.send(:new, s(:args, s(:arg, :value)), parent)
+
+      mutator.__send__(:emit_argument_presence)
+
+      expect(mutator.output).not_to include(s(:args))
+    end
+
+    it 'emits removals of unused arguments after skipping used argument removals' do
+      parent = scope_parent(
+        s(:def, :foo, s(:args, s(:arg, :value), s(:arg, :other)), s(:lvar, :value))
+      )
+      mutator = described_class.send(:new, s(:args, s(:arg, :value), s(:arg, :other)), parent)
+
+      mutator.__send__(:emit_argument_presence)
+
+      expect(mutator.output).to include(s(:args, s(:arg, :value)))
+    end
+  end
+
+  describe '#invalid_argument_replacement?' do
+    let(:with_optional) do
+      described_class.send(:new, s(:args, s(:optarg, :a, s(:int, 1)), s(:arg, :b)), nil)
+    end
+    let(:without_optional) do
+      described_class.send(:new, s(:args, s(:arg, :a), s(:arg, :b)), nil)
+    end
+
+    it 'rejects a required argument placed after an optional argument' do
+      expect(with_optional.__send__(:invalid_argument_replacement?, s(:arg, :b), 1)).to be(true)
+    end
+
+    it 'allows a required argument placed before any optional argument' do
+      expect(with_optional.__send__(:invalid_argument_replacement?, s(:arg, :a), 0)).to be(false)
+    end
+
+    it 'allows non-argument replacements placed after an optional argument' do
+      expect(
+        with_optional.__send__(:invalid_argument_replacement?, s(:optarg, :b, s(:int, 1)), 1)
+      ).to be(false)
+    end
+
+    it 'allows a required argument placed after a required argument' do
+      expect(without_optional.__send__(:invalid_argument_replacement?, s(:arg, :b), 1)).to be(false)
+    end
+  end
+
+  describe '#invalid_argument_presence?' do
+    let(:parent) do
+      scope_parent(
+        s(:def, :foo, s(:args, s(:arg, :value), s(:arg, :other)), s(:lvar, :value))
+      )
+    end
+    let(:mutator) { described_class.send(:new, s(:args, s(:arg, :value), s(:arg, :other)), parent) }
+
+    it 'is invalid when a used argument is removed' do
+      expect(mutator.__send__(:invalid_argument_presence?, [s(:arg, :other)])).to be(true)
+    end
+
+    it 'is valid when only an unused argument is removed' do
+      expect(mutator.__send__(:invalid_argument_presence?, [s(:arg, :value)])).to be(false)
+    end
+
+    it 'is valid when no argument is removed' do
+      expect(
+        mutator.__send__(:invalid_argument_presence?, [s(:arg, :value), s(:arg, :other)])
+      ).to be(false)
+    end
+  end
+
+  describe '#local_variable_used_argument?' do
+    it 'returns true when the argument name is used in the parent scope' do
+      parent  = scope_parent(s(:def, :foo, s(:args, s(:arg, :value)), s(:lvar, :value)))
+      mutator = described_class.send(:new, s(:args, s(:arg, :value)), parent)
+
+      expect(mutator.__send__(:local_variable_used_argument?, s(:arg, :value))).to be(true)
+    end
+
+    it 'returns false when the argument name is unused in the parent scope' do
+      parent  = scope_parent(s(:def, :foo, s(:args, s(:arg, :value)), nil))
+      mutator = described_class.send(:new, s(:args, s(:arg, :value)), parent)
+
+      expect(mutator.__send__(:local_variable_used_argument?, s(:arg, :value))).to be(false)
+    end
+  end
+
+  describe '#removed_argument_names' do
+    let(:mutator) do
+      described_class.send(:new, s(:args, s(:arg, :a), s(:arg, :b)), nil)
+    end
+
+    it 'returns the names of arguments absent from the mutated children' do
+      expect(mutator.__send__(:removed_argument_names, [s(:arg, :a)])).to eql([:b])
+    end
+
+    it 'returns no names when no argument is removed' do
+      expect(mutator.__send__(:removed_argument_names, [s(:arg, :a), s(:arg, :b)])).to eql([])
+    end
+
+    it 'returns all names when every argument is removed' do
+      expect(mutator.__send__(:removed_argument_names, [])).to eql(%i[a b])
     end
   end
 end
@@ -867,6 +1104,16 @@ RSpec.describe Mutant::Mutator::Node::Literal::Hash::Pair do
 
       expect(result).to include(s(:pair, s(:sym, :foo), s(:nil)))
       expect(result).not_to include(s(:pair, s(:nil), s(:int, 1)))
+    end
+
+    it 'mutates keys in an unconstrained hash context' do
+      result = described_class.call(
+        s(:pair, s(:sym, :foo), s(:int, 1)),
+        parent_class.send(:new, s(:hash), nil)
+      )
+
+      expect(result).to include(s(:pair, s(:nil), s(:int, 1)))
+      expect(result).to include(s(:pair, s(:sym, :foo), s(:nil)))
     end
   end
 end
