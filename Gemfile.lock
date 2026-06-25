@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    mutant (0.8.25)
+    mutant (0.9.0)
       abstract_type (~> 0.0.7)
       adamantium (~> 0.2.0)
       anima (~> 0.3.2)
@@ -191,7 +191,7 @@ CHECKSUMS
   memoizable (0.4.2) sha256=acf4d2280fea019318e61cfc5e69077dcb3c2126817ee596ffd76d0ddf5e826c
   morpher (0.4.2) sha256=0a7afa16acfd8b619b0bc3dd9269c5fa42b502f496358e60e48027c58d1aa07b
   mprelude (0.1.0) sha256=d851de873ed07eb4b40ffb70f1da3afd5c22f62148a0178a03fe095b49c55dd4
-  mutant (0.8.25)
+  mutant (0.9.0)
   parallel (1.28.0) sha256=33e6de1484baf2524792d178b0913fc8eb94c628d6cfe45599ad4458c638c970
   parser (3.3.11.1) sha256=d17ace7aabe3e72c3cc94043714be27cc6f852f104d81aa284c2281aecc65d54
   prism (1.9.0) sha256=7b530c6a9f92c24300014919c9dcbc055bf4cdf51ec30aed099b06cd6674ef85
