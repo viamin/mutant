@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.1](https://github.com/viamin/mutant/compare/v0.9.0...v0.9.1) (2026-06-25)
+
+
+### Bug Fixes
+
+* sync Gemfile.lock PATH spec version with v0.9.0 release ([#57](https://github.com/viamin/mutant/issues/57)) ([7c9dd13](https://github.com/viamin/mutant/commit/7c9dd13fb8f12438d1d51e12394d5821be6def9b))
+
 ## [0.9.0](https://github.com/viamin/mutant/compare/v0.8.25...v0.9.0) (2026-06-24)
 
 
