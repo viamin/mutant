@@ -2,7 +2,8 @@
   "packages": {
     ".": {
       "release-type": "ruby",
-      "version-file": "lib/mutant/version.rb"
+      "version-file": "lib/mutant/version.rb",
+      "package-name": "mutant"
     }
   }
 }
