@@ -73,10 +73,9 @@ Currently mutant supports integrations for:
 
 ## Report
 
-Mutant currently provides two different reporters:
+Mutant currently provides the following reporters:
 
 * Progress (printed during mutation testing).
 * Summary (printed at the end of a finished analysis run)
-
-A reporter producing a machine readable report does not exist in the OSS version
-at the time of writing this documentation.
+* Machine readable YAML results (written to disk on every run, see
+  [reading reports](/docs/reading-reports.md#machine-readable-output))

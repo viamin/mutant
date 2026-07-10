@@ -71,4 +71,54 @@ Mutation output is grouped by selection groups. Each group contains three sectio
    -----------------------
    ```
 
-At this time no machine readable output exists in the opensourced versions of mutant.
+## Machine readable output
+
+In addition to the human readable CLI output documented above, mutant writes a
+machine readable YAML result file on every run. This makes it possible to
+inspect, archive, or post-process past runs programmatically.
+
+### Location
+
+Result files are written to the results directory, defaulting to
+`.mutant/results/`. Each run produces one file named:
+
+```text
+.mutant/results/<timestamp>-<sha>.yml
+```
+
+Where `<timestamp>` is the run start time in UTC formatted as
+`%Y%m%dT%H%M%SZ` (for example `20240101T120000Z`) and `<sha>` is the
+abbreviated commit SHA the run was executed against (the first 7 characters of
+`git rev-parse HEAD`, or `unknown` when git is unavailable).
+
+### Overriding the output location
+
+The `--results-dir DIR` flag overrides the destination directory:
+
+```text
+mutant run --results-dir path/to/results -- Foo
+```
+
+### Schema
+
+The YAML document is a hash with the following top level fields:
+
+* `ran_at` — the run start time (UTC).
+* `git_ref` — the commit SHA the run was executed against.
+* `since` — the revision used as the `--since` baseline, if any.
+* `total_mutations` — total number of mutations evaluated.
+* `killed` — number of mutations killed by the tests.
+* `alive` — number of mutations that survived (were not killed).
+* `errored` — number of mutations that errored during evaluation.
+* `alive_mutations` — list of surviving mutations (see below).
+* `errored_mutations` — list of mutations that errored (see below).
+
+Each entry in `alive_mutations` is a hash with:
+
+* `subject` — the subject identification.
+* `subject_path` — the source file path of the subject.
+* `source_line` — the source line number of the subject.
+* `mutation_diff` — the unified diff of the mutation against the original source.
+
+Each entry in `errored_mutations` is a hash with `subject` and `error` keys
+describing the failure encountered while evaluating the mutation.
