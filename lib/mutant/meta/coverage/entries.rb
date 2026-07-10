@@ -35,10 +35,11 @@ module Mutant
                  'but the modern selector set in the issue is not complete yet.'
         ),
         Entry.new(
-          id: 'bang-reductions', title: 'Bang reductions', status: 'gap',
-          source: 'array.map!(&:to_s)', mutation: 'array.map(&:to_s)', assertion: :exclude,
-          notes: 'No dedicated bang-to-non-bang reduction operator is shipped for ' \
-                 '`map!`, `compact!`, `sort!`, `uniq!`, and similar selectors.'
+          id: 'bang-reductions', title: 'Bang reductions', status: 'covered',
+          source: 'array.map!(&:to_s)', mutation: 'array.map(&:to_s)', assertion: :include,
+          notes: 'A dedicated bang-to-non-bang reduction emits the trailing-`!`-stripped ' \
+                 'selector for any non-operator send such as `map!`, `compact!`, `sort!`, ' \
+                 'or `uniq!`; operator selectors like `:!` and `:!=` are skipped.'
         ),
         Entry.new(
           id: 'boolean-control-flow', title: 'Boolean / control flow', status: 'covered',
