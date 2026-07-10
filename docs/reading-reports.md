@@ -122,15 +122,3 @@ Each entry in `alive_mutations` is a hash with:
 
 Each entry in `errored_mutations` is a hash with `subject` and `error` keys
 describing the failure encountered while evaluating the mutation.
-
-### Reviewing past runs
-
-The `mutant session` subcommand reads previously written result files so they
-can be reviewed without re-running mutant.
-
-* `mutant session list` — lists all sessions found in the results directory.
-* `mutant session show <id>` — shows the details of a specific session, where
-  `<id>` is the file name stem of a result file (the `<timestamp>-<sha>` part,
-  without the `.yml` suffix).
-
-Run `mutant help session` for a summary of these subcommands.
