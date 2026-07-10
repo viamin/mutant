@@ -35,11 +35,7 @@ module Mutant
         end
 
         path = resolve_session_path(id)
-        require 'yaml'
-        data = YAML.safe_load(path.read, permitted_classes: [Symbol])
-        unless data.is_a?(Hash)
-          raise Error, "Could not load session '#{path.basename('.yml')}': expected a hash payload"
-        end
+        data = load_session_data(path)
         puts "Session: #{id}"
         puts "  Status:   #{session_success?(data) ? 'pass' : 'fail'}"
         puts "  Coverage: #{session_coverage(data) || 'unknown'}"
@@ -49,8 +45,8 @@ module Mutant
         subjects.each do |subject|
           puts "    #{session_expression(subject)}"
         end
-      rescue Psych::Exception => exception
-        raise Error, "Could not load session '#{path.basename('.yml')}': #{exception.message}"
+
+        Presenter.new(data).render($stdout)
       end
 
       def session_results_dir
@@ -95,7 +91,7 @@ module Mutant
 
       def load_session_data(path)
         require 'yaml'
-        data = YAML.safe_load(path.read, permitted_classes: [Symbol])
+        data = YAML.safe_load(path.read, permitted_classes: [Symbol, Time])
 
         unless data.is_a?(Hash)
           raise Error, "Could not load session '#{path.basename('.yml')}': expected a hash payload"
