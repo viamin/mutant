@@ -9,70 +9,65 @@ module Mutant
       # metadata (ran_at, git_ref), summary mutation counts, and the full
       # alive and errored mutation details (including diffs and errors).
       class Presenter
-        include Concord.new(:data)
+        include Concord.new(:output, :data)
 
         RAN_AT_FORMAT = '%Y-%m-%d %H:%M:%S UTC'
 
-        def render(out)
-          render_metadata(out)
-          render_summary(out)
-          render_alive(out)
-          render_errored(out)
+        def render
+          print_metadata
+          print_summary
+          print_section(:alive_mutations, 'Alive mutations') do |mutation|
+            render_alive(mutation)
+          end
+          print_section(:errored_mutations, 'Errored mutations') do |mutation|
+            render_errored(mutation)
+          end
         end
 
       private
 
-        def render_metadata(out)
-          out.puts("  Ran at:  #{ran_at}")
-          out.puts("  Git ref: #{value(:git_ref) || 'unknown'}")
+        def print_metadata
+          puts("  Ran at:  #{ran_at}")
+          puts("  Git ref: #{value(:git_ref) || 'unknown'}")
         end
 
-        def render_summary(out)
+        def print_summary
           total = value(:total_mutations)
           return if total.nil?
 
-          out.puts(summary_line(total))
+          puts(
+            "  Mutations: total=#{total} killed=#{value(:killed) || 0} " \
+            "alive=#{value(:alive) || 0} errored=#{value(:errored) || 0}"
+          )
         end
 
-        def summary_line(total)
-          killed  = value(:killed)  || 0
-          alive   = value(:alive)   || 0
-          errored = value(:errored) || 0
+        def print_section(key, label)
+          mutations = value(key)
+          return unless mutations.is_a?(Array) && !mutations.empty?
 
-          "  Mutations: total=#{total} killed=#{killed} alive=#{alive} errored=#{errored}"
+          puts("  #{label} (#{mutations.size}):")
+          mutations.each { |mutation| yield(mutation) }
         end
 
-        def render_alive(out)
-          mutations = list(:alive_mutations)
-          return if mutations.empty?
+        def render_alive(mutation)
+          subject = mutation.fetch('subject', '<unknown>')
+          location = [mutation['subject_path'], mutation['source_line']].compact.join(':')
+          label = location.empty? ? subject : "#{subject} (#{location})"
 
-          out.puts("  Alive mutations (#{mutations.size}):")
-          mutations.each do |mutation|
-            out.puts("    #{alive_label(mutation)}")
-            value_of(mutation, :mutation_diff).to_s.each_line do |line|
-              out.puts("      #{line.chomp}")
-            end
-          end
+          puts("    #{label}")
+          print_diff(mutation)
         end
 
-        def render_errored(out)
-          mutations = list(:errored_mutations)
-          return if mutations.empty?
+        def print_diff(mutation)
+          diff = mutation['mutation_diff']
+          return unless diff
 
-          out.puts("  Errored mutations (#{mutations.size}):")
-          mutations.each do |mutation|
-            out.puts("    #{value_of(mutation, :subject) || '<unknown>'}")
-            out.puts("      #{value_of(mutation, :error) || '<unknown>'}")
-          end
+          diff.each_line { |line| puts("      #{line.chomp}") }
         end
 
-        def alive_label(mutation)
-          subject  = value_of(mutation, :subject) || '<unknown>'
-          path     = value_of(mutation, :subject_path)
-          line     = value_of(mutation, :source_line)
-          location = [path, line].compact.join(':')
-
-          location.empty? ? subject : "#{subject} (#{location})"
+        def render_errored(mutation)
+          puts("    #{mutation.fetch('subject', '<unknown>')}")
+          puts("      #{mutation.fetch('error', '<unknown>')}")
         end
 
         def ran_at
@@ -80,11 +75,6 @@ module Mutant
           return 'unknown' unless timestamp
 
           timestamp.is_a?(Time) ? timestamp.utc.strftime(RAN_AT_FORMAT) : timestamp.to_s
-        end
-
-        def list(key)
-          mutations = value(key)
-          mutations.is_a?(Array) ? mutations : EMPTY_ARRAY
         end
 
         def value(key)
@@ -96,15 +86,8 @@ module Mutant
           nil
         end
 
-        def value_of(entry, key)
-          return unless entry.is_a?(Hash)
-
-          string_key = key.to_s
-
-          return entry[string_key] if entry.key?(string_key)
-          return entry[key] if entry.key?(key)
-
-          nil
+        def puts(string)
+          output.puts(string)
         end
       end
     end

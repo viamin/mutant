@@ -46,7 +46,7 @@ module Mutant
           puts "    #{session_expression(subject)}"
         end
 
-        Presenter.new(data).render($stdout)
+        Presenter.new($stdout, data).render
       end
 
       def session_results_dir

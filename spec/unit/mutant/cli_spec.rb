@@ -2221,7 +2221,7 @@ RSpec.describe Mutant::CLI do
       let(:output) { StringIO.new }
 
       def render_with(data)
-        described_class.new(data).render(output)
+        described_class.new(output, data).render
         output.string
       end
 
@@ -2301,6 +2301,75 @@ RSpec.describe Mutant::CLI do
       it 'omits alive and errored sections when the lists are empty' do
         expect(render_with({})).not_to include('Alive mutations')
         expect(render_with({})).not_to include('Errored mutations')
+      end
+
+      it 'omits a section when its list is not an Array' do
+        expect(render_with('alive_mutations' => 'nope')).not_to include('Alive mutations')
+        expect(render_with('errored_mutations' => {})).not_to include('Errored mutations')
+      end
+
+      it 'defaults missing summary sub-counts to zero' do
+        expect(render_with('total_mutations' => 2)).to eql(
+          "  Ran at:  unknown\n  Git ref: unknown\n" \
+          "  Mutations: total=2 killed=0 alive=0 errored=0\n"
+        )
+      end
+
+      it 'renders an alive mutation with only a subject (no location or diff)' do
+        data = { 'alive_mutations' => [{ 'subject' => 'TestApp::Foo#bar' }] }
+
+        expect(render_with(data)).to eql(
+          "  Ran at:  unknown\n" \
+          "  Git ref: unknown\n" \
+          "  Alive mutations (1):\n" \
+          "    TestApp::Foo#bar\n"
+        )
+      end
+
+      it 'renders an alive mutation with a path but no source line' do
+        data = { 'alive_mutations' => [{ 'subject' => 'TestApp::Foo#bar', 'subject_path' => 'app/foo.rb' }] }
+
+        expect(render_with(data)).to eql(
+          "  Ran at:  unknown\n" \
+          "  Git ref: unknown\n" \
+          "  Alive mutations (1):\n" \
+          "    TestApp::Foo#bar (app/foo.rb)\n"
+        )
+      end
+
+      it 'falls back to <unknown> subject for an alive mutation' do
+        data = { 'alive_mutations' => [{ 'subject_path' => 'app/foo.rb', 'source_line' => 9 }] }
+
+        expect(render_with(data)).to eql(
+          "  Ran at:  unknown\n" \
+          "  Git ref: unknown\n" \
+          "  Alive mutations (1):\n" \
+          "    <unknown> (app/foo.rb:9)\n"
+        )
+      end
+
+      it 'falls back to <unknown> subject for an errored mutation' do
+        data = { 'errored_mutations' => [{ 'error' => 'boom' }] }
+
+        expect(render_with(data)).to eql(
+          "  Ran at:  unknown\n" \
+          "  Git ref: unknown\n" \
+          "  Errored mutations (1):\n" \
+          "    <unknown>\n" \
+          "      boom\n"
+        )
+      end
+
+      it 'falls back to <unknown> error for an errored mutation' do
+        data = { 'errored_mutations' => [{ 'subject' => 'TestApp::Foo#baz' }] }
+
+        expect(render_with(data)).to eql(
+          "  Ran at:  unknown\n" \
+          "  Git ref: unknown\n" \
+          "  Errored mutations (1):\n" \
+          "    TestApp::Foo#baz\n" \
+          "      <unknown>\n"
+        )
       end
 
       it 'uses symbol keys when present' do
