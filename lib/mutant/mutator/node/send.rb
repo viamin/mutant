@@ -106,6 +106,22 @@ module Mutant
           emit_dig_mutation
           emit_double_negation_mutation
           emit_lambda_mutation
+          emit_bang_method_reduction
+        end
+
+        # Emit mutation reducing a bang method to its non-bang variant
+        #
+        # Mutates `foo.compact!` to `foo.compact`
+        #
+        # Operator selectors such as `:!` and `:!=` are skipped because they are
+        # not bang methods in the in-place mutation sense. Non-bang selectors
+        # leave the selector unchanged, which `emit_selector` drops as a no-op.
+        #
+        # @return [undefined]
+        def emit_bang_method_reduction
+          return if METHOD_OPERATORS.include?(selector)
+
+          emit_selector(selector.to_s.chomp('!').to_sym)
         end
 
         # Emit selector mutations specific to top level constants

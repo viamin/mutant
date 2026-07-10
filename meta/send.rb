@@ -634,3 +634,38 @@ Mutant::Meta::Example.add :send do
   mutation '//'
   mutation '/nomatch\A/.match(a)'
 end
+
+Mutant::Meta::Example.add :send do
+  source 'foo.compact!'
+
+  singleton_mutations
+  mutation 'foo'
+  mutation 'self.compact!'
+  mutation 'foo.compact'
+end
+
+Mutant::Meta::Example.add :send do
+  source 'foo.sort!'
+
+  singleton_mutations
+  mutation 'foo'
+  mutation 'self.sort!'
+  mutation 'foo.sort'
+end
+
+Mutant::Meta::Example.add :send do
+  source 'foo.map!(&:to_s)'
+
+  singleton_mutations
+  mutation 'foo'
+  mutation 'foo.map!'
+  mutation 'self.map!(&:to_s)'
+  mutation 'foo.map(&:to_s)'
+end
+
+Mutant::Meta::Example.add :send do
+  source 'compact!'
+
+  singleton_mutations
+  mutation 'compact'
+end
