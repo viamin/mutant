@@ -88,6 +88,40 @@ Representative diff:
 
 ```
 
+## array_pattern
+
+Representative source from `meta/array_pattern.rb`:
+
+```ruby
+[head, *rest, tail]
+```
+
+Representative diff:
+
+```diff
+@@ -1 +1 @@
+-[head, *rest, tail]
++[*rest, tail]
+
+```
+
+## array_pattern_with_tail
+
+Representative source from `meta/array_pattern_with_tail.rb`:
+
+```ruby
+[foo, bar, ]
+```
+
+Representative diff:
+
+```diff
+@@ -1 +1 @@
+-[foo, bar, ]
++[foo, bar]
+
+```
+
 ## begin
 
 Representative source from `meta/begin.rb`:
@@ -219,6 +253,34 @@ Representative diff:
  case
  when true
 +  raise
+ end
+
+```
+
+## case_match
+
+Representative source from `meta/case_match.rb`:
+
+```ruby
+case nil
+in foo
+in bar
+else
+  nil
+end
+```
+
+Representative diff:
+
+```diff
+@@ -1,6 +1,7 @@
+ case nil
+-in foo
++in foo then
++  raise
+ in bar
+ else
+   nil
  end
 
 ```
@@ -541,6 +603,23 @@ Representative diff:
 @@ -1 +1 @@
 -{ true => true, false => false }
 +{ false => true, false => false }
+
+```
+
+## hash_pattern
+
+Representative source from `meta/hash_pattern.rb`:
+
+```ruby
+{foo: bar, baz:}
+```
+
+Representative diff:
+
+```diff
+@@ -1 +1 @@
+-{foo: bar, baz:}
++{baz:}
 
 ```
 

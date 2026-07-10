@@ -12,7 +12,12 @@ Status values:
 
 | Category | Status | Smoke fixture | Notes |
 | --- | --- | --- | --- |
-| Pattern matching | `gap` | `"case value\nin { foo: }\n  foo\nelse\n  nil\nend"` | Pattern-matching parser nodes are still routed through `Mutant::Mutator::Node::Generic`; dedicated `case/in`, guard, pin, array-pattern, and hash-pattern operators are not shipped yet. |
+| Pattern matching | `partial` | `"case value\nin { foo: }\n  foo\nelse\n  nil\nend" -> case value
+in {}
+  foo
+else
+  nil
+end` | Dedicated mutators now cover `case_match`, `in_pattern`, `hash_pattern`, `array_pattern`, and `array_pattern_with_tail`, but guard-node, pin, alternation, find-pattern, and const-pattern operators are still missing. |
 | Compound assignment | `covered` | `"a \|\|= 1" -> a \|\|= nil` | Dedicated mutators cover `or_asgn`, `and_asgn`, and `op_asgn` nodes. |
 | Enumerable selectors | `partial` | `"map" -> each` | Selector replacement covers pairs such as `map` -> `each`, `flat_map` -> `map`, `sample` -> `first/last`, and `first` <-> `last`, but the modern selector set in the issue is not complete yet. |
 | Bang reductions | `gap` | `"array.map!(&:to_s)" -> array.map(&:to_s)` | No dedicated bang-to-non-bang reduction operator is shipped for `map!`, `compact!`, `sort!`, `uniq!`, and similar selectors. |

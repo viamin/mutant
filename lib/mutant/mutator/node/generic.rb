@@ -34,13 +34,10 @@ module Mutant
           shadowarg
           rational
           complex
-          array_pattern
-          array_pattern_with_tail
           __FILE__
           __LINE__
           blockarg_expr
           blocknilarg
-          case_match
           const_pattern
           empty_else
           find_pattern
@@ -49,11 +46,9 @@ module Mutant
           forwarded_args
           forwarded_kwrestarg
           forwarded_restarg
-          hash_pattern
           ident
           if_guard
           in_match
-          in_pattern
           itarg
           itblock
           kwargs
