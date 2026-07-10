@@ -15,12 +15,12 @@ module Mutant
 
       COVERAGE_ENTRIES = [
         Entry.new(
-          id: 'pattern-matching', title: 'Pattern matching', status: 'gap',
+          id: 'pattern-matching', title: 'Pattern matching', status: 'partial',
           source: "case value\nin { foo: }\n  foo\nelse\n  nil\nend",
-          mutation: nil, assertion: :generic,
-          notes: 'Pattern-matching parser nodes are still routed through ' \
-                 '`Mutant::Mutator::Node::Generic`; dedicated `case/in`, ' \
-                 'guard, pin, array-pattern, and hash-pattern operators are not shipped yet.'
+          mutation: "case value\nin {}\n  foo\nelse\n  nil\nend", assertion: :include,
+          notes: 'Dedicated mutators now cover `case_match`, `in_pattern`, ' \
+                 '`hash_pattern`, `array_pattern`, and `array_pattern_with_tail`, ' \
+                 'but guard-node, pin, alternation, find-pattern, and const-pattern operators are still missing.'
         ),
         Entry.new(
           id: 'compound-assignment', title: 'Compound assignment', status: 'covered',
