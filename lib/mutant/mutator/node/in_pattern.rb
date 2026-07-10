@@ -20,8 +20,6 @@ module Mutant
         end
 
         def mutate_branch_guard
-          return unless branch_guard
-
           emit_child_update(1, nil)
           mutate_child(1)
         end
@@ -32,10 +30,6 @@ module Mutant
           else
             emit_child_update(2, N_RAISE)
           end
-        end
-
-        def branch_guard
-          children.fetch(1)
         end
 
         def branch_body

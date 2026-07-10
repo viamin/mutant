@@ -262,25 +262,18 @@ Representative diff:
 Representative source from `meta/case_match.rb`:
 
 ```ruby
-case nil
+case x
 in foo
-in bar
-else
-  nil
 end
 ```
 
 Representative diff:
 
 ```diff
-@@ -1,6 +1,7 @@
- case nil
--in foo
-+in foo then
-+  raise
- in bar
- else
-   nil
+@@ -1,3 +1,3 @@
+-case x
++case nil
+ in foo
  end
 
 ```
