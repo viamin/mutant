@@ -114,16 +114,14 @@ module Mutant
         # Mutates `foo.compact!` to `foo.compact`
         #
         # Operator selectors such as `:!` and `:!=` are skipped because they are
-        # not bang methods in the in-place mutation sense.
+        # not bang methods in the in-place mutation sense. Non-bang selectors
+        # leave the selector unchanged, which `emit_selector` drops as a no-op.
         #
         # @return [undefined]
         def emit_bang_method_reduction
           return if METHOD_OPERATORS.include?(selector)
 
-          selector_name = selector.to_s
-          return unless selector_name.end_with?('!')
-
-          emit_selector(selector_name.chomp('!').to_sym)
+          emit_selector(selector.to_s.chomp('!').to_sym)
         end
 
         # Emit selector mutations specific to top level constants
