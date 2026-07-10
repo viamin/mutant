@@ -2247,6 +2247,15 @@ RSpec.describe Mutant::CLI do
         )
       end
 
+      it 'still renders the summary line for a zero-mutation session' do
+        data = { 'total_mutations' => 0, 'killed' => 0, 'alive' => 0, 'errored' => 0 }
+
+        expect(render_with(data)).to eql(
+          "  Ran at:  unknown\n  Git ref: unknown\n" \
+          "  Mutations: total=0 killed=0 alive=0 errored=0\n"
+        )
+      end
+
       it 'omits the summary when total mutations are absent' do
         expect(render_with({})).not_to include('Mutations:')
       end

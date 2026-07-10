@@ -29,7 +29,7 @@ module Mutant
 
         def render_summary(out)
           total = value(:total_mutations)
-          return unless total
+          return if total.nil?
 
           out.puts(summary_line(total))
         end
