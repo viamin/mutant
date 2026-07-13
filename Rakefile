@@ -50,6 +50,7 @@ namespace :metrics do
     Mutant::CLI::Session#load_session_data
     Mutant::CLI::Session#print_session_show
     Mutant::CLI::Session#resolve_session_path
+    Mutant::CLI::Session::Presenter*
     Mutant::CLI::Options#add_filter_options
     Mutant::CLI::Options#add_mutation_options
     Mutant::CLI::Options#enable_fail_fast

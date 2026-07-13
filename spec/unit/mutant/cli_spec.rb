@@ -1009,6 +1009,8 @@ RSpec.describe Mutant::CLI do
           expect($stdout).to receive(:puts).with('  Subjects: 2')
           expect($stdout).to receive(:puts).with('    Foo#bar')
           expect($stdout).to receive(:puts).with('    Foo#baz')
+          expect($stdout).to receive(:puts).with('  Ran at:  unknown')
+          expect($stdout).to receive(:puts).with('  Git ref: unknown')
           expect_any_instance_of(described_class).to receive(:cli_exit)
         end
 
@@ -2070,6 +2072,75 @@ RSpec.describe Mutant::CLI do
         expect($stdout).to receive(:puts).with('  Subjects: 2')
         expect($stdout).to receive(:puts).with('    Foo#bar')
         expect($stdout).to receive(:puts).with('    <unknown>')
+        expect($stdout).to receive(:puts).with('  Ran at:  unknown')
+        expect($stdout).to receive(:puts).with('  Git ref: unknown')
+
+        cli.send(:print_session_show, 'abc123', [])
+      end
+
+      it 'prints metadata, summary stats, alive and errored mutation details' do
+        FileUtils.mkdir_p(results_dir)
+        ran_at = Time.utc(2024, 1, 2, 3, 4, 5)
+        File.write(
+          File.join(results_dir, 'abc123.yml'),
+          YAML.dump(
+            'ran_at' => ran_at,
+            'git_ref' => 'abc1234',
+            'total_mutations' => 4,
+            'killed' => 2,
+            'alive' => 1,
+            'errored' => 1,
+            'alive_mutations' => [
+              {
+                'subject' => 'TestApp::Foo#bar',
+                'subject_path' => 'app/models/foo.rb',
+                'source_line' => 17,
+                'mutation_diff' => "-old\n+new"
+              }
+            ],
+            'errored_mutations' => [
+              {
+                'subject' => 'TestApp::Foo#baz',
+                'error' => 'TimeoutError: timed out'
+              }
+            ]
+          )
+        )
+
+        expect($stdout).to receive(:puts).with('Session: abc123')
+        expect($stdout).to receive(:puts).with('  Status:   fail')
+        expect($stdout).to receive(:puts).with('  Coverage: unknown')
+        expect($stdout).to receive(:puts).with('  Subjects: 0')
+        expect($stdout).to receive(:puts).with('  Ran at:  2024-01-02 03:04:05 UTC')
+        expect($stdout).to receive(:puts).with('  Git ref: abc1234')
+        expect($stdout).to receive(:puts).with('  Mutations: total=4 killed=2 alive=1 errored=1')
+        expect($stdout).to receive(:puts).with('  Alive mutations (1):')
+        expect($stdout).to receive(:puts).with('    TestApp::Foo#bar (app/models/foo.rb:17)')
+        expect($stdout).to receive(:puts).with('      -old')
+        expect($stdout).to receive(:puts).with('      +new')
+        expect($stdout).to receive(:puts).with('  Errored mutations (1):')
+        expect($stdout).to receive(:puts).with('    TestApp::Foo#baz')
+        expect($stdout).to receive(:puts).with('      TimeoutError: timed out')
+
+        cli.send(:print_session_show, 'abc123', [])
+      end
+
+      it 'omits summary, alive and errored sections when data is absent' do
+        FileUtils.mkdir_p(results_dir)
+        File.write(
+          File.join(results_dir, 'abc123.yml'),
+          YAML.dump('success' => true)
+        )
+
+        expect($stdout).to receive(:puts).with('Session: abc123')
+        expect($stdout).to receive(:puts).with('  Status:   pass')
+        expect($stdout).to receive(:puts).with('  Coverage: unknown')
+        expect($stdout).to receive(:puts).with('  Subjects: 0')
+        expect($stdout).to receive(:puts).with('  Ran at:  unknown')
+        expect($stdout).to receive(:puts).with('  Git ref: unknown')
+        expect($stdout).not_to receive(:puts).with(/Mutations:/)
+        expect($stdout).not_to receive(:puts).with(/Alive mutations/)
+        expect($stdout).not_to receive(:puts).with(/Errored mutations/)
 
         cli.send(:print_session_show, 'abc123', [])
       end
@@ -2143,6 +2214,166 @@ RSpec.describe Mutant::CLI do
 
       it 'returns a fallback when the expression is missing' do
         expect(cli.send(:session_expression, {})).to eql('<unknown>')
+      end
+    end
+
+    describe Mutant::CLI::Session::Presenter do
+      let(:output) { StringIO.new }
+
+      def render_with(data)
+        described_class.new(output, data).render
+        output.string
+      end
+
+      it 'renders metadata with formatted ran_at and git ref' do
+        expect(render_with('ran_at' => Time.utc(2024, 1, 2, 3, 4, 5), 'git_ref' => 'abc1234'))
+          .to eql("  Ran at:  2024-01-02 03:04:05 UTC\n  Git ref: abc1234\n")
+      end
+
+      it 'falls back to unknown metadata when missing' do
+        expect(render_with({})).to eql("  Ran at:  unknown\n  Git ref: unknown\n")
+      end
+
+      it 'renders a non-Time ran_at value as a string' do
+        expect(render_with('ran_at' => 'later')).to eql("  Ran at:  later\n  Git ref: unknown\n")
+      end
+
+      it 'renders the mutation summary counts when total is present' do
+        data = { 'total_mutations' => 4, 'killed' => 2, 'alive' => 1, 'errored' => 1 }
+
+        expect(render_with(data)).to eql(
+          "  Ran at:  unknown\n  Git ref: unknown\n" \
+          "  Mutations: total=4 killed=2 alive=1 errored=1\n"
+        )
+      end
+
+      it 'still renders the summary line for a zero-mutation session' do
+        data = { 'total_mutations' => 0, 'killed' => 0, 'alive' => 0, 'errored' => 0 }
+
+        expect(render_with(data)).to eql(
+          "  Ran at:  unknown\n  Git ref: unknown\n" \
+          "  Mutations: total=0 killed=0 alive=0 errored=0\n"
+        )
+      end
+
+      it 'omits the summary when total mutations are absent' do
+        expect(render_with({})).not_to include('Mutations:')
+      end
+
+      it 'renders alive mutations with subject location and diff' do
+        data = {
+          'alive_mutations' => [
+            {
+              'subject' => 'TestApp::Foo#bar',
+              'subject_path' => 'app/models/foo.rb',
+              'source_line' => 17,
+              'mutation_diff' => "-old\n+new"
+            }
+          ]
+        }
+
+        expect(render_with(data)).to eql(
+          "  Ran at:  unknown\n" \
+          "  Git ref: unknown\n" \
+          "  Alive mutations (1):\n" \
+          "    TestApp::Foo#bar (app/models/foo.rb:17)\n" \
+          "      -old\n" \
+          "      +new\n"
+        )
+      end
+
+      it 'renders errored mutations with subject and error' do
+        data = {
+          'errored_mutations' => [
+            { 'subject' => 'TestApp::Foo#baz', 'error' => 'TimeoutError: timed out' }
+          ]
+        }
+
+        expect(render_with(data)).to eql(
+          "  Ran at:  unknown\n" \
+          "  Git ref: unknown\n" \
+          "  Errored mutations (1):\n" \
+          "    TestApp::Foo#baz\n" \
+          "      TimeoutError: timed out\n"
+        )
+      end
+
+      it 'omits alive and errored sections when the lists are empty' do
+        expect(render_with({})).not_to include('Alive mutations')
+        expect(render_with({})).not_to include('Errored mutations')
+      end
+
+      it 'omits a section when its list is not an Array' do
+        expect(render_with('alive_mutations' => 'nope')).not_to include('Alive mutations')
+        expect(render_with('errored_mutations' => {})).not_to include('Errored mutations')
+      end
+
+      it 'defaults missing summary sub-counts to zero' do
+        expect(render_with('total_mutations' => 2)).to eql(
+          "  Ran at:  unknown\n  Git ref: unknown\n" \
+          "  Mutations: total=2 killed=0 alive=0 errored=0\n"
+        )
+      end
+
+      it 'renders an alive mutation with only a subject (no location or diff)' do
+        data = { 'alive_mutations' => [{ 'subject' => 'TestApp::Foo#bar' }] }
+
+        expect(render_with(data)).to eql(
+          "  Ran at:  unknown\n" \
+          "  Git ref: unknown\n" \
+          "  Alive mutations (1):\n" \
+          "    TestApp::Foo#bar\n"
+        )
+      end
+
+      it 'renders an alive mutation with a path but no source line' do
+        data = { 'alive_mutations' => [{ 'subject' => 'TestApp::Foo#bar', 'subject_path' => 'app/foo.rb' }] }
+
+        expect(render_with(data)).to eql(
+          "  Ran at:  unknown\n" \
+          "  Git ref: unknown\n" \
+          "  Alive mutations (1):\n" \
+          "    TestApp::Foo#bar (app/foo.rb)\n"
+        )
+      end
+
+      it 'falls back to <unknown> subject for an alive mutation' do
+        data = { 'alive_mutations' => [{ 'subject_path' => 'app/foo.rb', 'source_line' => 9 }] }
+
+        expect(render_with(data)).to eql(
+          "  Ran at:  unknown\n" \
+          "  Git ref: unknown\n" \
+          "  Alive mutations (1):\n" \
+          "    <unknown> (app/foo.rb:9)\n"
+        )
+      end
+
+      it 'falls back to <unknown> subject for an errored mutation' do
+        data = { 'errored_mutations' => [{ 'error' => 'boom' }] }
+
+        expect(render_with(data)).to eql(
+          "  Ran at:  unknown\n" \
+          "  Git ref: unknown\n" \
+          "  Errored mutations (1):\n" \
+          "    <unknown>\n" \
+          "      boom\n"
+        )
+      end
+
+      it 'falls back to <unknown> error for an errored mutation' do
+        data = { 'errored_mutations' => [{ 'subject' => 'TestApp::Foo#baz' }] }
+
+        expect(render_with(data)).to eql(
+          "  Ran at:  unknown\n" \
+          "  Git ref: unknown\n" \
+          "  Errored mutations (1):\n" \
+          "    TestApp::Foo#baz\n" \
+          "      <unknown>\n"
+        )
+      end
+
+      it 'uses symbol keys when present' do
+        expect(render_with(git_ref: 'sym-ref')).to eql("  Ran at:  unknown\n  Git ref: sym-ref\n")
       end
     end
 
