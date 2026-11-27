@@ -34,6 +34,7 @@ RSpec.describe Mutant::Parser do
   describe 'binary string literals' do
     let(:source) do
       <<~'RUBY'
+        # encoding: utf-8
         class BinaryFixture
           def binary
             "Done \xFF".b
