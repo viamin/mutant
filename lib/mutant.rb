@@ -40,6 +40,7 @@ end
 
 require 'yaml'
 require 'unparser'
+require 'mutant/unparser_compat'
 
 # This setting is done to make errors within the parallel
 # reporter / execution visible in the main thread.

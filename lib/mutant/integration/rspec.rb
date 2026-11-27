@@ -340,15 +340,13 @@ module Mutant
         end
 
         def parse(path)
-          buffer        = ::Parser::Source::Buffer.new(path)
-          buffer.source = File.read(path)
-          ruby_parser.parse(buffer)
+          Unparser.parser.parse_with_comments(buffer(path)).first
         rescue ::StandardError
           nil
         end
 
-        def ruby_parser
-          @ruby_parser ||= ::Parser.const_get("Ruby#{RUBY_VERSION[/\A\d+\.\d+/].delete('.')}").new
+        def buffer(path)
+          ::Parser::Source::Buffer.new(path, source: File.read(path))
         end
       end
 

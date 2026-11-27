@@ -311,7 +311,10 @@ RSpec.describe Mutant::Integration::RspecSupport::Examples do
       "RSpec.describe Example::CoveredByConstant do\n",
       "  it { is_expected.to cover(described_class) }\n",
       "  it('Example::ExplicitConstant', mutant_expression: Example::ExplicitConstant) { }\n",
-      "end\n"
+      "end\n",
+      "\n",
+      "BINARY_OUTPUT = \"Done \\xFF\".b\n",
+      "UNICODE_LABEL = \"café ✓\"\n"
     ]
   end
 
@@ -474,6 +477,16 @@ RSpec.describe Mutant::Integration::RspecSupport::Examples do
 
       expect(filtered_examples.values.flatten).to eql([example_b, example_e])
     end
+  end
+
+  it 'indexes and selects a covered example from a mixed binary and Unicode source file' do
+    expect { Mutant::Parser.new.call(Pathname.new(source_path)) }.not_to raise_error
+
+    tests = examples.all_tests
+    examples.filter([examples.fetch(tests.fetch(1))])
+
+    expect(tests.length).to eql(5)
+    expect(filtered_examples.values.flatten).to eql([example_b])
   end
 
   describe '#ordered_groups' do
