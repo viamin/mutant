@@ -39,9 +39,7 @@ module Mutant
       #
       # @return [Matcher]
       def matcher
-        methods_matcher = MATCHERS.fetch(scope_symbol).new(scope)
-
-        Matcher::Filter.new(methods_matcher, ->(subject) { subject.expression.eql?(self) })
+        Matcher::Filter::Method.new(MATCHERS.fetch(scope_symbol).new(scope), self)
       end
 
     private

@@ -6,13 +6,37 @@ RSpec.describe Mutant::Matcher::Methods::Instance, '#call' do
 
   let(:class_under_test) do
     parent = Module.new do
-      def method_d; end
+      def inherited_method; end
+    end
 
-      def method_e; end
+    wrapper_a = Module.new do
+      def method_a
+        super
+        :wrapper_a
+      end
+
+      def method_b
+        super
+        :wrapper_a
+      end
+    end
+
+    wrapper_b = Module.new do
+      def method_a
+        super
+        :wrapper_b
+      end
+
+      def method_b
+        super
+        :wrapper_b
+      end
     end
 
     Class.new do
       include parent
+      prepend wrapper_a
+      prepend wrapper_b
 
       def method_a; end
 
@@ -31,6 +55,12 @@ RSpec.describe Mutant::Matcher::Methods::Instance, '#call' do
   let(:subject_c) { instance_double(Mutant::Subject) }
   let(:subjects)  { [subject_a, subject_b, subject_c] }
 
+  def class_implementation(method_name)
+    method = class_under_test.instance_method(method_name)
+    method = method.super_method until method.owner.equal?(class_under_test)
+    method
+  end
+
   before do
     {
       method_a: subject_a,
@@ -41,12 +71,12 @@ RSpec.describe Mutant::Matcher::Methods::Instance, '#call' do
       expect(matcher).to receive(:call).with(env).and_return([subject])
 
       expect(Mutant::Matcher::Method::Instance).to receive(:new)
-        .with(class_under_test, class_under_test.instance_method(method))
+        .with(class_under_test, class_implementation(method))
         .and_return(matcher)
     end
   end
 
-  it 'returns expected subjects' do
+  it 'returns subjects for directly defined public, protected and private methods behind multiple prepends' do
     expect(object.call(env)).to eql(subjects)
   end
 end
