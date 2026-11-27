@@ -42,5 +42,26 @@ RSpec.describe Mutant::Expression::Method do
         expect(subject.call(env).map(&:expression)).to eql([object])
       end
     end
+
+    context 'when no implementation is defined directly on the requested scope' do
+      let(:input) { 'ExactMethodMatcherSpec::Child#inherited_method' }
+      let(:env) { instance_double(Mutant::Env::Bootstrap) }
+
+      before do
+        stub_const('ExactMethodMatcherSpec', Module.new)
+        stub_const('ExactMethodMatcherSpec::Parent', Class.new do
+          def inherited_method; end
+        end)
+        stub_const('ExactMethodMatcherSpec::Child', Class.new(ExactMethodMatcherSpec::Parent))
+      end
+
+      it 'warns that the explicit expression produced no subject' do
+        expect(env).to receive(:warn).with(
+          'ExactMethodMatcherSpec::Child#inherited_method could not produce a subject'
+        )
+
+        expect(subject.call(env)).to eql([])
+      end
+    end
   end
 end

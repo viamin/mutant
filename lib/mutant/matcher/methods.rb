@@ -39,11 +39,26 @@ module Mutant
       # @return [Enumerable<Method, UnboundMethod>]
       def methods
         candidate_names.each_with_object([]) do |name, methods|
-          method = access(name)
-          methods << method if method.owner.equal?(candidate_scope)
+          method = method_defined_on_candidate_scope(name)
+          methods << method if method
         end
       end
       memoize :methods
+
+      # Method defined directly on candidate scope
+      #
+      # A prepended module shadows the method returned by reflection. Walk its
+      # super chain so a class implementation remains a candidate without
+      # treating the wrapper as owned by the class.
+      #
+      # @param [Symbol] method_name
+      #
+      # @return [Method, UnboundMethod, nil]
+      def method_defined_on_candidate_scope(method_name)
+        method = access(method_name)
+        method = method.super_method until method.nil? || method.owner.equal?(candidate_scope)
+        method
+      end
 
       # Candidate method names on target scope
       #
