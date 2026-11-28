@@ -18,7 +18,9 @@ module Mutant
     #
     # @return [AST::Node]
     def call(path)
-      @cache[path] ||= Unparser.parse(path.read)
+      @cache[path] ||= Unparser.parser.parse_with_comments(
+        ::Parser::Source::Buffer.new(path, source: path.read)
+      ).first
     end
 
   end # Parser

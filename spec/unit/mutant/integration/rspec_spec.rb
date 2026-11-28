@@ -297,6 +297,7 @@ RSpec.describe Mutant::Integration::RspecSupport::Examples do
 
   let(:source_lines) do
     [
+      "# encoding: utf-8\n",
       "RSpec.describe Example::Root do\n",
       "  it('example-a-full-description') do\n",
       "  end\n",
@@ -311,7 +312,10 @@ RSpec.describe Mutant::Integration::RspecSupport::Examples do
       "RSpec.describe Example::CoveredByConstant do\n",
       "  it { is_expected.to cover(described_class) }\n",
       "  it('Example::ExplicitConstant', mutant_expression: Example::ExplicitConstant) { }\n",
-      "end\n"
+      "end\n",
+      "\n",
+      "BINARY_OUTPUT = \"Done \\xFF\".b\n",
+      "UNICODE_LABEL = \"café ✓\"\n"
     ]
   end
 
@@ -327,8 +331,8 @@ RSpec.describe Mutant::Integration::RspecSupport::Examples do
       'Example A',
       metadata: {
         absolute_file_path: source_path,
-        line_number:        2,
-        location:           "#{source_path}:2",
+        line_number:        3,
+        location:           "#{source_path}:3",
         full_description:   'example-a-full-description'
       }
     )
@@ -339,8 +343,8 @@ RSpec.describe Mutant::Integration::RspecSupport::Examples do
       'Example B',
       metadata: {
         absolute_file_path: source_path,
-        line_number:        5,
-        location:           "#{source_path}:5",
+        line_number:        6,
+        location:           "#{source_path}:6",
         full_description:   'ignored by cover matcher'
       }
     )
@@ -351,8 +355,8 @@ RSpec.describe Mutant::Integration::RspecSupport::Examples do
       'Example C',
       metadata: {
         absolute_file_path: source_path,
-        line_number:        6,
-        location:           "#{source_path}:6",
+        line_number:        7,
+        location:           "#{source_path}:7",
         full_description:   'ignored because mutant false',
         mutant:             false
       }
@@ -364,8 +368,8 @@ RSpec.describe Mutant::Integration::RspecSupport::Examples do
       'Example D',
       metadata: {
         absolute_file_path: source_path,
-        line_number:        9,
-        location:           "#{source_path}:9",
+        line_number:        10,
+        location:           "#{source_path}:10",
         full_description:   'ignored by string annotation',
         mutant_expression:  'Example::ExplicitString'
       }
@@ -377,8 +381,8 @@ RSpec.describe Mutant::Integration::RspecSupport::Examples do
       'Example E',
       metadata: {
         absolute_file_path: source_path,
-        line_number:        13,
-        location:           "#{source_path}:13",
+        line_number:        14,
+        location:           "#{source_path}:14",
         full_description:   'ignored by cover matcher',
         described_class:    Example::CoveredByConstant
       }
@@ -390,8 +394,8 @@ RSpec.describe Mutant::Integration::RspecSupport::Examples do
       'Example F',
       metadata: {
         absolute_file_path: source_path,
-        line_number:        14,
-        location:           "#{source_path}:14",
+        line_number:        15,
+        location:           "#{source_path}:15",
         full_description:   'Example::ExplicitConstant',
         mutant_expression:  Example::ExplicitConstant
       }
@@ -438,23 +442,23 @@ RSpec.describe Mutant::Integration::RspecSupport::Examples do
       expect(examples.all_tests).to eql(
         [
           Mutant::Test.new(
-            id:         "rspec:0:#{source_path}:2/example-a-full-description",
+            id:         "rspec:0:#{source_path}:3/example-a-full-description",
             expression: parse_expression('*')
           ),
           Mutant::Test.new(
-            id:         "rspec:1:#{source_path}:5/ignored by cover matcher",
+            id:         "rspec:1:#{source_path}:6/ignored by cover matcher",
             expression: parse_expression('Example::CoveredByString')
           ),
           Mutant::Test.new(
-            id:         "rspec:2:#{source_path}:9/ignored by string annotation",
+            id:         "rspec:2:#{source_path}:10/ignored by string annotation",
             expression: parse_expression('Example::ExplicitString')
           ),
           Mutant::Test.new(
-            id:         "rspec:3:#{source_path}:13/ignored by cover matcher",
+            id:         "rspec:3:#{source_path}:14/ignored by cover matcher",
             expression: parse_expression('Example::CoveredByConstant')
           ),
           Mutant::Test.new(
-            id:         "rspec:4:#{source_path}:14/Example::ExplicitConstant",
+            id:         "rspec:4:#{source_path}:15/Example::ExplicitConstant",
             expression: parse_expression('Example::ExplicitConstant')
           )
         ]
@@ -474,6 +478,16 @@ RSpec.describe Mutant::Integration::RspecSupport::Examples do
 
       expect(filtered_examples.values.flatten).to eql([example_b, example_e])
     end
+  end
+
+  it 'indexes and selects a covered example from a mixed binary and Unicode source file' do
+    expect { Mutant::Parser.new.call(Pathname.new(source_path)) }.not_to raise_error
+
+    tests = examples.all_tests
+    examples.filter([examples.fetch(tests.fetch(1))])
+
+    expect(tests.length).to eql(5)
+    expect(filtered_examples.values.flatten).to eql([example_b])
   end
 
   describe '#ordered_groups' do
