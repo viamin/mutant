@@ -16,7 +16,10 @@ RSpec.describe Mutant::Parser do
     end
 
     it 'returns parsed source' do
-      expect(subject).to eql(s(:sym, :source))
+      expect(subject).to have_attributes(
+        children: [:source],
+        loc:      have_attributes(expression: have_attributes(source_buffer: have_attributes(name: path.to_s)))
+      )
     end
 
     it 'is idempotent' do
@@ -28,6 +31,10 @@ RSpec.describe Mutant::Parser do
   describe 'modern Ruby syntax fixtures' do
     it 'parses without raising' do
       expect { object.call(modern_fixture_path) }.not_to raise_error
+    end
+
+    it 'preserves the fixture path for source locations' do
+      expect(object.call(modern_fixture_path).loc.expression.source_buffer.name).to eql(modern_fixture_path.to_s)
     end
   end
 

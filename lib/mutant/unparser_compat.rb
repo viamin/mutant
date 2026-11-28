@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-module Mutant
-  module UnparserCompat
+module Unparser
+  module MutantCompat
     module Builder
       def string_value(token)
         return super if token.fetch(0).valid_encoding?
@@ -12,4 +12,4 @@ module Mutant
   end
 end
 
-Unparser.const_get(:Builder).prepend(Mutant::UnparserCompat::Builder)
+Unparser.const_get(:Builder).prepend(Unparser::MutantCompat::Builder)
